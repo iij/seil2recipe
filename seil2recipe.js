@@ -2572,6 +2572,8 @@ Converter.rules['route'] = {
                 //     [retransmit-interval <retransmit-interval>] [transmit-delay <transmit-delay>]
                 //     [priority <priority>] [passive-interface {on|off}]
                 const k1 = conv.get_index('ospf.link');
+                conv.add(`${k1}.interface`, conv.ifmap(tokens[5]));
+
                 const params = conv.read_params(null, tokens, 5, {
                     'area': `${k1}.area`,
                     'authentication': 0,  // ignore it

@@ -865,6 +865,7 @@ describe('route', () => {
         ], [
             'ospf.router-id: 192.168.0.1',
             'ospf.area.100.id: 0.0.0.0',
+            'ospf.link.100.interface: ge1',
             'ospf.link.100.area: 0.0.0.0',
             'ospf.redistribute-from.rip.redistribute: enable',
             'ospf.redistribute-from.rip.set.metric: 30',
@@ -888,6 +889,7 @@ describe('route', () => {
         ], [
             'ospf.router-id: 192.168.0.1',
             'ospf.area.100.id: 0.0.0.0',
+            'ospf.link.100.interface: ge1',
             'ospf.link.100.area: 0.0.0.0',
             'ospf.link.100.authentication.type: md5',
             'ospf.link.100.authentication.md5.key-id: 6',
