@@ -111,6 +111,7 @@ class Note {
         this.ifindex = new Map();  // (prefix) -> (interface) -> (index)
         this.memo    = new Map();
 
+        this.memo.set('floatlink.interfaces', []);
         this.memo.set('ike.preshared-key', {});
         this.memo.set('interface.l2tp.tunnel', {});
     }
@@ -1221,8 +1222,11 @@ Converter.rules['floatlink'] = {
         // floatlink name-service add <url>
         // -> interface.ipsec[0-63].floatlink.name-service: <url>
         'add': (conv, tokens) => {
-            // ひとつしか設定できないため、Array にする必要はない。
-            conv.set_memo('floatlink.name-service', tokens[3]);
+            // floatlink name-service は add で書くが、最大で一つしか設定できないため、
+            // 上書きされる心配はしなくて良い。
+            conv.get_memo('floatlink.interfaces').forEach(ifname => {
+                conv.add(`interface.${ifname}.floatlink.name-service`, tokens[3]);
+            });
         }
     },
     'route': 'notsupported',
@@ -1519,11 +1523,11 @@ Converter.rules['interface'] = {
             },
             'my-node-id': (conv, tokens) => {
                 const ifname = ifmap(tokens[1]);
-                // "floatlink name-service add <url>" は Phash ではグローバルな設定だが、Recipe では
-                // インタフェース毎の設定になった。my-node-id は必須キーなので、このタイミングで書いておく。
-                conv.add(`interface.${ifname}.floatlink.name-service`, conv.get_memo('floatlink.name-service'));
-
                 conv.add(`interface.${ifname}.floatlink.my-node-id`, tokens[4]);
+
+                // 後で interface.${ifname}.floatlink.name-service を書き出すためにメモに入れておく。
+                // my-node-id は必須キーなので、このタイミングで書く。
+                conv.get_memo('floatlink.interfaces').push(ifname);
             },
             'nat-traversal': (conv, tokens) => {
                 const ifname = ifmap(tokens[1]);

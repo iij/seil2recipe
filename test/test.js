@@ -465,7 +465,6 @@ describe('interface', () => {
 
     it('ipsec0 floatlink', () => {
         assertconv([
-            'floatlink name-service add https://example.jp/floatlink',
             'interface ipsec0 floatlink my-node-id MY-NODE-ID',
             'interface ipsec0 floatlink peer-node-id PEER-NODE-ID',
             'interface ipsec0 floatlink floatlink-key FLOATLINK-KEY-X',
@@ -473,6 +472,7 @@ describe('interface', () => {
             'interface ipsec0 floatlink address-family ipv6',
             'interface ipsec0 floatlink nat-traversal force',
             'interface ipsec0 floatlink my-address lan1',
+            'floatlink name-service add https://example.jp/floatlink',
         ], [
             'interface.ipsec0.floatlink.name-service: https://example.jp/floatlink',
             'interface.ipsec0.floatlink.my-node-id: MY-NODE-ID',
