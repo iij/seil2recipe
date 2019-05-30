@@ -1,0 +1,72 @@
+body {
+    margin: 0;
+}
+
+.header {
+    background-color: black;
+    color: white;
+    font-family: sans-serif;
+    font-size: 28px;
+    height: 42px;
+    line-height: 42px;
+    padding-left: 40px;
+}
+
+.config-area {
+    margin: 12px 0 0 0;
+    text-align: center;
+}
+
+.config-row {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.config-text {
+    font-family: 'Monaco', monospace;
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+.conv-to {
+    width: 24px;
+    text-align: center;
+}
+
+.model {
+    font-family: 'Optima', sans-serif;
+    text-align: center;
+}
+
+#status {
+    padding: 0;
+}
+
+.lineno {
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: bold;
+    color: #777;
+}
+
+#status .config-text {
+    font-family: 'Courier', monospace;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.errmsg {
+    font-size: 11px;
+}
+
+.usage {
+    background-color: #ccc;
+    font-family: sans-serif;
+    font-size: 14px;
+    margin: 32px;
+    padding: 20px;
+}
+
+.usage-list {
+    list-style-type: square;
+}

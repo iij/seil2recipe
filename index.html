@@ -1,0 +1,202 @@
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>SEIL Legacy to Recipe Config Converter</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <script src="./seil2recipe.js"></script>
+</head>
+
+<body>
+  <header class="header">
+    <span style="font-weight: bold;">SEIL</span>コンフィグ自動変換ツール
+    <div style="float: right; margin: 4px;">
+      <a href="https://github.com/iij/seil2recipe">
+        <svg xmlns="http://www.w3.org/2000/svg" height="34" width="34" viewbox="0 0 16 16" style="fill: #ccc;">
+          <path fill-rule="evenodd"
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+        </svg>
+      </a>
+    </div>
+  </header>
+  <div>
+    <div class="config-area">
+      <div id="seilconfig" class="config-row">
+        <div class="model">SEIL BPV4 (5.98)</div>
+        <textarea class="config-text" v-model="text" rows="20" cols="64" spellcheck="false"
+          placeholder="Enter SEIL config here."></textarea>
+      </div>
+
+      <div class="config-row conv-to">
+        &#9654;
+      </div>
+
+      <div id="recipeconfig" class="config-row">
+        <div class="model">SEIL/X4 (1.00)</div>
+        <textarea class="config-text" v-model="text" rows="20" cols="64" spellcheck="false"
+          placeholder="Converted recipe config will be shown here." readonly></textarea>
+      </div>
+    </div>
+
+    <ul id="status" style="list-style-type: none; margin: 10px 50px;">
+      <template v-for="conv in lines">
+        <span class="lineno">{{ conv.lineno }}: </span>
+        <span class="config-text" style="color: #000;">{{ conv.seil_line }}</span>
+        <li v-for="err in conv.errors">
+          <span class="errmsg" style="font-family: sans-serif; font-size: 90%; padding-left: 2em;"
+            v-bind:style="{ 'color': err.color }">{{ err.message }}</span>
+        </li>
+      </template>
+    </ul>
+  </div>
+
+  <div class="usage">
+    <ul class="usage-list">
+      <li>SEIL BPV4 バージョン 5.98 のコンフィグを SEIL/X4 バージョン 1.00 のコンフィグに変換します。</li>
+      <li>入力されるコンフィグには "show config" コマンドで表示される形式を想定しています。</li>
+      <ul>
+          <li>うまく変換できない場合は、いったん実機にコンフィグを投入して "show config" を実行し、正規化してみてください。</li>
+        </ul>
+      <li>複数の行が揃ってはじめて意味をなすコンフィグは、一通りの設定が揃うまで変換されません。<br />
+        <ul>
+          <li>
+            たとえば、旧コンフィグの "dhcp enable" コマンドは、"dhcp mode server" (もしくは "dhcp mode relay") が設定されなければ意味を持ちません。
+            そのため、"dhcp enable" "dhcp mode server" の二行が揃ってはじめて新コンフィグの "dhcp.server.service: enable" に変換されます。</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+  <script>
+    var seilconfig = new Vue({
+      el: '#seilconfig',
+      data: {
+        text: `hostname ""
+timezone "Japan"
+environment login-timer 300
+ppp add PPPOE-SAMPLE keepalive 30 ipcp enable ipcp-address on ipcp-dns on ipv6cp enable authentication-method chap identifier "" tcp-mss auto
+interface lan0 media auto
+interface lan0 add 192.168.0.1/24
+interface lan1 media auto
+interface lan1 queue normal
+interface lan2 media auto
+interface lan3 media auto
+interface lan4 media auto
+interface lan5 media auto
+interface pppoe0 over lan1
+bridge disable
+bridge ip-bridging on
+bridge ipv6-bridging on
+route add default pppoe0
+route dynamic rip disable
+route dynamic ospf disable
+route dynamic bgp disable
+route dynamic redistribute static-to-rip disable
+route dynamic redistribute static-to-ospf disable
+route dynamic redistribute ospf-to-rip disable
+route dynamic redistribute rip-to-ospf disable
+route dynamic redistribute connected-to-rip enable
+route dynamic redistribute connected-to-ospf enable
+route dynamic pim-sparse disable
+route6 dynamic ripng disable
+route6 dynamic redistribute static-to-ripng disable
+route6 dynamic redistribute connected-to-ripng enable
+route6 dynamic pim-sparse disable
+filter add seil_ctl_lan0 interface lan0 direction in action pass protocol tcp src 192.168.0.0/24 srcport 0-65535 dst self dstport 0-65535 state disable logging off enable
+filter add telnetd_block interface any direction in action block protocol tcp srcport 0-65535 dst self dstport 23 state disable logging on enable
+filter add httpd_block interface any direction in action block protocol tcp srcport 0-65535 dst self dstport 80 state disable logging on enable
+filter6 add seil_ctl_lan0 interface lan0 direction in action pass protocol tcp src fe80::/10 srcport 0-65535 dst self dstport 0-65535 state disable logging off enable
+filter6 add telnetd_block interface any direction in action block protocol tcpudp srcport 0-65535 dst self dstport 23 state disable logging on enable
+filter6 add httpd_block interface any direction in action block protocol tcpudp srcport 0-65535 dst self dstport 80 state disable logging on enable
+nat timeout 900
+nat logging off
+nat upnp off
+nat upnp interface lan1
+nat napt add private 192.168.0.0-192.168.255.255 interface pppoe0
+nat proxy sip add port 5060 protocol tcpudp
+nat option port-assignment random
+proxyarp disable
+dhcp disable
+dhcp mode server
+dhcp interface lan0 enable
+dhcp interface lan0 expire 24
+dhcp interface lan0 pool 192.168.0.2 253
+dhcp interface lan0 dns add 192.168.0.1
+dhcp6 client disable
+dhcp6 client interface pppoe0
+dns forwarder enable
+dns forwarder add ipcp
+ntp disable
+cbq link-bandwidth 100Mbps
+snmp disable
+snmp community "public"
+snmp security-model community-based off
+snmp security-model user-based on
+snmp trap disable
+syslog debug-level off
+syslog facility local1
+syslog remote off
+translator timeout 300
+resolver disable
+rtadvd disable
+httpd enable
+sshd hostkey rsa1 none
+sshd hostkey rsa auto
+sshd hostkey dsa auto
+sshd disable
+telnetd enable
+vendor OEM
+`
+      },
+      computed: {
+        s2r: function () {
+          return new Converter(seilconfig.text);
+        }
+      }
+    })
+
+    var recipeconfig = new Vue({
+      el: '#recipeconfig',
+      computed: {
+        text: function () {
+          return seilconfig.s2r.recipe_config;
+        }
+      }
+    })
+
+    var status = new Vue({
+      el: '#status',
+      computed: {
+        lines: function () {
+          const lines = [];
+
+          seilconfig.s2r.conversions.forEach(conv => {
+            var print_error = false;
+
+            conv.errors.forEach(err => {
+              if (err.type == 'deprecated') {
+                err.color = '#777';
+              } else if (err.type == 'notsupported') {
+                err.color = '#aa0';
+              } else {
+                err.color = '#a3c';
+              }
+
+              print_error = true;
+            });
+
+            if (print_error) {
+              lines.push(conv);
+            }
+          });
+
+          return lines;
+        }
+      }
+    })
+  </script>
+
+  </div>
+</body>
+</html>
