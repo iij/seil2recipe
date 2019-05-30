@@ -885,6 +885,7 @@ describe('route', () => {
             'route dynamic ospf enable',
             'route dynamic ospf area add 0.0.0.0',
             'route dynamic ospf link add lan0 area 0.0.0.0 authentication auth-key FOUR',
+            'route dynamic redistribute static-to-ospf enable metric 123 metric-type 1',
             'route dynamic redistribute rip-to-ospf enable',
         ], [
             'ospf.router-id: 192.168.0.1',
@@ -894,6 +895,9 @@ describe('route', () => {
             'ospf.link.100.authentication.type: md5',
             'ospf.link.100.authentication.md5.key-id: 6',
             'ospf.link.100.authentication.md5.secret-key: seven',
+            'ospf.redistribute-from.static.redistribute: enable',
+            'ospf.redistribute-from.static.set.metric-type: 1',
+            'ospf.redistribute-from.static.set.metric: 123',
             'ospf.redistribute-from.rip.redistribute: enable',
         ]);
     });

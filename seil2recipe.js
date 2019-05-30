@@ -2643,12 +2643,16 @@ Converter.rules['route'] = {
                 //     [metric <metric>] [metric-type <metric-type>]
                 //     [route-filter <route-filter-name>[,<route-filter-name>...]]
                 if (conv.get_memo('ospf.enable')) {
-                    conv.add('ospf.redistribute-from.rip.redistribute', tokens[4]);
+                    const r = tokens[3].match(/([a-z]+)-to-([a-z]+)/);
+                    const from = r[1];
+                    const to = r[2];
+
+                    conv.add(`ospf.redistribute-from.${from}.redistribute`, tokens[4]);
                     const params = conv.read_params(null, tokens, 3, {
                         'disable': 0,
                         'enable': 0,
-                        'metric': 'ospf.redistribute-from.rip.set.metric',
-                        'metric-type': 'ospf.redistribute-from.rip.set.metric-type',
+                        'metric': `${to}.redistribute-from.${from}.set.metric`,
+                        'metric-type': `${to}.redistribute-from.${from}.set.metric-type`,
                         'route-filter': true,
                     });
                     (params['route-filter'] || "").split(',').forEach(name => {
@@ -2656,7 +2660,7 @@ Converter.rules['route'] = {
                         if (rf == null) {
                             return;
                         }
-                        const k1 = conv.get_index('ospf.redistribute-from.rip.filter');
+                        const k1 = conv.get_index(`${to}.redistribute-from.${from}.filter`);
                         conv.param2recipe(rf, 'interface', `${k1}.match.interface`, conv.ifmap);
                         conv.param2recipe(rf, 'network', `${k1}.match.prefix`, val => `${val}-32`);
                         conv.param2recipe(rf, 'set-metric', `${k1}.set.metric`);
@@ -2674,9 +2678,7 @@ Converter.rules['route'] = {
             'static-to-rip': tokens => `rip.redistribute-from.static.redistribute: ${tokens[4]}`,
 
             'static-to-ospf': (conv, tokens) => {
-                if (conv.get_memo('ospf.enable')) {
-                    conv.add('ospf.redistribute-from.static.redistribute', tokens[4]);
-                }
+                return Converter.rules['route']['dynamic']['redistribute']['rip-to-ospf'](conv, tokens);
             },
         },
 
