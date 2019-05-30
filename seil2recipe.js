@@ -147,10 +147,6 @@ class Note {
         return `sa${idx}`;
     }
 
-    get_params(prefix) {
-        return this.params[prefix];
-    }
-
     if2index(prefix, ifname) {
         var ifmap = this.ifindex.get(prefix);
         if (ifmap == null) {
@@ -259,7 +255,12 @@ class Conversion {
     }
 
     get_params(prefix) {
-        return this.note.get_params(prefix);
+        const params = this.note.params[prefix];
+        if (params) {
+            return params;
+        } else {
+            return {};
+        }
     }
 
     if2index(prefix, ifname) {
@@ -2556,6 +2557,12 @@ Converter.rules['route'] = {
             },
             'disable': [],
             'enable': (conv, tokens) => {
+                const id = conv.get_memo('ospf.router-id');
+                if (id == null) {
+                    conv.badconfig('router-id が設定されていません。');
+                    return;
+                }
+                conv.add('ospf.router-id', id);
                 conv.set_memo('ospf.enable', true);
             },
             'link': (conv, tokens) => {
@@ -2597,9 +2604,8 @@ Converter.rules['route'] = {
             'nexthop-calculation-type': 'notsupported',
 
             'router-id': (conv, tokens) => {
-                // route dynamic ospf router-id { <my-router-id> | none }
-                if (! conv.get_memo('ospf.enable')) { return; }
-                conv.add('ospf.router-id', tokens[4]);
+                // route dynamic ospf router-id <my-router-id>
+                conv.set_memo('ospf.router-id', tokens[4]);
             },
         },
 
@@ -2643,8 +2649,11 @@ Converter.rules['route'] = {
                         'metric-type': 'ospf.redistribute-from.rip.set.metric-type',
                         'route-filter': true,
                     });
-                    params['route-filter'].split(',').forEach(name => {
+                    (params['route-filter'] || "").split(',').forEach(name => {
                         const rf = conv.get_params('route-filter.ipv4')[name];
+                        if (rf == null) {
+                            return;
+                        }
                         const k1 = conv.get_index('ospf.redistribute-from.rip.filter');
                         conv.param2recipe(rf, 'interface', `${k1}.match.interface`, conv.ifmap);
                         conv.param2recipe(rf, 'network', `${k1}.match.prefix`, val => `${val}-32`);
