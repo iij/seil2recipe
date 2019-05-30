@@ -2574,7 +2574,7 @@ Converter.rules['route'] = {
                 const k1 = conv.get_index('ospf.link');
                 const params = conv.read_params(null, tokens, 5, {
                     'area': `${k1}.area`,
-                    'authentication': false,  // ignore it
+                    'authentication': 0,  // ignore it
                     'auth-key': true,
                     'cost': `${k1}.cost`,
                     'hello-interval': `${k1}.hello-interval`,
@@ -2593,7 +2593,7 @@ Converter.rules['route'] = {
                     if (akey['type'] == 'plain-text') {
                         conv.add(`${k1}.authentication.type`, 'plain-text');
                         conv.add(`${k1}.authentication.plain-text.password`, akey['password']);
-                    } else if (akey['type' == 'md5']) {
+                    } else if (akey['type'] == 'md5') {
                         conv.add(`${k1}.authentication.type`, 'md5');
                         conv.add(`${k1}.authentication.md5.key-id`, akey['keyid']);
                         conv.add(`${k1}.authentication.md5.secret-key`, akey['password']);

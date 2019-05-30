@@ -878,16 +878,20 @@ describe('route', () => {
 
     it('redistribute to ospf without route-filter', () => {
         assertconv([
+            'route dynamic auth-key add FOUR type md5 keyid 6 password seven',
             'route dynamic ospf enable',
             'route dynamic ospf router-id 192.168.0.1',
             'route dynamic ospf enable',
             'route dynamic ospf area add 0.0.0.0',
-            'route dynamic ospf link add lan0 area 0.0.0.0',
+            'route dynamic ospf link add lan0 area 0.0.0.0 authentication auth-key FOUR',
             'route dynamic redistribute rip-to-ospf enable',
         ], [
             'ospf.router-id: 192.168.0.1',
             'ospf.area.100.id: 0.0.0.0',
             'ospf.link.100.area: 0.0.0.0',
+            'ospf.link.100.authentication.type: md5',
+            'ospf.link.100.authentication.md5.key-id: 6',
+            'ospf.link.100.authentication.md5.secret-key: seven',
             'ospf.redistribute-from.rip.redistribute: enable',
         ]);
     });
