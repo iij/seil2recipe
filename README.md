@@ -1,5 +1,5 @@
 # SEIL Legacy Config to Recipe Config Converter
-[SEILコンフィグ自動変換ツール](https://iij.github.io/pages/seil2recipe/) は SEIL/X,B1,x86,BPV4 の設定(旧コンフィグ)を SEIL/X4 の設定(レシピコンフィグ)に変換するツールです。
+[SEILコンフィグ自動変換ツール](https://iij.github.io/seil2recipe/) は SEIL/X,B1,x86,BPV4 の設定(旧コンフィグ)を SEIL/X4 の設定(レシピコンフィグ)に変換するツールです。
 
 
 ## 使い方
