@@ -3047,11 +3047,15 @@ Converter.rules['sshd'] = {
     },
 
     // sshd { enable | disable }
-    'disable': 'sshd.service: disable',
+    'disable': (conv, tokens) => {
+        if (conv.get_memo('sshd.password-authentication') == null) {
+            conv.add('sshd.password-authentication', 'enable');
+        }
+        conv.add('sshd.service', 'disable');
+    },
 
     'enable': (conv, tokens) => {
-        // Note: "sshd password-authentication on" (if any) is followed by "sshd enable".
-        if (! conv.get_memo('sshd.password-authetication')) {
+        if (conv.get_memo('sshd.password-authentication') == null) {
             conv.add('sshd.password-authentication', 'enable');
         }
         conv.add('sshd.service', 'enable');

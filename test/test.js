@@ -947,13 +947,62 @@ describe('snmp', () => {
 });
 
 describe('sshd', () => {
-    it('sshd enable only', () => {
+    it('password-authentication system-default, sshd enable', () => {
         assertconv([
             'sshd enable',
         ], [
-            'sshd.service: enable',
-            'sshd.password-authentication: enable',
-        ]);
+                'sshd.password-authentication: enable',
+                'sshd.service: enable',
+            ]);
+    });
+
+    it('password-authentication on, sshd enable', () => {
+        assertconv([
+            'sshd password-authentication on',
+            'sshd enable',
+        ], [
+                'sshd.password-authentication: enable',
+                'sshd.service: enable',
+            ]);
+    });
+
+    it('password-authentication off, sshd enable', () => {
+        assertconv([
+            'sshd password-authentication off',
+            'sshd enable',
+        ], [
+                'sshd.password-authentication: disable',
+                'sshd.service: enable',
+            ]);
+    });
+
+    it('password-authentication system-default, sshd disable', () => {
+        assertconv([
+            'sshd disable',
+        ], [
+                'sshd.password-authentication: enable',
+                'sshd.service: disable',
+            ]);
+    });
+
+    it('password-authentication on, sshd disable', () => {
+        assertconv([
+            'sshd password-authentication on',
+            'sshd disable',
+        ], [
+                'sshd.password-authentication: enable',
+                'sshd.service: disable',
+            ]);
+    });
+
+    it('password-authentication off, sshd disable', () => {
+        assertconv([
+            'sshd password-authentication off',
+            'sshd disable',
+        ], [
+                'sshd.password-authentication: disable',
+                'sshd.service: disable',
+            ]);
     });
 });
 
