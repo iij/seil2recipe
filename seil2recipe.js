@@ -1813,6 +1813,22 @@ Converter.rules['ipsec'] = {
                     }
                 }
 
+                // ike proposal -> ike.phase1
+                const ikep_name = peer['proposals'];
+                const ikep = conv.get_params('ike.proposal')[ikep_name];
+                if (ikep) {
+                    const k2 = `interface.${ifname}.ike.proposal.phase1`;
+                    (ikep['encryption'] || '').split(',').forEach(alg => {
+                        const ke = conv.get_index(`${k2}.encryption`);
+                        conv.add(`${ke}.algorithm`, alg);
+                    });
+                    (ikep['hash'] || '').split(',').forEach(alg => {
+                        const ke = conv.get_index(`${k2}.hash`);
+                        conv.add(`${ke}.algorithm`, alg);
+                    });
+                    conv.param2recipe(ikep, 'dh-group', `${k2}.dh-group`);
+                    conv.param2recipe(ikep, 'lifetime-of-time', `${k2}.lifetime`);
+                }
             } else {
                 // ipsec security-association add <name> { tunnel | transport }
                 //     { <start_IPaddress> <end_IPaddress> | <start_Interface> <end_IPaddress> | dynamic | auto }
