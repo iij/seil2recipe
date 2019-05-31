@@ -3142,7 +3142,7 @@ Converter.rules['syslog'] = {
             'hostname': `${k1}.hostname`,
             'facility': `${k1}.facility`,
             'sequence-number': {
-                key: `${k1}.hostname`,
+                key: `${k1}.sequence-number`,
                 fun: on2enable
             },
             'alternate-timestamp': {

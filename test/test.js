@@ -1019,6 +1019,22 @@ describe('syslog', () => {
             'syslog.remote.server.1.log-level: warning',
         ]);
     });
+
+    it('all parameters', () => {
+        assertconv([
+            'syslog remote on',
+            'syslog remote-server add LOG address 10.0.0.1 port 514 hostname loghost facility local3 sequence-number on alternate-timestamp on log-level debug src 192.168.0.1',
+        ], [
+                'syslog.remote.server.0.ipv4.address: 10.0.0.1',
+                'syslog.remote.server.0.port: 514',
+                'syslog.remote.server.0.hostname: loghost',
+                'syslog.remote.server.0.facility: local3',
+                'syslog.remote.server.0.sequence-number: enable',
+                'syslog.remote.server.0.alternate-timestamp: enable',
+                'syslog.remote.server.0.log-level: debug',
+                'syslog.remote.server.0.source.ipv4.address: 192.168.0.1',
+            ]);
+    });
 });
 
 describe('timezone', () => {
