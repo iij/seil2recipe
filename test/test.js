@@ -439,8 +439,17 @@ describe('ike', () => {
 });
 
 describe('interface', () => {
-    // ルーティングベース IPsec 全体のテストは 'ipsec' の方に書く。
+    it('can change mtu', () => {
+        assertconv('interface ipsec0 mtu 1234', 'interface.ipsec0.mtu: 1234');
+    });
 
+    it('cannot change mtu', () => {
+        assert_conversions('interface lan0 mtu 1480', convs => {
+            assert(convs[0].errors[0].type == 'notsupported');
+        });
+    });
+
+    // ルーティングベース IPsec 全体のテストは 'ipsec' の方に書く。
     it('ipsec0 unnumbered', () => {
         assertconv([
             'interface ipsec0 tunnel 10.0.0.1 10.0.0.2',
