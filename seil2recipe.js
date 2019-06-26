@@ -1754,11 +1754,19 @@ Converter.rules['ipsec'] = {
                     'ike': true,
                     'ah': true,
                     'esp': true,
-                    'ipv6': `interface.${ifname}.ipv6.forward`,
+                    'ipv6': true,
                     'proxy-id-local': true,
                     'proxy-id-remote': true,
                     'proxy-id-protocol': `interface.${ifname}.ike.proposal.phase2.proxy-id.protocol`,
                 });
+
+                // ipv6 は seil3 ではデフォルト pass、seil8 ではデフォルト block。
+                if (params['ipv6'] == null || params['ipv6'] == 'pass') {
+                    conv.add(`interface.${ifname}.ipv6.forward`, 'pass');
+                } else {
+                    conv.add(`interface.${ifname}.ipv6.forward`, 'block');
+                }
+
 
                 // ike preshared-key ...
                 const dst = conv.get_memo(`interface.${ifname}.tunnel.destination`);

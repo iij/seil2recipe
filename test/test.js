@@ -548,6 +548,7 @@ describe('ipsec', () => {
         ], [
             'interface.ipsec0.ipv4.source: 10.0.0.1',
             'interface.ipsec0.ipv4.destination: 10.0.0.2',
+            'interface.ipsec0.ipv6.forward: pass',
             'interface.ipsec0.preshared-key: two',
             'interface.ipsec0.ike.initial-contact: enable',
             'interface.ipsec0.ike.proposal.phase1.dh-group: modp1536',
