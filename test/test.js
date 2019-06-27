@@ -371,6 +371,16 @@ describe('filter', () => {
         });
     });
 
+    it('action forward', () => {
+        assertconv([
+            'filter add FOO interface vlan0 direction in action forward 192.168.0.1',
+        ], [
+            'filter.forward.ipv4.100.interface: vlan0',
+            'filter.forward.ipv4.100.direction: in',
+            'filter.forward.ipv4.100.gateway: 192.168.0.1',
+        ]);
+    });
+
     it('direction in/out -> inout', () => {
         assertconv([
             'filter add FOO interface vlan0 direction in/out action pass state disable logging on enable',
