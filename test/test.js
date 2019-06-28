@@ -394,6 +394,18 @@ describe('filter', () => {
     });
 });
 
+describe('filter6', () => {
+    it('filter6', () => {
+        assertconv([
+            'filter6 add FOO interface vlan0 direction in/out action pass',
+        ], [
+            'filter.ipv6.100.action: pass',
+            'filter.ipv6.100.direction: inout',
+            'filter.ipv6.100.interface: vlan0',
+        ]);
+    });
+});
+
 describe('floatlink', () => {
     it('ike proposal', () => {
         assertconv('floatlink ike proposal hash sha256,sha1',

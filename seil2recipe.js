@@ -1192,7 +1192,13 @@ Converter.rules['filter6'] = {
 
         const k = conv.get_index('filter.ipv6');
         param2recipe(params, 'interface', `${k}.interface`, val => val);
-        param2recipe(params, 'direction', `${k}.direction`, val => val);
+        param2recipe(params, 'direction', `${k}.direction`, val => {
+            if (val == 'in/out') {
+                return 'inout';
+            } else {
+                return val;
+            }
+        });
         param2recipe(params, 'action', `${k}.action`, val => val);
         param2recipe(params, 'protocol', `${k}.protocol`, val => val);
         param2recipe(params, 'icmp-type', `${k}.icmp-type`, val => val);
