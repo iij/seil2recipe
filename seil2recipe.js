@@ -276,7 +276,7 @@ class Conversion {
             const pname = tokens[idx];
             var val = defs[pname];
             if (val == null) {
-                this.badconfig(pname);
+                this.badconfig(`unknown parameter: ${pname}`);
                 idx += 1;
                 continue;
             }
@@ -628,10 +628,32 @@ Converter.rules['bridge'] = {
     'group': {
         'add': (conv, tokens) => {
             const bridge_if = conv.get_interface('bridge');
-            conv.read_params('bridge.group', tokens, 3, {
+            const params = conv.read_params('bridge.group', tokens, 3, {
+                'aging-time': 'notsupported',
+                'forward-delay': true,
+                'hello-time': true,
+                'loop-detection': 'notsupported',
+                'max-age': true,
+                'priority': true,
                 'stp': true,
             });
             conv.set_param('bridge.group', tokens[3], '*ifname*', bridge_if);
+
+            if (params['stp'] == 'on') {
+                conv.notsupported('stp on');
+                if (params['forward-delay']) {
+                    conv.notsupported('forward-delay');
+                }
+                if (params['hello-time']) {
+                    conv.notsupported('hello-time');
+                }
+                if (params['max-age']) {
+                    conv.notsupported('max-age');
+                }
+                if (params['priority']) {
+                    conv.notsupported('priority');
+                }
+            }
         }
     },
 
