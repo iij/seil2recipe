@@ -365,6 +365,28 @@ describe('environment', () => {
 });
 
 describe('filter', () => {
+    it('parameters', () => {
+        assertconv([
+            'filter add FOO interface lan1 label "LAB" direction in action pass protocol tcpudp ' +
+            'src 10.0.0.1/32 srcport 1111 dst 10.0.0.2/32 dstport 2222 ipopts any ' +
+            'keepalive 10.0.0.3 state enable state-ttl 123 logging state-only'
+        ], [
+            'filter.ipv4.100.interface: ge0',
+            'filter.ipv4.100.label: LAB',
+            'filter.ipv4.100.direction: in',
+            'filter.ipv4.100.action: pass',
+            'filter.ipv4.100.protocol: tcpudp',
+            'filter.ipv4.100.source.address: 10.0.0.1/32',
+            'filter.ipv4.100.source.port: 1111',
+            'filter.ipv4.100.destination.address: 10.0.0.2/32',
+            'filter.ipv4.100.destination.port: 2222',
+            'filter.ipv4.100.ipopts: any',
+            'filter.ipv4.100.keepalive: 10.0.0.3',
+            'filter.ipv4.100.state: enable',
+            'filter.ipv4.100.state.ttl: 123',
+            'filter.ipv4.100.logging: state-only',
+        ]);
+    });
     it('application parameter is deprecated', () => {
         assert_conversions('filter add FOO interface vlan0 direction in action pass application winny', convs => {
             assert.equal(convs[0].errors[0].type, 'deprecated');
@@ -402,6 +424,28 @@ describe('filter6', () => {
             'filter.ipv6.100.action: pass',
             'filter.ipv6.100.direction: inout',
             'filter.ipv6.100.interface: vlan0',
+        ]);
+    });
+
+    it('parameters', () => {
+        assertconv([
+            'filter6 add FOO interface lan1 label "LAB" direction in action pass protocol tcpudp ' +
+            'src 1::1/128 srcport 1111 dst 1::2/128 dstport 2222 exthdr any ' +
+            'state enable state-ttl 123 logging state-only'
+        ], [
+            'filter.ipv6.100.interface: ge0',
+            'filter.ipv6.100.label: LAB',
+            'filter.ipv6.100.direction: in',
+            'filter.ipv6.100.action: pass',
+            'filter.ipv6.100.protocol: tcpudp',
+            'filter.ipv6.100.source.address: 1::1/128',
+            'filter.ipv6.100.source.port: 1111',
+            'filter.ipv6.100.destination.address: 1::2/128',
+            'filter.ipv6.100.destination.port: 2222',
+            'filter.ipv6.100.exthdr: any',
+            'filter.ipv6.100.state: enable',
+            'filter.ipv6.100.state.ttl: 123',
+            'filter.ipv6.100.logging: state-only',
         ]);
     });
 });

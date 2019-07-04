@@ -1134,6 +1134,7 @@ Converter.rules['filter'] = {
             'dstport': true,
             'ipopts': true,
             'state': true,
+            'state-ttl': true,
             'keepalive': true,
             'logging': true,
             'label': true,
@@ -1174,6 +1175,7 @@ Converter.rules['filter'] = {
         conv.param2recipe(params, 'dstport', `${k}.destination.port`);
         conv.param2recipe(params, 'ipopts', `${k}.ipopts`);
         conv.param2recipe(params, 'state', `${k}.state`);
+        conv.param2recipe(params, 'state-ttl', `${k}.state.ttl`);
         conv.param2recipe(params, 'keepalive', `${k}.keepalive`);
         conv.param2recipe(params, 'logging', `${k}.logging`);
         conv.param2recipe(params, 'label', `${k}.label`);
@@ -1185,13 +1187,7 @@ Converter.rules['filter6'] = {
         // https://www.seil.jp/doc/index.html#fn/filter/cmd/filter6.html#add
         // https://www.seil.jp/sx4/doc/sa/filter/config/filter.ipv6.html
 
-        function param2recipe(params, param_name, recipe_key, fun) {
-            if (params[param_name]) {
-                conv.add(recipe_key, fun(params[param_name]));
-            }
-        }
-
-        params = conv.read_params('filter.ipv6', tokens, 2, {
+        const params = conv.read_params('filter.ipv6', tokens, 2, {
             'interface': value => ifmap(value),
             'direction': true,
             'action': true,
@@ -1203,6 +1199,7 @@ Converter.rules['filter6'] = {
             'dstport': true,
             'exthdr': true,
             'state': true,
+            'state-ttl': true,
             'logging': true,
             'label': true,
             'enable': false,  // ignored
@@ -1213,25 +1210,26 @@ Converter.rules['filter6'] = {
         }
 
         const k = conv.get_index('filter.ipv6');
-        param2recipe(params, 'interface', `${k}.interface`, val => val);
-        param2recipe(params, 'direction', `${k}.direction`, val => {
+        conv.param2recipe(params, 'interface', `${k}.interface`, val => val);
+        conv.param2recipe(params, 'direction', `${k}.direction`, val => {
             if (val == 'in/out') {
                 return 'inout';
             } else {
                 return val;
             }
         });
-        param2recipe(params, 'action', `${k}.action`, val => val);
-        param2recipe(params, 'protocol', `${k}.protocol`, val => val);
-        param2recipe(params, 'icmp-type', `${k}.icmp-type`, val => val);
-        param2recipe(params, 'src', `${k}.source.address`, val => val);
-        param2recipe(params, 'srcport', `${k}.source.port`, val => val);
-        param2recipe(params, 'dst', `${k}.destination.address`, val => val);
-        param2recipe(params, 'dstport', `${k}.destination.port`, val => val);
-        param2recipe(params, 'exthdr', `${k}.exthdr`, val => val);
-        param2recipe(params, 'state', `${k}.state`, val => val);
-        param2recipe(params, 'logging', `${k}.logging`, val => val);
-        param2recipe(params, 'label', `${k}.label`, val => val);
+        conv.param2recipe(params, 'action', `${k}.action`);
+        conv.param2recipe(params, 'protocol', `${k}.protocol`);
+        conv.param2recipe(params, 'icmp-type', `${k}.icmp-type`);
+        conv.param2recipe(params, 'src', `${k}.source.address`);
+        conv.param2recipe(params, 'srcport', `${k}.source.port`);
+        conv.param2recipe(params, 'dst', `${k}.destination.address`);
+        conv.param2recipe(params, 'dstport', `${k}.destination.port`);
+        conv.param2recipe(params, 'exthdr', `${k}.exthdr`);
+        conv.param2recipe(params, 'state', `${k}.state`);
+        conv.param2recipe(params, 'state-ttl', `${k}.state.ttl`);
+        conv.param2recipe(params, 'logging', `${k}.logging`);
+        conv.param2recipe(params, 'label', `${k}.label`);
     }
 };
 
