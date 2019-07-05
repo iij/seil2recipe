@@ -271,9 +271,13 @@ describe('dhcp6', () => {
         assertconv([
             'dhcp6 client enable',
             'dhcp6 client interface lan1',
+            'dhcp6 client prefix-delegation subnet lan0 sla-id 0x1 interface-id ::1234 enable',
         ], [
-                'dhcp6.client.100.interface: lan1',
                 'dhcp6.client.service: enable',
+                'dhcp6.client.100.interface: ge0',
+                'dhcp6.client.100.prefix-delegation.100.subnet: ge1',
+                'dhcp6.client.100.prefix-delegation.100.sla-id: 0x1',
+                'dhcp6.client.100.prefix-delegation.100.interface-id: ::1234',
             ]);
     });
 });

@@ -916,7 +916,7 @@ Converter.rules['dhcp6'] = {
                     if (! conv.get_memo('dhcp6.client.multiple')) {
                         const ifname = conv.ifmap(tokens[3])
                         conv.set_memo('dhcp6.client.interface', ifname);
-                        conv.add('dhcp6.client.100.interface', tokens[3]);
+                        conv.add('dhcp6.client.100.interface', ifname);
                     }
                 },
 
@@ -956,22 +956,30 @@ Converter.rules['dhcp6'] = {
             conv.set_memo('dhcp6.client.multiple', (tokens[3] == 'enable'));
         },
 
-        // dhcp6 client prefix-delegation subnet <i/f> sla-id <sla-id>
-        //     [ interface-id { <interface-id> | system-default } ] [ enable | disable ]
-        'prefix-delegation': {
-            'add': (conv, tokens) => {
-                const subnet = conv.ifmap(tokens[4]);
-                const sla_id = conv.ifmap(tokens[6]);
-                conv.add('dhcp6.client.100.prefix-delegation.100.subnet', subnet);
-                conv.add('dhcp6.client.100.prefix-delegation.100.sla-id', sla_id);
-                if (tokens[7] == 'interface-id') {
-                    conv.add(`dhcp6.client.100.prefix-delegation.100.interface-id`, tokens[8]);
-                }
-            },
 
+        'prefix-delegation': {
             // dhcp6 client interface <i/f> prefix-delegation force-option <on>
             'force-option': (conv, tokens) => {
                 conv.add(`dhcp6.client.100.prefix-delegation.force`, on2enable(tokens[6]));
+            },
+
+            // dhcp6 client prefix-delegation subnet <i/f> sla-id <sla-id>
+            //     [ interface-id { <interface-id> | system-default } ] [ enable | disable ]
+            'subnet': (conv, tokens) => {
+                const subnet = conv.ifmap(tokens[4]);
+                const sla_id = tokens[6];
+                const params = conv.read_params(null, tokens, 6, {
+                    'interface-id': true,
+                    'enable': 1,
+                    'disable': 1,
+                });
+                if (params['enable']) {
+                    conv.add('dhcp6.client.100.prefix-delegation.100.subnet', subnet);
+                    conv.add('dhcp6.client.100.prefix-delegation.100.sla-id', sla_id);
+                    if (params['interface-id']) {
+                        conv.add(`dhcp6.client.100.prefix-delegation.100.interface-id`, params['interface-id']);
+                    }
+                }
             },
         },
 
