@@ -1012,6 +1012,25 @@ describe('route6', () => {
     });
 });
 
+describe('rtadvd', () => {
+    it('rtadvd', () => {
+        assertconv([
+            'rtadvd enable',
+            'rtadvd interface lan0 enable',
+            'rtadvd interface lan0 advertise manual',
+            'rtadvd interface lan0 advertise add interface-prefix valid-lifetime 20 preferred-lifetime 10 onlink-flag off autonomous-flag off',
+        ], [
+                'router-advertisement.service: enable',
+                'router-advertisement.100.interface: ge1',
+                'router-advertisement.100.advertise.100.prefix: auto',
+                'router-advertisement.100.advertise.100.preferred-lifetime: 10',
+                'router-advertisement.100.advertise.100.valid-lifetime: 20',
+                'router-advertisement.100.advertise.100.autonomous-flag: disable',
+                'router-advertisement.100.advertise.100.onlink-flag: disable',
+            ]);
+    });
+});
+
 describe('snmp', () => {
     it('snmp basic configuration', () => {
         assertconv([

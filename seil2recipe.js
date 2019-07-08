@@ -2965,8 +2965,8 @@ Converter.rules['rtadvd'] = {
                     //     [preferred-lifetime { infinity | <lifetime> }]
                     //     [fixed-preferred-lifetime { on | off }]
                     //     [autonomous-flag { on | off }] [onlink-flag { on | off }]
-                    const params = conv.read_params(null, tokens, 2, {
-                        'advertise': false,  // skip
+                    conv.read_params(null, tokens, 2, {
+                        'advertise': 0,  // skip
                         'add': {
                             key: `${k2}.prefix`,
                             fun: val => {
@@ -3035,7 +3035,9 @@ Converter.rules['rtadvd'] = {
 
             'enable': (conv, tokens) => {
                 const ifname = ifmap(tokens[2]);
-                conv.set_memo(`rtadvd.interface.${ifname}`, conv.get_index('router-advertisement'));
+                const k = conv.get_index('router-advertisement');
+                conv.set_memo(`rtadvd.interface.${ifname}`, k);
+                conv.add(`${k}.interface`, ifname);
             },
 
             '*': (conv, tokens) => {
