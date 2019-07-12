@@ -1109,6 +1109,15 @@ describe('sshd', () => {
                 'sshd.service: disable',
             ]);
     });
+
+    it('rsa host key', () => {
+        const key = "46,2d2d2d2d2d424547494e2d2d2d2d2d0a2d2d2d2d2d454e44205253412050524956415445204b45592d2d2d2d2d0a"
+        assertconv([
+            `sshd hostkey rsa ${key}`,
+        ], [
+                'sshd.hostkey: "-----BEGIN-----\\\\n-----END RSA PRIVATE KEY-----\\\\n"',
+            ]);
+    });
 });
 
 describe('syslog', () => {

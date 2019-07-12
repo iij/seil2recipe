@@ -3141,11 +3141,28 @@ Converter.rules['sshd'] = {
     },
 
     // sshd hostkey { rsa1 | rsa | dsa } { <hostkey> | auto | none }
-    'hostkey': tokens => {
+    'hostkey': (conv, tokens) => {
         if (tokens[3] == 'auto' || tokens[3] == 'none') {
-            return [];
+            return;
+        } else if (tokens[2] == 'rsa') {
+            const key = tokens[3] || "";
+            var i = key.indexOf(",");
+            if (i < 0) {
+                conv.badconfig('invalid rsa host key');
+                return;
+            }
+            var str = '';
+            for (i = i + 1; i < key.length; i += 2) {
+                hex = parseInt(key.substring(i, i + 2), 16);
+                if (hex != 0x0a) {
+                    str += String.fromCharCode(hex);
+                } else {
+                    str += "\\n";
+                }
+            }
+            conv.add('sshd.hostkey', str);
         } else {
-            return 'notsupported';
+            conv.notsupported(`sshd hostkey ${tokens[2]}`);
         }
     },
 
