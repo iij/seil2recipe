@@ -297,6 +297,9 @@ class Conversion {
             if (defs[pname] == 'notsupported') {
                 this.notsupported(pname);
                 idx += 2;
+            } else if (defs[pname] == 'deprecated') {
+                this.deprecated(pname);
+                idx += 2;
             } else if (Number.isInteger(val)) {
                 const num = val;
                 if (num == 0) {
