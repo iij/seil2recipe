@@ -3177,6 +3177,9 @@ Converter.rules['sshd'] = {
 };
 
 Converter.rules['syslog'] = {
+    // https://www.seil.jp/doc/index.html#fn/syslog/cmd/syslog.html
+    // https://www.seil.jp/sx4/doc/sa/syslog/config/syslog.html
+
     'add': (conv, tokens) => {
         // syslog add <IPaddress>
         const k1 = conv.get_index('syslog.remote.server', true);
@@ -3214,9 +3217,31 @@ Converter.rules['syslog'] = {
 
     'memory-block': (conv, tokens) => {
         // syslog memory-block <function> { <blocks> | system-default }
+        const oldfun = tokens[2] || '???';
+        var newfun = oldfun;
+        switch (oldfun) {
+            case 'application-gateway':
+                newfun = 'appgw';
+                break;
+            case 'filter':
+                newfun = 'ipf';
+                break;
+            case 'hdlc':
+            case 'ip':
+            case 'isdn':
+            case 'snmp':
+                conv.deprecated(oldfun);
+                return;;
+            case 'http':
+            case 'queue':
+            case 'system':
+            case 'telnet':
+                conv.notsupported(oldfun);
+                return;
+        }
         const k1 = conv.get_index('syslog.memory-block');
-        conv.add(`${k1}.function`, tokens[2]);
-        conv.add(`${k1}.size`, tokens[3]);
+        conv.add(`${k1}.function`, newfun);
+        conv.add(`${k1}.size`, tokens[3] || '???');
     },
 
     'remote': {

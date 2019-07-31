@@ -1149,6 +1149,15 @@ describe('syslog', () => {
                 'syslog.remote.server.0.source.ipv4.address: 192.168.0.1',
             ]);
     });
+
+    it('function conversion', () => {
+        assertconv([
+            'syslog memory-block application-gateway 8'
+        ], [
+                'syslog.memory-block.100.function: appgw',
+                'syslog.memory-block.100.size: 8'
+            ]);
+    });
 });
 
 describe('timezone', () => {
