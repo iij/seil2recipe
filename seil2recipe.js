@@ -387,6 +387,13 @@ class Conversion {
         }
         this.errors.push(new Error('syntaxerror', `"${label}" は解釈できません。`));
     }
+
+    warning(message, label) {
+        if (label == null) {
+            label = this.label;
+        }
+        this.errors.push(new Error('warning', message));
+    }
 }
 
 class Error {
@@ -1083,7 +1090,12 @@ Converter.rules['dns'] = {
         // dns forwarder add { dhcp | dhcp6 | ipcp | ipcp-auto | <IPaddress> }
         'add': (conv, tokens) => {
             const k1 = conv.get_index('dns-forwarder');
-            conv.add(`${k1}.address`, tokens[3]);
+            if (tokens[3] == 'ipcp-auto') {
+                conv.warning('"ipcp-auto" はサポートされていないため、"ipcp" に変換します。')
+                conv.add(`${k1}.address`, 'ipcp');
+            } else {
+                conv.add(`${k1}.address`, tokens[3]);
+            }
         },
 
         'disable': 'dns-forwarder.service: disable',
@@ -2481,10 +2493,11 @@ Converter.rules['resolver'] = {
     'address': (conv, tokens) => {
         const k1 = conv.get_index('resolver');
         if (tokens[3] == 'ipcp-auto') {
-            conv.notsupported('resolver ipcp-auto');
-            return;
+            conv.warning('"ipcp-auto" はサポートされていないため、"ipcp" に変換します。')
+            conv.add(`${k1}.address`, 'ipcp');
+        } else {
+            conv.add(`${k1}.address`, tokens[3]);
         }
-        conv.add(`${k1}.address`, tokens[3]);
     },
     'disable': 'resolver.service: disable',
     'domain': tokens => `resolver.domain: ${tokens[2]}`,

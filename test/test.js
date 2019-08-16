@@ -337,6 +337,22 @@ describe('dns forwarder', () => {
         ]);
     });
 
+    it('"ipcp-auto" is converted to "ipcp"', () => {
+        assertconv([
+            'dns forwarder enable',
+            'dns forwarder add ipcp-auto',
+        ], [
+            'dns-forwarder.100.address: ipcp',
+            'dns-forwarder.listen.100.interface: ge*',
+            'dns-forwarder.listen.200.interface: ipsec*',
+            'dns-forwarder.listen.300.interface: tunnel*',
+            'dns-forwarder.listen.400.interface: bridge*',
+            'dns-forwarder.listen.500.interface: vlan*',
+            'dns-forwarder.listen.600.interface: pppac*',
+            'dns-forwarder.service: enable',
+        ]);
+    });
+
     it('query-translation is not supported', () => {
         assert_conversions('dns forwarder query-translation enable', convs => {
             assert.equal(convs[0].errors[0].type, 'notsupported');
@@ -913,6 +929,16 @@ describe('resolver', () => {
               'resolver.host-database.200.address: 10.0.0.2',
               'resolver.host-database.200.hostname: a.example.jp',
               'resolver.service: enable',
+        ]);
+    });
+
+    it('"ipcp-auto" is converted to "ipcp"', () => {
+        assertconv([
+            'resolver enable',
+            'resolver address add ipcp-auto',
+        ], [
+            'resolver.100.address: ipcp',
+            'resolver.service: enable',
         ]);
     });
 });
