@@ -472,11 +472,21 @@ describe('filter6', () => {
 
 describe('floatlink', () => {
     it('ike proposal', () => {
+        assertconv('floatlink ike proposal dh-group modp2048',
+            'floatlink.ike.proposal.phase1.dh-group: modp2048');
+        assertconv('floatlink ike proposal encryption aes128,3des',
+            [
+                'floatlink.ike.proposal.phase1.encryption.100.algorithm: aes128',
+                'floatlink.ike.proposal.phase1.encryption.200.algorithm: 3des'
+            ]);
         assertconv('floatlink ike proposal hash sha256,sha1',
             [
                 'floatlink.ike.proposal.phase1.hash.100.algorithm: sha256',
                 'floatlink.ike.proposal.phase1.hash.200.algorithm: sha1'
             ]);
+        assertconv('floatlink ike proposal lifetime-of-time 12345',
+            'floatlink.ike.proposal.phase1.lifetime: 12345');
+
     });
 
     it('ipsec proposal', () => {
@@ -485,6 +495,15 @@ describe('floatlink', () => {
                 'floatlink.ike.proposal.phase2.authentication.100.algorithm: hmac-sha256',
                 'floatlink.ike.proposal.phase2.authentication.200.algorithm: hmac-sha1'
             ]);
+        assertconv('floatlink ipsec proposal encryption aes192,des',
+            [
+                'floatlink.ike.proposal.phase2.encryption.100.algorithm: aes192',
+                'floatlink.ike.proposal.phase2.encryption.200.algorithm: des'
+            ]);
+        assertconv('floatlink ipsec proposal lifetime-of-time 23456',
+            'floatlink.ike.proposal.phase2.lifetime-of-time: 23456');
+        assertconv('floatlink ipsec proposal pfs-group modp3072',
+            'floatlink.ike.proposal.phase2.pfs-group: modp3072');
     });
 });
 

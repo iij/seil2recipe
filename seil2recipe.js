@@ -1261,12 +1261,31 @@ Converter.rules['filter6'] = {
 Converter.rules['floatlink'] = {
     'ike': {
         'proposal': {
+            // floatlink ike proposal dh-group <group>
+            'dh-group': (conv, tokens) => {
+                conv.add(`floatlink.ike.proposal.phase1.dh-group`, tokens[4]);
+            },
+            // floatlink ike proposal encryption <alg1>[,<alg2>,...]
+            'encryption': (conv, tokens) => {
+                tokens[4].split(",").forEach(alg => {
+                    if (alg == 'aes') {
+                        conv.deprecated('encryption aes');
+                        return;
+                    }
+                    const k1 = conv.get_index('floatlink.ike.proposal.phase1.encryption');
+                    conv.add(`${k1}.algorithm`, alg);
+                });
+            },
             // floatlink ike proposal hash {system-default | { sha1 | sha256 | sha512 },...}
             'hash': (conv, tokens) => {
                 tokens[4].split(",").forEach(hash => {
                     const k1 = conv.get_index('floatlink.ike.proposal.phase1.hash');
                     conv.add(`${k1}.algorithm`, hash);
                 });
+            },
+            // floatlink ike proposal hash {system-default | { sha1 | sha256 | sha512 },...}
+            'lifetime-of-time': (conv, tokens) => {
+                conv.add(`floatlink.ike.proposal.phase1.lifetime`, tokens[4]);
             },
         },
     },
@@ -1277,6 +1296,22 @@ Converter.rules['floatlink'] = {
                     const k1 = conv.get_index('floatlink.ike.proposal.phase2.authentication');
                     conv.add(`${k1}.algorithm`, hash);
                 });
+            },
+            'encryption': (conv, tokens) => {
+                tokens[4].split(",").forEach(alg => {
+                    if (alg == 'aes') {
+                        conv.deprecated('encryption aes');
+                        return;
+                    }
+                    const k1 = conv.get_index('floatlink.ike.proposal.phase2.encryption');
+                    conv.add(`${k1}.algorithm`, alg);
+                });
+            },
+            'lifetime-of-time': (conv, tokens) => {
+                conv.add(`floatlink.ike.proposal.phase2.lifetime-of-time`, tokens[4]);
+            },
+            'pfs-group': (conv, tokens) => {
+                conv.add(`floatlink.ike.proposal.phase2.pfs-group`, tokens[4]);
             },
         },
     },
