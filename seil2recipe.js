@@ -1269,8 +1269,7 @@ Converter.rules['floatlink'] = {
             'encryption': (conv, tokens) => {
                 tokens[4].split(",").forEach(alg => {
                     if (alg == 'aes') {
-                        conv.deprecated('encryption aes');
-                        return;
+                        alg = 'aes128';
                     }
                     const k1 = conv.get_index('floatlink.ike.proposal.phase1.encryption');
                     conv.add(`${k1}.algorithm`, alg);
@@ -1300,8 +1299,7 @@ Converter.rules['floatlink'] = {
             'encryption': (conv, tokens) => {
                 tokens[4].split(",").forEach(alg => {
                     if (alg == 'aes') {
-                        conv.deprecated('encryption aes');
-                        return;
+                        alg = 'aes128';
                     }
                     const k1 = conv.get_index('floatlink.ike.proposal.phase2.encryption');
                     conv.add(`${k1}.algorithm`, alg);
