@@ -473,6 +473,7 @@ function ifmap(seilif) {
         'lan0': 'ge1',
         'lan1': 'ge0',
         'lan2': 'ge2',
+        'lan*': 'ge*'
     }
     return bpv4_x4[seilif] || seilif;
 }
