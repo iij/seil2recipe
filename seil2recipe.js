@@ -1434,7 +1434,7 @@ Converter.rules['ike'] = {
 
     'retry': tokens => `ike.retry: ${tokens[2]}`,
 
-    'strict-padding-byte-check': tokens => `ike.strict-pdding-byte-check: ${tokens[2]}`,
+    'strict-padding-byte-check': tokens => `ike.strict-padding-byte-check: ${tokens[2]}`,
 
 };
 
