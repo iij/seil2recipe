@@ -554,6 +554,11 @@ describe('interface', () => {
         });
     });
 
+    it('has a description', () => {
+        assertconv('interface lan1 description "IIJmio Hikari"',
+         'interface.ge0.description: "IIJmio Hikari"');
+    });
+
     // ルーティングベース IPsec 全体のテストは 'ipsec' の方に書く。
     it('ipsec0 unnumbered', () => {
         assertconv([

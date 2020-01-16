@@ -1598,7 +1598,10 @@ Converter.rules['interface'] = {
             }
         },
 
-        'description': 'notsupported',
+        'description': (conv, tokens) => {
+            const ifname = ifmap(tokens[1]);
+            conv.add(`interface.${ifname}.description`, tokens[3]);
+        },
 
         'floatlink': {
             'address-family': (conv, tokens) => {
