@@ -2346,7 +2346,10 @@ Converter.rules['nat'] = {
         'interface': (conv, tokens) => {
             conv.add('upnp.interface', conv.ifmap(tokens[3]));
         },
-        'on':  'upnp.service: enable',
+        'on': (conv, tokens) => {
+            conv.add('upnp.service', 'enable');
+            conv.add('upnp.listen.0.interface', conv.ifmap('lan0'));
+        },
         'off': 'upnp.service: disable',
         'timeout': {
             'type': tokens => `upnp.timeout-type: ${tokens[4]}`,

@@ -878,6 +878,7 @@ describe('nat', () => {
         ], [
                 'upnp.service: enable',
                 'upnp.interface: ge0',
+                'upnp.listen.0.interface: ge1',
                 'upnp.timeout: 1234',
                 'upnp.timeout-type: arp',
             ]);
