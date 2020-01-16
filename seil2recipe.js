@@ -2479,7 +2479,9 @@ Converter.rules['pppac'] = {
         },
     },
     'option': {
-        'session-limit': 'notsupported',
+        'session-limit': (conv, tokens) => {
+            conv.add('option.pppac.session-limit', on2enable(tokens[3]));
+        },
     },
     'pool': {
         'add': (conv, tokens) => {

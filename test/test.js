@@ -923,6 +923,13 @@ describe('option', () => {
     });
 });
 
+describe('pppac', () => {
+    it('option', () => {
+        assertconv('pppac option session-limit on',
+            'option.pppac.session-limit: enable');
+    });
+});
+
 describe('proxyarp', () => {
     it('proxyarp', () => {
         assertconv([
