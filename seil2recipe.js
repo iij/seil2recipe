@@ -43,7 +43,12 @@ class Converter {
 
         lines.forEach((line, idx) => {
             const conv = new Conversion(line, idx + 1, this.note);
-            const tokens = tokenize(line)
+            const tokens = tokenize(line);
+            if (tokens == null) {
+                conv.badconfig("二重引用符(\")が閉じられていません。");
+                this.conversions.push(conv);
+                return;
+            }
 
             try {
                 let node = Converter.rules;
@@ -419,6 +424,9 @@ function tokenize(line) {
     while (line != "") {
         if (line[0] == '"') {
             const a = line.match(/"((?:\\\\|\\"|[^"])*?)"\s*/)
+            if (a == null) {
+                return null;  // unmatched double quotation marks.
+            }
             token = a[1].replace(/\\(.)/g, "$1")
             line = line.slice(a[0].length)
         } else {
