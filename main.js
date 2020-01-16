@@ -37,6 +37,10 @@ if (!verbose) {
                 msg = e.message.red;
             }
             console.log(msg);
+
+            if (e.error) {
+                console.log(e.error.stack.magenta);
+            }
         });
 
         conv.recipe.forEach(rl => {

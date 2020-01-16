@@ -45,50 +45,54 @@ class Converter {
             const conv = new Conversion(line, idx + 1, this.note);
             const tokens = tokenize(line)
 
-            let node = Converter.rules;
-            for (let i = 0; i < tokens.length; i++) {
-                conv.label = tokens.slice(0, i + 1).join(' ');
+            try {
+                let node = Converter.rules;
+                for (let i = 0; i < tokens.length; i++) {
+                    conv.label = tokens.slice(0, i + 1).join(' ');
 
-                var val = node[tokens[i]];
-                if (!val && node['*']) {
-                    val = node['*'];
-                }
+                    var val = node[tokens[i]];
+                    if (!val && node['*']) {
+                        val = node['*'];
+                    }
 
-                if (val instanceof Function) {
-                    if (val.length == 1) {
-                        val = val(tokens);
-                    } else if (val.length == 2) {
-                        val(conv, tokens);
+                    if (val instanceof Function) {
+                        if (val.length == 1) {
+                            val = val(tokens);
+                        } else if (val.length == 2) {
+                            val(conv, tokens);
+                            break;
+                        } else {
+                            // XXX raise an error!
+                        }
+                    }
+
+                    if (val instanceof Array) {
+                        val.forEach(line => conv.recipe.push(line));
+                        break;
+                    } else if (val == 'deprecated') {
+                        conv.deprecated();
+                        break;
+                    } else if (val == 'notsupported') {
+                        conv.notsupported();
+                        break;
+                    } else if (typeof val == 'string') {
+                        if (val != '') {
+                            conv.recipe.push(val)
+                        }
+                        break;
+                    } else if (val === undefined) {
+                        conv.syntaxerror();
                         break;
                     } else {
-                        // XXX raise an error!
+                        node = val;
+                        continue;
                     }
                 }
-
-                if (val instanceof Array) {
-                    val.forEach(line => conv.recipe.push(line));
-                    break;
-                } else if (val == 'deprecated') {
-                    conv.deprecated();
-                    break;
-                } else if (val == 'notsupported') {
-                    conv.notsupported();
-                    break;
-                } else if (typeof val == 'string') {
-                    if (val != '') {
-                        conv.recipe.push(val)
-                    }
-                    break;
-                } else if (val === undefined) {
-                    conv.syntaxerror();
-                    break;
-                } else {
-                    node = val;
-                    continue;
+                if (node instanceof Object && node['.']) {
+                    node['.'](conv, tokens);
                 }
-            }
-            if (node instanceof Object && node['.']) {
-                node['.'](conv, tokens);
+            } catch (error) {
+                conv.exception(error)
             }
 
             this.conversions.push(conv);
@@ -374,6 +378,10 @@ class Conversion {
         this.errors.push(new Error('deprecated', `"${label}" は廃止されました。`));
     }
 
+    exception(error) {
+        this.errors.push(new Error('exception', `コンフィグの誤りまたは内部エラーです。`, error));
+    }
+
     notsupported(label) {
         if (label == null) {
             label = this.label;
@@ -397,9 +405,10 @@ class Conversion {
 }
 
 class Error {
-    constructor(type, message) {
+    constructor(type, message, error=undefined) {
         this.type    = type;
         this.message = message;
+        this.error   = error;
     }
 }
 
