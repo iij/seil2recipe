@@ -1212,13 +1212,24 @@ describe('snmp', () => {
             'snmp trap enable',
             'snmp trap add 10.0.0.1',
             'snmp trap add 10.0.0.2',
+            'snmp trap watch add 10.0.0.3 errors 4 interval 5 interval-fail 6',
+            'snmp trap watch add 10.0.0.4',
+            'snmp trap src 10.0.0.5',
         ], [
             'snmp.service: enable',
             'snmp.community: HIMITSU',
             'snmp.sysname: SEIL/X4',
+            'snmp.trap.agent-address: 10.0.0.5',
             'snmp.trap.service: enable',
             'snmp.trap.host.100.address: 10.0.0.1',
             'snmp.trap.host.200.address: 10.0.0.2',
+            'snmp.trap.watch.100.address: 10.0.0.3',
+            'snmp.trap.watch.100.errors: 4',
+            'snmp.trap.watch.100.interval: 5',
+            'snmp.trap.watch.100.interval-fail: 6',
+            'snmp.trap.watch.100.trap-index: 1',
+            'snmp.trap.watch.200.address: 10.0.0.4',
+            'snmp.trap.watch.200.trap-index: 2',
         ]);
     });
 });

@@ -263,6 +263,18 @@ class Conversion {
         return this.note.get_saindex();
     }
 
+    get_trap_index() {
+        const name = 'snmp.trap.watch.trap-index';
+        var idx = this.note.indices.get(name);
+        if (idx) {
+            idx += 1;
+        } else {
+            idx = 1;
+        }
+        this.note.indices.set(name, idx);
+        return `${idx}`;
+    }
+
     get_params(prefix) {
         const params = this.note.params[prefix];
         if (params) {
@@ -3288,7 +3300,20 @@ Converter.rules['snmp'] = {
         },
         'disable': 'snmp.trap.service: disable',
         'enable': 'snmp.trap.service: enable',
-        'watch': 'notsupported',
+        'src': tokens => `snmp.trap.agent-address: ${tokens[3]}`,
+        'watch': {
+            'add': (conv, tokens) => {
+                const k1 = conv.get_index('snmp.trap.watch');
+                const ti = conv.get_trap_index();
+                conv.add(`${k1}.address`, tokens[4]);
+                conv.add(`${k1}.trap-index`, ti);
+                conv.read_params(null, tokens, 4, {
+                    'errors': `${k1}.errors`,
+                    'interval': `${k1}.interval`,
+                    'interval-fail': `${k1}.interval-fail`,
+                })
+            },
+        },
     },
 };
 
