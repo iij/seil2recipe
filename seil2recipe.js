@@ -3008,9 +3008,52 @@ Converter.rules['route6'] = {
             '*': 'notsupported',
         },
 
+        // https://www.seil.jp/doc/index.html#fn/route/cmd/route6_dynamic_ospf.html
         'ospf': {
+            'area': (conv, tokens) => {
+                // route6 dynamic ospf area add <area-id> [range <IPaddress/prefixlen>]
+                const params = conv.read_params(null, tokens, 5, {
+                    'range': true,
+                });
+                const k1 = conv.get_index('ospf6.area');
+                conv.param2recipe(params, '*NAME*', `${k1}.id`);
+                conv.param2recipe(params, 'range', `${k1}.range.0.prefix`);
+            },
             'disable': [],
-            '*': 'notsupported',
+            'enable': (conv, tokens) => {
+                const id = conv.get_memo('ospf6.router-id');
+                if (id == null) {
+                    conv.badconfig('router-id が設定されていません。');
+                    return;
+                }
+                conv.add('ospf6.router-id', id);
+                conv.set_memo('ospf6.enable', true);
+            },
+            'link': (conv, tokens) => {
+                // route6 dynamic ospf link add <interface> area <area-id> ...
+                const k1 = conv.get_index('ospf6.link');
+                conv.add(`${k1}.interface`, conv.ifmap(tokens[5]));
+
+                conv.read_params(null, tokens, 5, {
+                    'area': `${k1}.area`,
+                    'instance-id': `${k1}.instance-id`,
+                    'cost': `${k1}.cost`,
+                    'hello-interval': `${k1}.hello-interval`,
+                    'dead-interval': `${k1}.dead-interval`,
+                    'retransmit-interval': `${k1}.retransmit-interval`,
+                    'transmit-delay': `${k1}.transmit-delay`,
+                    'priority': `${k1}.priority`,
+                    'passive-interface': {
+                        key: `${k1}.passive-interface`,
+                        fun: on2enable,
+                    },
+                });
+            },
+
+            'router-id': (conv, tokens) => {
+                // route6 dynamic ospf router-id <my-router-id>
+                conv.set_memo('ospf6.router-id', tokens[4]);
+            },
         },
 
         'pim-sparse': {

@@ -1070,6 +1070,53 @@ describe('route6', () => {
     });
 });
 
+describe('route6 dynamic ospf', () => {
+    it('minimal', () => {
+        assertconv([
+            'route6 dynamic ospf router-id 192.168.0.1',
+            'route6 dynamic ospf enable',
+            'route6 dynamic ospf area add 0.0.0.0',
+            'route6 dynamic ospf link add lan0 area 0.0.0.0',
+        ], [
+            "ospf6.area.100.id: 0.0.0.0",
+            "ospf6.link.100.area: 0.0.0.0",
+            "ospf6.link.100.interface: ge1",
+            "ospf6.router-id: 192.168.0.1",
+        ]);
+    });
+
+    it('full', () => {
+        assertconv([
+            'route6 dynamic ospf router-id 192.168.0.1',
+            'route6 dynamic ospf enable',
+            'route6 dynamic ospf area add 0.0.0.0',
+            'route6 dynamic ospf area add 0.0.0.1 range 1::/16',
+            'route6 dynamic ospf link add lan0 area 0.0.0.0 cost 2 hello-interval 3 '
+            + 'dead-interval 4 retransmit-interval 5 transmit-delay 6 priority 7 instance-id 8 '
+            + 'passive-interface off',
+        ], [
+            "ospf6.area.100.id: 0.0.0.0",
+            "ospf6.area.200.id: 0.0.0.1",
+            "ospf6.area.200.range.0.prefix: 1::/16",
+            "ospf6.link.100.area: 0.0.0.0",
+            "ospf6.link.100.cost: 2",
+            "ospf6.link.100.dead-interval: 4",
+            "ospf6.link.100.hello-interval: 3",
+            "ospf6.link.100.instance-id: 8",
+            "ospf6.link.100.interface: ge1",
+            "ospf6.link.100.passive-interface: disable",
+            "ospf6.link.100.priority: 7",
+            "ospf6.link.100.retransmit-interval: 5",
+            "ospf6.link.100.transmit-delay: 6",
+            "ospf6.router-id: 192.168.0.1",
+        ]);
+    });
+
+    it('is disabled', () => {
+        assertconv('route6 dynamic ospf disable', '');
+    });
+});
+
 describe('rtadvd', () => {
     it('rtadvd', () => {
         assertconv([
