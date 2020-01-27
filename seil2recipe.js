@@ -1735,7 +1735,7 @@ Converter.rules['interface'] = {
 
         'mtu': (conv, tokens) => {
             const ifname = conv.ifmap(tokens[1]);
-            if (ifname.match(/^(ipsec|pppoe|rac|tunnel)\d+$/)) {
+            if (ifname.match(/^(ge|ipsec|pppoe|rac|tunnel)\d+$/)) {
                 conv.add(`interface.${ifname}.mtu`, tokens[3]);
             } else {
                 conv.notsupported(`interface.${ifname}.mtu`);

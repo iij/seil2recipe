@@ -548,12 +548,6 @@ describe('interface', () => {
         assertconv('interface ipsec0 mtu 1234', 'interface.ipsec0.mtu: 1234');
     });
 
-    it('cannot change mtu', () => {
-        assert_conversions('interface lan0 mtu 1480', convs => {
-            assert(convs[0].errors[0].type == 'notsupported');
-        });
-    });
-
     it('has a description', () => {
         assertconv('interface lan1 description "IIJmio Hikari"',
          'interface.ge0.description: "IIJmio Hikari"');
