@@ -1742,9 +1742,13 @@ Converter.rules['interface'] = {
             }
         },
 
+        // interface <pppoe> over <lan>
         'over': {
             'lan1': [],
-            '*': 'notsupported',
+            '*': (conv, tokens) => {
+                const ifname = conv.ifmap(tokens[1]);
+                conv.add(`interface.${ifname}.over`, conv.ifmap(tokens[3]));
+            },
         },
 
         'ppp-configuration': (conv, tokens) => {

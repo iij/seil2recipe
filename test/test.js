@@ -626,6 +626,16 @@ describe('interface', () => {
             ]);
     });
 
+    describe('pppoe', () => {
+        it('supports PPPoE over any ge interfaces', () => {
+            assertconv([
+                'interface pppoe0 over lan0',
+            ], [
+                'interface.pppoe0.over: ge1',
+            ]);
+        });
+    });
+
     it('tunnel dslite', () => {
         assertconv([
             'interface tunnel0 tunnel dslite aftr.example.jp',
