@@ -1117,6 +1117,41 @@ describe('route6 dynamic ospf', () => {
     });
 });
 
+describe('route6 dynamic ripng', () => {
+    it('minimal', () => {
+        assertconv([
+            'route6 dynamic ripng enable',
+            "route6 dynamic ripng interface lan0 enable",
+        ], [
+            "ripng.interface.100.interface: ge1",
+        ]);
+    });
+
+    it('full', () => {
+        assertconv([
+            "route6 dynamic route-filter add RIPNG network 1::/32 metric 2 pass set-metric 3",
+            "route6 dynamic ripng enable",
+            "route6 dynamic ripng interface lan0 enable supply-only",
+            "route6 dynamic ripng interface lan0 aggregate add 1::/16 metric 2",
+            "route6 dynamic ripng interface lan0 route-filter out RIPNG",
+            "route6 dynamic ripng interface vlan0 enable listen-only",
+            "route6 dynamic ripng default-route-originate enable",
+        ], [
+            "ripng.default-route-originate.originate: enable",
+            "ripng.interface.100.aggregate.100.metric: 2",
+            "ripng.interface.100.aggregate.100.prefix: 1::/16",
+            "ripng.interface.100.interface: ge1",
+            "ripng.interface.100.mode: supply-only",
+            "ripng.interface.200.interface: vlan0",
+            "ripng.interface.200.mode: listen-only",
+        ])
+    });
+
+    it('is disabled', () => {
+        assertconv('route6 dynamic ripng disable', '');
+    });
+});
+
 describe('rtadvd', () => {
     it('rtadvd', () => {
         assertconv([

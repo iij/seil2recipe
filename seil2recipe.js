@@ -3003,11 +3003,6 @@ Converter.rules['route6'] = {
 
         },
 
-        'ripng': {
-            'disable': [],
-            '*': 'notsupported',
-        },
-
         // https://www.seil.jp/doc/index.html#fn/route/cmd/route6_dynamic_ospf.html
         'ospf': {
             'area': (conv, tokens) => {
@@ -3060,6 +3055,65 @@ Converter.rules['route6'] = {
             'disable': [],
             '*': 'notsupported',
         },
+
+        'ripng': {
+            'default-route-originate': (conv, tokens) => {
+                if (! conv.get_memo('ripng.enable')) { return; }
+                conv.add('ripng.default-route-originate.originate', tokens[4]);
+            },
+
+            'disable': [],
+
+            'enable': (conv, tokens) => {
+                conv.set_memo('ripng.enable', true);
+            },
+
+            // route6 dynamic ripng interface <interface> ...
+            'interface': {
+                '*': {
+                    'aggregate': (conv, tokens) => {
+                        if (! conv.get_memo('ripng.enable')) { return; }
+
+                        // route6 dynamic ripng interface <interface>
+                        //     aggregate add <prefix/prefixlen> [metric <metric>]
+                        const ifname = ifmap(tokens[4]);
+                        const k1 = conv.get_memo(`ripng.interface.${ifname}`);
+                        if (k1 == null) {
+                            return;
+                        }
+                        const k2 = conv.get_index(`${k1}.aggregate`);
+                        conv.add(`${k2}.prefix`, tokens[7]);
+
+                        if (tokens[8] == 'metric') {
+                            conv.add(`${k2}.metric`, tokens[9]);
+                        }
+                    },
+                    'disable': [],
+
+                    'enable': (conv, tokens) => {
+                        if (! conv.get_memo('ripng.enable')) { return; }
+
+                        const ifname = ifmap(tokens[4]);
+                        const k1 = conv.get_index('ripng.interface');
+                        conv.set_memo(`ripng.interface.${ifname}`, k1);
+                        conv.add(`${k1}.interface`, ifname);
+
+                        // supply-only と listen-only は enable の後に置かれる。
+                        if (tokens[6]) {
+                            conv.add(`${k1}.mode`, tokens[6]);
+                        }
+                    },
+
+                    'route-filter': (conv, tokens) => {
+                        // route dynamic rip interface <interface>
+                        //     route-filter {in|out} <route-filter-name>[,<route-filter-name>...]
+                        // XXX: notyet
+                    },
+
+                }
+            },
+        },
+
     },
 };
 
