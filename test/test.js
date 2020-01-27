@@ -1115,6 +1115,24 @@ describe('route6 dynamic ospf', () => {
     it('is disabled', () => {
         assertconv('route6 dynamic ospf disable', '');
     });
+
+    it('is redistributed from...', () => {
+        assertconv([
+            'route6 dynamic ospf router-id 192.168.0.1',
+            'route6 dynamic ospf enable',
+            'route6 dynamic redistribute connected-to-ospf enable',
+            'route6 dynamic redistribute ripng-to-ospf enable metric 2',
+            'route6 dynamic redistribute static-to-ospf enable metric 3 metric-type 2',
+        ], [
+            "ospf6.redistribute-from.connected.redistribute: enable",
+            "ospf6.redistribute-from.ripng.redistribute: enable",
+            "ospf6.redistribute-from.ripng.set.metric: 2",
+            "ospf6.redistribute-from.static.redistribute: enable",
+            "ospf6.redistribute-from.static.set.metric: 3",
+            "ospf6.redistribute-from.static.set.metric-type: 2",
+            "ospf6.router-id: 192.168.0.1",
+        ]);
+    });
 });
 
 describe('route6 dynamic ripng', () => {
@@ -1149,6 +1167,20 @@ describe('route6 dynamic ripng', () => {
 
     it('is disabled', () => {
         assertconv('route6 dynamic ripng disable', '');
+    });
+
+    it('is redistributed from...', () => {
+        assertconv([
+            'route6 dynamic ripng enable',
+            'route6 dynamic redistribute connected-to-ripng enable',
+            'route6 dynamic redistribute ospf-to-ripng enable',
+            'route6 dynamic redistribute static-to-ripng enable metric 2',
+        ], [
+            "ripng.redistribute-from.connected.redistribute: enable",
+            "ripng.redistribute-from.ospf6.redistribute: enable",
+            "ripng.redistribute-from.static.redistribute: enable",
+            "ripng.redistribute-from.static.set.metric: 2",
+        ]);
     });
 });
 

@@ -2983,22 +2983,6 @@ Converter.rules['route6'] = {
     },
 
     'dynamic': {
-        // https://www.seil.jp/doc/index.html#fn/route/cmd/route6_dynamic_redistribute.html
-        'redistribute': {
-            'connected-to-ripng': {
-                'disable': [],
-                'enable': (conv, tokens) => {
-                    if (! conv.get_memo('ripng.enable')) {
-                        return;
-                    }
-                    conv.notsupported('ripng');
-                },
-            },
-            'static-to-ripng': {
-                'disable': [],
-            },
-        },
-
         'route-filter': {
 
         },
@@ -3056,9 +3040,42 @@ Converter.rules['route6'] = {
             '*': 'notsupported',
         },
 
+        // https://www.seil.jp/doc/index.html#fn/route/cmd/route6_dynamic_redistribute.html
+        'redistribute': {
+            '*': {
+                'disable': [],
+
+                // route6 dynamic redistribute connected-to-ripng enable [metric <metric>]
+                'enable': (conv, tokens) => {
+                    function fixup_ospf6(str) {
+                        return (str == 'ospf') ? 'ospf6' : str;
+                    }
+
+                    const fromto = tokens[3].match(/^(\w+)-to-(\w+)$/);
+                    if (!fromto) {
+                        conv.syntaxerror(tokens[3]);
+                        return;
+                    };
+
+                    const from = fixup_ospf6(fromto[1]);
+                    const to   = fixup_ospf6(fromto[2]);
+
+                    if (!conv.get_memo(`${to}.enable`)) {
+                        return;
+                    }
+                    const k = `${to}.redistribute-from.${from}`
+                    conv.add(`${k}.redistribute`, 'enable');
+                    conv.read_params(null, tokens, 4, {
+                        'metric': `${k}.set.metric`,
+                        'metric-type': `${k}.set.metric-type`,
+                    });
+                },
+            },
+        },
+
         'ripng': {
             'default-route-originate': (conv, tokens) => {
-                if (! conv.get_memo('ripng.enable')) { return; }
+                if (!conv.get_memo('ripng.enable')) { return; }
                 conv.add('ripng.default-route-originate.originate', tokens[4]);
             },
 
@@ -3072,7 +3089,7 @@ Converter.rules['route6'] = {
             'interface': {
                 '*': {
                     'aggregate': (conv, tokens) => {
-                        if (! conv.get_memo('ripng.enable')) { return; }
+                        if (!conv.get_memo('ripng.enable')) { return; }
 
                         // route6 dynamic ripng interface <interface>
                         //     aggregate add <prefix/prefixlen> [metric <metric>]
@@ -3091,7 +3108,7 @@ Converter.rules['route6'] = {
                     'disable': [],
 
                     'enable': (conv, tokens) => {
-                        if (! conv.get_memo('ripng.enable')) { return; }
+                        if (!conv.get_memo('ripng.enable')) { return; }
 
                         const ifname = ifmap(tokens[4]);
                         const k1 = conv.get_index('ripng.interface');
@@ -3109,11 +3126,9 @@ Converter.rules['route6'] = {
                         //     route-filter {in|out} <route-filter-name>[,<route-filter-name>...]
                         // XXX: notyet
                     },
-
                 }
             },
         },
-
     },
 };
 
