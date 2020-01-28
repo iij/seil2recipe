@@ -2094,7 +2094,34 @@ Converter.rules['ipsec'] = {
             sa['src'] == srcaddr && sa['dst'] == dstaddr) {
             const psk = conv.get_memo('ike.preshared-key')[dstaddr];
             if (psk) {
+                const k2 = `interface.${l2tpif}.ike.proposal`;
                 conv.add(`interface.${l2tpif}.ipsec-preshared-key`, psk);
+
+                // phase1 parameters
+                const ikepeer = conv.get_memo(`ike.peer.address.${dstaddr}`);
+                const ikep = conv.get_params('ike.proposal')[ikepeer['proposals']];
+                ikep['encryption'].split(',').forEach(name => {
+                    const ka = conv.get_index(`${k2}.phase1.encryption`);
+                    conv.add(`${ka}.algorithm`, name);
+                });
+                ikep['hash'].split(',').forEach(name => {
+                    const ka = conv.get_index(`${k2}.phase1.hash`);
+                    conv.add(`${ka}.algorithm`, name);
+                });
+                conv.param2recipe(ikep, 'dh-group', `${k2}.phase1.dh-group`);
+                conv.param2recipe(ikep, 'lifetime-of-time', `${k2}.phase1.lifetime`);
+
+                // phase2 parameters
+                sap['authentication-algorithm'].split(',').forEach(name => {
+                    const ka = conv.get_index(`${k2}.phase2.authentication`);
+                    conv.add(`${ka}.algorithm`, name);
+                });
+                sap['encryption-algorithm'].split(',').forEach(name => {
+                    const ka = conv.get_index(`${k2}.phase2.encryption`);
+                    conv.add(`${ka}.algorithm`, name);
+                });
+                conv.param2recipe(sap, 'lifetime-of-time', `${k2}.phase2.lifetime-of-time`);
+                conv.param2recipe(sap, 'pfs-group', `${k2}.phase2.pfs-group`);
             }
             const ikepeer = conv.get_memo(`ike.peer.address.${dstaddr}`);
             if (ikepeer) {
