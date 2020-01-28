@@ -48,7 +48,7 @@ describe('authentication+pppac', () => {
             'authentication account-list REALM3 url http://example.jp/ interval 123',
             'pppac pool add POOL1 address 192.168.128.0/24',
             'pppac ipcp-configuration add IPCP1 pool POOL1',
-            'pppac protocol l2tp add PROTO1 accept-interface any idle-timer 123',
+            'pppac protocol l2tp add PROTO1 accept-interface lan0,vlan1 idle-timer 123',
             'interface pppac0 ipcp-configuration IPCP1',
             'interface pppac0 bind-tunnel-protocol PROTO1',
             'interface pppac0 bind-realm REALM1',
@@ -67,6 +67,8 @@ describe('authentication+pppac', () => {
                 'interface.pppac0.ipcp.pool.100.address: 192.168.128.0',
                 'interface.pppac0.ipcp.pool.100.count: 256',
                 'interface.pppac0.ipv4.address: 192.168.127.1',
+                'interface.pppac0.l2tp.accept.100.interface: ge1',
+                'interface.pppac0.l2tp.accept.200.interface: vlan1',
                 'interface.pppac0.l2tp.idle-timer: 123',
                 'interface.pppac0.l2tp.ipsec.preshared-key: SecretKey',
                 'interface.pppac0.l2tp.ipsec.requirement: required',
@@ -75,6 +77,8 @@ describe('authentication+pppac', () => {
                 'interface.pppac1.authentication.100.account-list.url: http://example.jp/',
                 'interface.pppac1.ipcp.pool.100.address: 192.168.128.0',
                 'interface.pppac1.ipcp.pool.100.count: 256',
+                'interface.pppac1.l2tp.accept.100.interface: ge1',
+                'interface.pppac1.l2tp.accept.200.interface: vlan1',
                 'interface.pppac1.l2tp.idle-timer: 123',
                 'interface.pppac1.l2tp.ipsec.preshared-key: SecretKey',
                 'interface.pppac1.l2tp.ipsec.requirement: required',
@@ -548,10 +552,9 @@ describe('interface', () => {
         assertconv('interface ipsec0 mtu 1234', 'interface.ipsec0.mtu: 1234');
     });
 
-    it('cannot change mtu', () => {
-        assert_conversions('interface lan0 mtu 1480', convs => {
-            assert(convs[0].errors[0].type == 'notsupported');
-        });
+    it('has a description', () => {
+        assertconv('interface lan1 description "IIJmio Hikari"',
+         'interface.ge0.description: "IIJmio Hikari"');
     });
 
     // ルーティングベース IPsec 全体のテストは 'ipsec' の方に書く。
@@ -619,6 +622,16 @@ describe('interface', () => {
                 'interface.pppoe0.keepalive: 30',
                 'interface.pppoe0.password: PASS',
             ]);
+    });
+
+    describe('pppoe', () => {
+        it('supports PPPoE over any ge interfaces', () => {
+            assertconv([
+                'interface pppoe0 over lan0',
+            ], [
+                'interface.pppoe0.over: ge1',
+            ]);
+        });
     });
 
     it('tunnel dslite', () => {
@@ -717,12 +730,21 @@ describe('ipsec', () => {
             'interface l2tp0 tunnel 10.0.0.1 10.0.0.2',
             'interface l2tp0 l2tp B remote-end-id foo',
             'ike preshared-key add 10.0.0.2 foo',
-            'ike proposal add IKEP encryption aes128 hash sha1 dh-group modp1536 auth preshared-key',
+            'ike proposal add IKEP encryption aes128 hash sha1 dh-group modp1536 auth preshared-key lifetime-of-time 8h',
             'ike peer add B address 10.0.0.2 exchange-mode main proposals IKEP',
-            'ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes128',
+            'ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 '
+            + 'encryption-algorithm aes128 lifetime-of-time 8h pfs-group modp1536',
             'ipsec security-association add SA transport 10.0.0.1 10.0.0.2 ike SAP esp enable',
             'ipsec security-policy add SP security-association SA protocol 115 src 10.0.0.1/32 dst 10.0.0.2/32',
         ], [
+            'interface.l2tp0.ike.proposal.phase1.dh-group: modp1536',
+            'interface.l2tp0.ike.proposal.phase1.encryption.100.algorithm: aes128',
+            'interface.l2tp0.ike.proposal.phase1.hash.100.algorithm: sha1',
+            'interface.l2tp0.ike.proposal.phase1.lifetime: 8h',
+            'interface.l2tp0.ike.proposal.phase2.authentication.100.algorithm: hmac-sha1',
+            'interface.l2tp0.ike.proposal.phase2.encryption.100.algorithm: aes128',
+            'interface.l2tp0.ike.proposal.phase2.lifetime-of-time: 8h',
+            'interface.l2tp0.ike.proposal.phase2.pfs-group: modp1536',
             'interface.l2tp0.ipv4.source: 10.0.0.1',
             'interface.l2tp0.ipv4.destination: 10.0.0.2',
             'interface.l2tp0.local-hostname: sideA',
@@ -873,6 +895,7 @@ describe('nat', () => {
         ], [
                 'upnp.service: enable',
                 'upnp.interface: ge0',
+                'upnp.listen.0.interface: ge1',
                 'upnp.timeout: 1234',
                 'upnp.timeout-type: arp',
             ]);
@@ -914,6 +937,13 @@ describe('option', () => {
             'option.ipv4.fragment-requeueing.service: enable',
         ])
 
+    });
+});
+
+describe('pppac', () => {
+    it('option', () => {
+        assertconv('pppac option session-limit on',
+            'option.pppac.session-limit: enable');
     });
 });
 
@@ -1002,7 +1032,7 @@ describe('route', () => {
             'ospf.redistribute-from.rip.set.metric: 30',
             'ospf.redistribute-from.rip.set.metric-type: 1',
             'ospf.redistribute-from.rip.filter.100.action: pass',
-            'ospf.redistribute-from.rip.filter.100.match.prefix: 192.168.0.0/16-32',
+            'ospf.redistribute-from.rip.filter.100.match.prefix: 192.168.0.0/16',
             'ospf.redistribute-from.rip.filter.100.match.interface: vlan0',
             'ospf.redistribute-from.rip.filter.100.set.metric: 4',
         ]);
@@ -1042,6 +1072,51 @@ describe('route', () => {
             'route dynamic redistribute bgp-to-ospf enable',
         ], [ '' ]);
     });
+
+    describe('BGP', () => {
+        it('can prepend AS-path to routes from neighbors', () => {
+            assertconv([
+                'route dynamic route-filter add ASPATH network 10.0.0.0/8 pass set-as-path-prepend 65009,65008',
+                'route dynamic bgp my-as-number 65001',
+                'route dynamic bgp router-id 192.168.0.1',
+                'route dynamic bgp enable',
+                'route dynamic bgp neighbor add 192.168.0.2 remote-as 65002 in-route-filter ASPATH',
+            ], [
+                "bgp.neighbor.100.address: 192.168.0.2",
+                "bgp.neighbor.100.filter.in.100.action: pass",
+                "bgp.neighbor.100.filter.in.100.match.prefix: 10.0.0.0/8",
+                "bgp.neighbor.100.filter.in.100.set.as-path-prepend: \"65009 65008\"",
+                "bgp.neighbor.100.remote-as: 65002",
+                "bgp.my-as-number: 65001",
+                "bgp.router-id: 192.168.0.1"
+            ]);
+        });
+
+        it('can import redistributed routes', () => {
+            assertconv([
+                'route dynamic route-filter add A network 10.0.0.0/8 interface lan0 '
+                + 'pass set-metric 2 set-weight 3 set-as-path-prepend 4',
+                'route dynamic bgp my-as-number 65001',
+                'route dynamic bgp router-id 192.168.0.1',
+                'route dynamic bgp enable',
+                'route dynamic bgp neighbor add 192.168.0.2 remote-as 65002',
+                'route dynamic redistribute rip-to-bgp enable metric 5 route-filter A',
+            ], [
+                "bgp.ipv4.redistribute-from.rip.redistribute: enable",
+                "bgp.ipv4.redistribute-from.rip.set.metric: 5",
+                "bgp.ipv4.redistribute-from.rip.filter.100.action: pass",
+                "bgp.ipv4.redistribute-from.rip.filter.100.match.prefix: 10.0.0.0/8",
+                "bgp.ipv4.redistribute-from.rip.filter.100.match.interface: ge1",
+                "bgp.ipv4.redistribute-from.rip.filter.100.set.as-path-prepend: 4",
+                "bgp.ipv4.redistribute-from.rip.filter.100.set.metric: 2",
+                "bgp.ipv4.redistribute-from.rip.filter.100.set.weight: 3",
+                "bgp.neighbor.100.address: 192.168.0.2",
+                "bgp.neighbor.100.remote-as: 65002",
+                "bgp.my-as-number: 65001",
+                "bgp.router-id: 192.168.0.1"
+            ]);
+        });
+    });
 });
 
 describe('route6', () => {
@@ -1054,6 +1129,123 @@ describe('route6', () => {
                 'route.ipv6.100.router-advertisement-interface: ge2',
                 'route.ipv6.100.distance: 3',
             ]);
+    });
+});
+
+describe('route6 dynamic ospf', () => {
+    it('minimal', () => {
+        assertconv([
+            'route6 dynamic ospf router-id 192.168.0.1',
+            'route6 dynamic ospf enable',
+            'route6 dynamic ospf area add 0.0.0.0',
+            'route6 dynamic ospf link add lan0 area 0.0.0.0',
+        ], [
+            "ospf6.area.100.id: 0.0.0.0",
+            "ospf6.link.100.area: 0.0.0.0",
+            "ospf6.link.100.interface: ge1",
+            "ospf6.router-id: 192.168.0.1",
+        ]);
+    });
+
+    it('full', () => {
+        assertconv([
+            'route6 dynamic ospf router-id 192.168.0.1',
+            'route6 dynamic ospf enable',
+            'route6 dynamic ospf area add 0.0.0.0',
+            'route6 dynamic ospf area add 0.0.0.1 range 1::/16',
+            'route6 dynamic ospf link add lan0 area 0.0.0.0 cost 2 hello-interval 3 '
+            + 'dead-interval 4 retransmit-interval 5 transmit-delay 6 priority 7 instance-id 8 '
+            + 'passive-interface off',
+        ], [
+            "ospf6.area.100.id: 0.0.0.0",
+            "ospf6.area.200.id: 0.0.0.1",
+            "ospf6.area.200.range.0.prefix: 1::/16",
+            "ospf6.link.100.area: 0.0.0.0",
+            "ospf6.link.100.cost: 2",
+            "ospf6.link.100.dead-interval: 4",
+            "ospf6.link.100.hello-interval: 3",
+            "ospf6.link.100.instance-id: 8",
+            "ospf6.link.100.interface: ge1",
+            "ospf6.link.100.passive-interface: disable",
+            "ospf6.link.100.priority: 7",
+            "ospf6.link.100.retransmit-interval: 5",
+            "ospf6.link.100.transmit-delay: 6",
+            "ospf6.router-id: 192.168.0.1",
+        ]);
+    });
+
+    it('is disabled', () => {
+        assertconv('route6 dynamic ospf disable', '');
+    });
+
+    it('is redistributed from...', () => {
+        assertconv([
+            'route6 dynamic ospf router-id 192.168.0.1',
+            'route6 dynamic ospf enable',
+            'route6 dynamic redistribute connected-to-ospf enable',
+            'route6 dynamic redistribute ripng-to-ospf enable metric 2',
+            'route6 dynamic redistribute static-to-ospf enable metric 3 metric-type 2',
+        ], [
+            "ospf6.redistribute-from.connected.redistribute: enable",
+            "ospf6.redistribute-from.ripng.redistribute: enable",
+            "ospf6.redistribute-from.ripng.set.metric: 2",
+            "ospf6.redistribute-from.static.redistribute: enable",
+            "ospf6.redistribute-from.static.set.metric: 3",
+            "ospf6.redistribute-from.static.set.metric-type: 2",
+            "ospf6.router-id: 192.168.0.1",
+        ]);
+    });
+});
+
+describe('route6 dynamic ripng', () => {
+    it('minimal', () => {
+        assertconv([
+            'route6 dynamic ripng enable',
+            "route6 dynamic ripng interface lan0 enable",
+        ], [
+            "ripng.interface.100.interface: ge1",
+        ]);
+    });
+
+    it('full', () => {
+        assertconv([
+            "route6 dynamic route-filter add RIPNG network 1::/32 metric 2 pass set-metric 3",
+            "route6 dynamic ripng enable",
+            "route6 dynamic ripng interface lan0 enable supply-only",
+            "route6 dynamic ripng interface lan0 aggregate add 1::/16 metric 2",
+            "route6 dynamic ripng interface lan0 route-filter out RIPNG",
+            "route6 dynamic ripng interface vlan0 enable listen-only",
+            "route6 dynamic ripng default-route-originate enable",
+        ], [
+            "ripng.default-route-originate.originate: enable",
+            "ripng.interface.100.aggregate.100.metric: 2",
+            "ripng.interface.100.aggregate.100.prefix: 1::/16",
+            "ripng.interface.100.filter.out.100.action: pass",
+            "ripng.interface.100.filter.out.100.match.prefix: 1::/32",
+            "ripng.interface.100.filter.out.100.set.metric: 3",
+            "ripng.interface.100.interface: ge1",
+            "ripng.interface.100.mode: supply-only",
+            "ripng.interface.200.interface: vlan0",
+            "ripng.interface.200.mode: listen-only",
+        ])
+    });
+
+    it('is disabled', () => {
+        assertconv('route6 dynamic ripng disable', '');
+    });
+
+    it('is redistributed from...', () => {
+        assertconv([
+            'route6 dynamic ripng enable',
+            'route6 dynamic redistribute connected-to-ripng enable',
+            'route6 dynamic redistribute ospf-to-ripng enable',
+            'route6 dynamic redistribute static-to-ripng enable metric 2',
+        ], [
+            "ripng.redistribute-from.connected.redistribute: enable",
+            "ripng.redistribute-from.ospf6.redistribute: enable",
+            "ripng.redistribute-from.static.redistribute: enable",
+            "ripng.redistribute-from.static.set.metric: 2",
+        ]);
     });
 });
 
@@ -1085,13 +1277,24 @@ describe('snmp', () => {
             'snmp trap enable',
             'snmp trap add 10.0.0.1',
             'snmp trap add 10.0.0.2',
+            'snmp trap watch add 10.0.0.3 errors 4 interval 5 interval-fail 6',
+            'snmp trap watch add 10.0.0.4',
+            'snmp trap src 10.0.0.5',
         ], [
             'snmp.service: enable',
             'snmp.community: HIMITSU',
             'snmp.sysname: SEIL/X4',
+            'snmp.trap.agent-address: 10.0.0.5',
             'snmp.trap.service: enable',
             'snmp.trap.host.100.address: 10.0.0.1',
             'snmp.trap.host.200.address: 10.0.0.2',
+            'snmp.trap.watch.100.address: 10.0.0.3',
+            'snmp.trap.watch.100.errors: 4',
+            'snmp.trap.watch.100.interval: 5',
+            'snmp.trap.watch.100.interval-fail: 6',
+            'snmp.trap.watch.100.trap-index: 1',
+            'snmp.trap.watch.200.address: 10.0.0.4',
+            'snmp.trap.watch.200.trap-index: 2',
         ]);
     });
 });

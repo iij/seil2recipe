@@ -263,6 +263,18 @@ class Conversion {
         return this.note.get_saindex();
     }
 
+    get_trap_index() {
+        const name = 'snmp.trap.watch.trap-index';
+        var idx = this.note.indices.get(name);
+        if (idx) {
+            idx += 1;
+        } else {
+            idx = 1;
+        }
+        this.note.indices.set(name, idx);
+        return `${idx}`;
+    }
+
     get_params(prefix) {
         const params = this.note.params[prefix];
         if (params) {
@@ -1574,6 +1586,12 @@ Converter.rules['interface'] = {
                     });
                 }
                 const k1 = `interface.${ifname}`;
+                if (protocol['accept-interface'] != 'any') {
+                    (protocol['accept-interface'] || "").split(',').forEach(name => {
+                        const k2 = conv.get_index(`${k1}.l2tp.accept`);
+                        conv.add(`${k2}.interface`, conv.ifmap(name));
+                    });
+                }
                 conv.param2recipe(protocol, 'l2tp-keepalive-interval', `${k1}.l2tp.keepalive.interval`);
                 conv.param2recipe(protocol, 'l2tp-keepalive-timeout', `${k1}.l2tp.keepalive.timeout`);
                 conv.param2recipe(protocol, 'lcp-keepalive-interval', `${k1}.l2tp.lcp.keepalive.interval`);
@@ -1598,7 +1616,10 @@ Converter.rules['interface'] = {
             }
         },
 
-        'description': 'notsupported',
+        'description': (conv, tokens) => {
+            const ifname = ifmap(tokens[1]);
+            conv.add(`interface.${ifname}.description`, tokens[3]);
+        },
 
         'floatlink': {
             'address-family': (conv, tokens) => {
@@ -1720,16 +1741,20 @@ Converter.rules['interface'] = {
 
         'mtu': (conv, tokens) => {
             const ifname = conv.ifmap(tokens[1]);
-            if (ifname.match(/^(ipsec|pppoe|rac|tunnel)\d+$/)) {
+            if (ifname.match(/^(ge|ipsec|pppoe|rac|tunnel)\d+$/)) {
                 conv.add(`interface.${ifname}.mtu`, tokens[3]);
             } else {
                 conv.notsupported(`interface.${ifname}.mtu`);
             }
         },
 
+        // interface <pppoe> over <lan>
         'over': {
             'lan1': [],
-            '*': 'notsupported',
+            '*': (conv, tokens) => {
+                const ifname = conv.ifmap(tokens[1]);
+                conv.add(`interface.${ifname}.over`, conv.ifmap(tokens[3]));
+            },
         },
 
         'ppp-configuration': (conv, tokens) => {
@@ -2069,7 +2094,34 @@ Converter.rules['ipsec'] = {
             sa['src'] == srcaddr && sa['dst'] == dstaddr) {
             const psk = conv.get_memo('ike.preshared-key')[dstaddr];
             if (psk) {
+                const k2 = `interface.${l2tpif}.ike.proposal`;
                 conv.add(`interface.${l2tpif}.ipsec-preshared-key`, psk);
+
+                // phase1 parameters
+                const ikepeer = conv.get_memo(`ike.peer.address.${dstaddr}`);
+                const ikep = conv.get_params('ike.proposal')[ikepeer['proposals']];
+                ikep['encryption'].split(',').forEach(name => {
+                    const ka = conv.get_index(`${k2}.phase1.encryption`);
+                    conv.add(`${ka}.algorithm`, name);
+                });
+                ikep['hash'].split(',').forEach(name => {
+                    const ka = conv.get_index(`${k2}.phase1.hash`);
+                    conv.add(`${ka}.algorithm`, name);
+                });
+                conv.param2recipe(ikep, 'dh-group', `${k2}.phase1.dh-group`);
+                conv.param2recipe(ikep, 'lifetime-of-time', `${k2}.phase1.lifetime`);
+
+                // phase2 parameters
+                sap['authentication-algorithm'].split(',').forEach(name => {
+                    const ka = conv.get_index(`${k2}.phase2.authentication`);
+                    conv.add(`${ka}.algorithm`, name);
+                });
+                sap['encryption-algorithm'].split(',').forEach(name => {
+                    const ka = conv.get_index(`${k2}.phase2.encryption`);
+                    conv.add(`${ka}.algorithm`, name);
+                });
+                conv.param2recipe(sap, 'lifetime-of-time', `${k2}.phase2.lifetime-of-time`);
+                conv.param2recipe(sap, 'pfs-group', `${k2}.phase2.pfs-group`);
             }
             const ikepeer = conv.get_memo(`ike.peer.address.${dstaddr}`);
             if (ikepeer) {
@@ -2343,7 +2395,10 @@ Converter.rules['nat'] = {
         'interface': (conv, tokens) => {
             conv.add('upnp.interface', conv.ifmap(tokens[3]));
         },
-        'on':  'upnp.service: enable',
+        'on': (conv, tokens) => {
+            conv.add('upnp.service', 'enable');
+            conv.add('upnp.listen.0.interface', conv.ifmap('lan0'));
+        },
         'off': 'upnp.service: disable',
         'timeout': {
             'type': tokens => `upnp.timeout-type: ${tokens[4]}`,
@@ -2473,7 +2528,9 @@ Converter.rules['pppac'] = {
         },
     },
     'option': {
-        'session-limit': 'notsupported',
+        'session-limit': (conv, tokens) => {
+            conv.add('option.pppac.session-limit', on2enable(tokens[3]));
+        },
     },
     'pool': {
         'add': (conv, tokens) => {
@@ -2566,6 +2623,35 @@ Converter.rules['resolver'] = {
     'order': 'notsupported'
 };
 
+function route_filter_common(conv, prefix, name, af) {
+    const rf = conv.get_params(`route-filter.${af}`)[name];
+    if (rf == null) {
+        return;
+    }
+    const k = conv.get_index(prefix);
+    conv.param2recipe(rf, 'interface', `${k}.match.interface`, conv.ifmap);
+    conv.param2recipe(rf, 'network', `${k}.match.prefix`, val => `${val}`);
+    conv.param2recipe(rf, 'set-as-path-prepend', `${k}.set.as-path-prepend`,
+        val => val.split(',').join(' '));
+    conv.param2recipe(rf, 'set-metric', `${k}.set.metric`);
+    conv.param2recipe(rf, 'set-metric-type', `${k}.set.metric-type`);
+    conv.param2recipe(rf, 'set-weight', `${k}.set.weight`);
+    if (rf['pass']) {
+        conv.add(`${k}.action`, 'pass');
+    }
+    if (rf['block']) {
+        conv.add(`${k}.action`, 'block');
+    }
+}
+
+function route_filter(conv, prefix, name) {
+    route_filter_common(conv, prefix, name, 'ipv4');
+}
+
+function route6_filter(conv, prefix, name) {
+    route_filter_common(conv, prefix, name, 'ipv6');
+}
+
 Converter.rules['route'] = {
     // https://www.seil.jp/sx4/doc/sa/route/config/route.ipv4.html
     'add': (conv, tokens) => {
@@ -2613,13 +2699,18 @@ Converter.rules['route'] = {
             'disable': [],
 
             'enable': (conv, tokens) => {
+                const asn = conv.get_memo('bgp.my-as-number');
+                conv.add('bgp.my-as-number', asn);
+
+                const rtr = conv.get_memo('bgp.router-id');
+                conv.add('bgp.router-id', rtr);
+
                 conv.set_memo('bgp.enable', true);
             },
 
             'my-as-number': (conv, tokens) => {
                 // route dynamic bgp my-as-number <as-number>
-                if (! conv.get_memo('bgp.enable')) { return; }
-                conv.add('bgp.my-as-number', tokens[4]);
+                conv.set_memo('bgp.my-as-number', tokens[4]);
             },
 
             // route dynamic bgp neighbor add <neighbor_IPv4address> remote-as <as-number>
@@ -2628,6 +2719,7 @@ Converter.rules['route'] = {
             //     [out-route-filter <route-filter-name>[,<route-filter-name>...]]
             //     [authentication md5 <password>] [disable | enable]
             'neighbor': (conv, tokens) => {
+                if (!conv.get_memo('bgp.enable')) { return; }
                 if (tokens[tokens.length - 1] == 'disable') {
                     return;
                 }
@@ -2636,14 +2728,19 @@ Converter.rules['route'] = {
                     'remote-as': `${k1}.remote-as`,
                     'hold-timer': `${k1}.hold-timer`,
                     'weight': `${k1}.weight`,
-                    'authentication': false,
+                    'authentication': 0,
                     'md5': `${k1}.authentication.password`,
                     'in-route-filter': true,
                     'out-route-filter': true,
-                    'enable': false,
+                    'enable': 0,
                 });
                 conv.param2recipe(params, '*NAME*', `${k1}.address`);
-                // XXX: route-filters
+                (params['in-route-filter'] || "").split(',').forEach(name => {
+                    route_filter(conv, `${k1}.filter.in`, name);
+                });
+                (params['out-route-filter'] || "").split(',').forEach(name => {
+                    route_filter(conv, `${k1}.filter.out`, name);
+                });
             },
 
             'network': (conv, tokens) => {
@@ -2654,8 +2751,7 @@ Converter.rules['route'] = {
 
             'router-id': (conv, tokens) => {
                 // route dynamic bgp router-id <router-id>
-                if (! conv.get_memo('bgp.enable')) { return; }
-                conv.add('bgp.router-id', tokens[4]);
+                conv.set_memo('bgp.router-id', tokens[4]);
             },
         },
 
@@ -2782,6 +2878,35 @@ Converter.rules['route'] = {
 
             'ospf-to-rip': tokens => `rip.redistribute-from.ospf.redistribute: ${tokens[4]}`,
 
+            // route dynamic redistribute { static-to-bgp | rip-to-bgp | ospf-to-bgp }
+            //     { disable | enable [metric <metric>]
+            //     [route-filter <route-filter-name>[,<route-filter-name>...]] }
+            '*': (conv, tokens) => {
+                const fromto = tokens[3].match(/^(\w+)-to-(\w+)$/);
+                if (!fromto) {
+                    conv.syntaxerror(tokens[3]);
+                    return;
+                };
+                const from = fixup_ospf6(fromto[1]);
+                const to = fixup_ospf6(fromto[2]);
+                const to_prefix = (to == 'bgp') ? 'bgp.ipv4' : to;
+                if (!conv.get_memo(`${to}.enable`)) { return; }
+
+                const params = conv.read_params(null, tokens, 3, {
+                    'metric': `${to_prefix}.redistribute-from.${from}.set.metric`,
+                    'route-filter': true,
+                    'enable': 0,
+                    'disable': 0,
+                });
+                if (params['disable']) {
+                    return;
+                }
+                conv.add(`${to_prefix}.redistribute-from.${from}.redistribute`, 'enable');
+                (params['route-filter'] || "").split(',').forEach(name => {
+                    route_filter(conv, `${to_prefix}.redistribute-from.${from}.filter`, name);
+                });
+            },
+
             'rip-to-ospf': (conv, tokens) => {
                 // route dynamic redistribute rip-to-ospf {disable|enable}
                 //     [metric <metric>] [metric-type <metric-type>]
@@ -2806,7 +2931,7 @@ Converter.rules['route'] = {
                         }
                         const k1 = conv.get_index(`${to}.redistribute-from.${from}.filter`);
                         conv.param2recipe(rf, 'interface', `${k1}.match.interface`, conv.ifmap);
-                        conv.param2recipe(rf, 'network', `${k1}.match.prefix`, val => `${val}-32`);
+                        conv.param2recipe(rf, 'network', `${k1}.match.prefix`, val => `${val}`);
                         conv.param2recipe(rf, 'set-metric', `${k1}.set.metric`);
                         conv.param2recipe(rf, 'set-metric-type', `${k1}.set.metric-type`);
                         if (rf['pass']) {
@@ -2942,6 +3067,10 @@ Converter.rules['route'] = {
     },
 };
 
+function fixup_ospf6(str) {
+    return (str == 'ospf') ? 'ospf6' : str;
+}
+
 Converter.rules['route6'] = {
     'add': (conv, tokens) => {
         // route6 add {<dst_IPv6address>/<prefixlen>|default}
@@ -2975,39 +3104,164 @@ Converter.rules['route6'] = {
     },
 
     'dynamic': {
-        // https://www.seil.jp/doc/index.html#fn/route/cmd/route6_dynamic_redistribute.html
-        'redistribute': {
-            'connected-to-ripng': {
-                'disable': [],
-                'enable': (conv, tokens) => {
-                    if (! conv.get_memo('ripng.enable')) {
-                        return;
-                    }
-                    conv.notsupported('ripng');
-                },
-            },
-            'static-to-ripng': {
-                'disable': [],
-            },
-        },
-
-        'route-filter': {
-
-        },
-
-        'ripng': {
-            'disable': [],
-            '*': 'notsupported',
-        },
-
+        // https://www.seil.jp/doc/index.html#fn/route/cmd/route6_dynamic_ospf.html
         'ospf': {
+            'area': (conv, tokens) => {
+                // route6 dynamic ospf area add <area-id> [range <IPaddress/prefixlen>]
+                const params = conv.read_params(null, tokens, 5, {
+                    'range': true,
+                });
+                const k1 = conv.get_index('ospf6.area');
+                conv.param2recipe(params, '*NAME*', `${k1}.id`);
+                conv.param2recipe(params, 'range', `${k1}.range.0.prefix`);
+            },
             'disable': [],
-            '*': 'notsupported',
+            'enable': (conv, tokens) => {
+                const id = conv.get_memo('ospf6.router-id');
+                if (id == null) {
+                    conv.badconfig('router-id が設定されていません。');
+                    return;
+                }
+                conv.add('ospf6.router-id', id);
+                conv.set_memo('ospf6.enable', true);
+            },
+            'link': (conv, tokens) => {
+                // route6 dynamic ospf link add <interface> area <area-id> ...
+                const k1 = conv.get_index('ospf6.link');
+                conv.add(`${k1}.interface`, conv.ifmap(tokens[5]));
+
+                conv.read_params(null, tokens, 5, {
+                    'area': `${k1}.area`,
+                    'instance-id': `${k1}.instance-id`,
+                    'cost': `${k1}.cost`,
+                    'hello-interval': `${k1}.hello-interval`,
+                    'dead-interval': `${k1}.dead-interval`,
+                    'retransmit-interval': `${k1}.retransmit-interval`,
+                    'transmit-delay': `${k1}.transmit-delay`,
+                    'priority': `${k1}.priority`,
+                    'passive-interface': {
+                        key: `${k1}.passive-interface`,
+                        fun: on2enable,
+                    },
+                });
+            },
+
+            'router-id': (conv, tokens) => {
+                // route6 dynamic ospf router-id <my-router-id>
+                conv.set_memo('ospf6.router-id', tokens[4]);
+            },
         },
 
         'pim-sparse': {
             'disable': [],
             '*': 'notsupported',
+        },
+
+        // https://www.seil.jp/doc/index.html#fn/route/cmd/route6_dynamic_redistribute.html
+        'redistribute': {
+            '*': {
+                'disable': [],
+
+                // route6 dynamic redistribute connected-to-ripng enable [metric <metric>]
+                'enable': (conv, tokens) => {
+                    const fromto = tokens[3].match(/^(\w+)-to-(\w+)$/);
+                    if (!fromto) {
+                        conv.syntaxerror(tokens[3]);
+                        return;
+                    };
+
+                    const from = fixup_ospf6(fromto[1]);
+                    const to   = fixup_ospf6(fromto[2]);
+
+                    if (!conv.get_memo(`${to}.enable`)) {
+                        return;
+                    }
+                    const k = `${to}.redistribute-from.${from}`
+                    conv.add(`${k}.redistribute`, 'enable');
+                    conv.read_params(null, tokens, 4, {
+                        'metric': `${k}.set.metric`,
+                        'metric-type': `${k}.set.metric-type`,
+                    });
+                },
+            },
+        },
+
+        'ripng': {
+            'default-route-originate': (conv, tokens) => {
+                if (!conv.get_memo('ripng.enable')) { return; }
+                conv.add('ripng.default-route-originate.originate', tokens[4]);
+            },
+
+            'disable': [],
+
+            'enable': (conv, tokens) => {
+                conv.set_memo('ripng.enable', true);
+            },
+
+            // route6 dynamic ripng interface <interface> ...
+            'interface': {
+                '*': {
+                    'aggregate': (conv, tokens) => {
+                        if (!conv.get_memo('ripng.enable')) { return; }
+
+                        // route6 dynamic ripng interface <interface>
+                        //     aggregate add <prefix/prefixlen> [metric <metric>]
+                        const ifname = ifmap(tokens[4]);
+                        const k1 = conv.get_memo(`ripng.interface.${ifname}`);
+                        if (k1 == null) {
+                            return;
+                        }
+                        const k2 = conv.get_index(`${k1}.aggregate`);
+                        conv.add(`${k2}.prefix`, tokens[7]);
+
+                        if (tokens[8] == 'metric') {
+                            conv.add(`${k2}.metric`, tokens[9]);
+                        }
+                    },
+                    'disable': [],
+
+                    'enable': (conv, tokens) => {
+                        if (!conv.get_memo('ripng.enable')) { return; }
+
+                        const ifname = ifmap(tokens[4]);
+                        const k1 = conv.get_index('ripng.interface');
+                        conv.set_memo(`ripng.interface.${ifname}`, k1);
+                        conv.add(`${k1}.interface`, ifname);
+
+                        // supply-only と listen-only は enable の後に置かれる。
+                        if (tokens[6]) {
+                            conv.add(`${k1}.mode`, tokens[6]);
+                        }
+                    },
+
+                    'route-filter': (conv, tokens) => {
+                        // route dynamic rip interface <interface>
+                        //     route-filter {in|out} <route-filter-name>[,<route-filter-name>...]
+                        const ifname = conv.ifmap(tokens[4]);
+                        const k1 = conv.get_memo(`ripng.interface.${ifname}`);
+
+                        const inout = tokens[6];
+                        tokens[7].split(',').forEach(name => {
+                            route6_filter(conv, `${k1}.filter.${inout}`, name);
+                        });
+                    },
+                }
+            },
+        },
+
+        'route-filter': (conv, tokens) => {
+            conv.read_params('route-filter.ipv6', tokens, 4, {
+                'network': true,
+                'prefix': true,
+                'exact-match': 0,
+                'interface': true,
+                'pass':  0,
+                'block': 0,
+                'set-as-path-prepend': true,
+                'set-metric': true,
+                'set-metric-type': true,
+                'set-weight': true,
+            });
         },
     },
 };
@@ -3168,7 +3422,20 @@ Converter.rules['snmp'] = {
         },
         'disable': 'snmp.trap.service: disable',
         'enable': 'snmp.trap.service: enable',
-        'watch': 'notsupported',
+        'src': tokens => `snmp.trap.agent-address: ${tokens[3]}`,
+        'watch': {
+            'add': (conv, tokens) => {
+                const k1 = conv.get_index('snmp.trap.watch');
+                const ti = conv.get_trap_index();
+                conv.add(`${k1}.address`, tokens[4]);
+                conv.add(`${k1}.trap-index`, ti);
+                conv.read_params(null, tokens, 4, {
+                    'errors': `${k1}.errors`,
+                    'interval': `${k1}.interval`,
+                    'interval-fail': `${k1}.interval-fail`,
+                })
+            },
+        },
     },
 };
 
