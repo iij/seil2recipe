@@ -499,7 +499,7 @@ describe('floatlink', () => {
                 'floatlink.ike.proposal.phase2.authentication.100.algorithm: hmac-sha256',
                 'floatlink.ike.proposal.phase2.authentication.200.algorithm: hmac-sha1'
             ]);
-        assertconv('floatlink ipsec proposal encryption aes192,des',
+        assertconv('floatlink ipsec proposal encryption-algorithm aes192,des',
             [
                 'floatlink.ike.proposal.phase2.encryption.100.algorithm: aes192',
                 'floatlink.ike.proposal.phase2.encryption.200.algorithm: des'
