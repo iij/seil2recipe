@@ -1059,6 +1059,51 @@ describe('route', () => {
             'route dynamic redistribute bgp-to-ospf enable',
         ], [ '' ]);
     });
+
+    describe('BGP', () => {
+        it('can prepend AS-path to routes from neighbors', () => {
+            assertconv([
+                'route dynamic route-filter add ASPATH network 10.0.0.0/8 pass set-as-path-prepend 65009,65008',
+                'route dynamic bgp my-as-number 65001',
+                'route dynamic bgp router-id 192.168.0.1',
+                'route dynamic bgp enable',
+                'route dynamic bgp neighbor add 192.168.0.2 remote-as 65002 in-route-filter ASPATH',
+            ], [
+                "bgp.neighbor.100.address: 192.168.0.2",
+                "bgp.neighbor.100.filter.in.100.action: pass",
+                "bgp.neighbor.100.filter.in.100.match.prefix: 10.0.0.0/8-32",
+                "bgp.neighbor.100.filter.in.100.set.as-path-prepend: \"65009 65008\"",
+                "bgp.neighbor.100.remote-as: 65002",
+                "bgp.my-as-number: 65001",
+                "bgp.router-id: 192.168.0.1"
+            ]);
+        });
+
+        it('can import redistributed routes', () => {
+            assertconv([
+                'route dynamic route-filter add A network 10.0.0.0/8 interface lan0 '
+                + 'pass set-metric 2 set-weight 3 set-as-path-prepend 4',
+                'route dynamic bgp my-as-number 65001',
+                'route dynamic bgp router-id 192.168.0.1',
+                'route dynamic bgp enable',
+                'route dynamic bgp neighbor add 192.168.0.2 remote-as 65002',
+                'route dynamic redistribute rip-to-bgp enable metric 5 route-filter A',
+            ], [
+                "bgp.ipv4.redistribute-from.rip.redistribute: enable",
+                "bgp.ipv4.redistribute-from.rip.set.metric: 5",
+                "bgp.ipv4.redistribute-from.rip.filter.100.action: pass",
+                "bgp.ipv4.redistribute-from.rip.filter.100.match.prefix: 10.0.0.0/8-32",
+                "bgp.ipv4.redistribute-from.rip.filter.100.match.interface: ge1",
+                "bgp.ipv4.redistribute-from.rip.filter.100.set.as-path-prepend: 4",
+                "bgp.ipv4.redistribute-from.rip.filter.100.set.metric: 2",
+                "bgp.ipv4.redistribute-from.rip.filter.100.set.weight: 3",
+                "bgp.neighbor.100.address: 192.168.0.2",
+                "bgp.neighbor.100.remote-as: 65002",
+                "bgp.my-as-number: 65001",
+                "bgp.router-id: 192.168.0.1"
+            ]);
+        });
+    });
 });
 
 describe('route6', () => {

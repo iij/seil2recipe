@@ -2590,6 +2590,27 @@ Converter.rules['resolver'] = {
     'order': 'notsupported'
 };
 
+function route_filter(conv, prefix, name) {
+    const rf = conv.get_params('route-filter.ipv4')[name];
+    if (rf == null) {
+        return;
+    }
+    const k = conv.get_index(prefix);
+    conv.param2recipe(rf, 'interface', `${k}.match.interface`, conv.ifmap);
+    conv.param2recipe(rf, 'network', `${k}.match.prefix`, val => `${val}-32`);
+    conv.param2recipe(rf, 'set-as-path-prepend', `${k}.set.as-path-prepend`,
+        val => val.split(',').join(' '));
+    conv.param2recipe(rf, 'set-metric', `${k}.set.metric`);
+    conv.param2recipe(rf, 'set-metric-type', `${k}.set.metric-type`);
+    conv.param2recipe(rf, 'set-weight', `${k}.set.weight`);
+    if (rf['pass']) {
+        conv.add(`${k}.action`, 'pass');
+    }
+    if (rf['block']) {
+        conv.add(`${k}.action`, 'block');
+    }
+}
+
 Converter.rules['route'] = {
     // https://www.seil.jp/sx4/doc/sa/route/config/route.ipv4.html
     'add': (conv, tokens) => {
@@ -2637,13 +2658,18 @@ Converter.rules['route'] = {
             'disable': [],
 
             'enable': (conv, tokens) => {
+                const asn = conv.get_memo('bgp.my-as-number');
+                conv.add('bgp.my-as-number', asn);
+
+                const rtr = conv.get_memo('bgp.router-id');
+                conv.add('bgp.router-id', rtr);
+
                 conv.set_memo('bgp.enable', true);
             },
 
             'my-as-number': (conv, tokens) => {
                 // route dynamic bgp my-as-number <as-number>
-                if (! conv.get_memo('bgp.enable')) { return; }
-                conv.add('bgp.my-as-number', tokens[4]);
+                conv.set_memo('bgp.my-as-number', tokens[4]);
             },
 
             // route dynamic bgp neighbor add <neighbor_IPv4address> remote-as <as-number>
@@ -2652,6 +2678,7 @@ Converter.rules['route'] = {
             //     [out-route-filter <route-filter-name>[,<route-filter-name>...]]
             //     [authentication md5 <password>] [disable | enable]
             'neighbor': (conv, tokens) => {
+                if (!conv.get_memo('bgp.enable')) { return; }
                 if (tokens[tokens.length - 1] == 'disable') {
                     return;
                 }
@@ -2660,14 +2687,19 @@ Converter.rules['route'] = {
                     'remote-as': `${k1}.remote-as`,
                     'hold-timer': `${k1}.hold-timer`,
                     'weight': `${k1}.weight`,
-                    'authentication': false,
+                    'authentication': 0,
                     'md5': `${k1}.authentication.password`,
                     'in-route-filter': true,
                     'out-route-filter': true,
-                    'enable': false,
+                    'enable': 0,
                 });
                 conv.param2recipe(params, '*NAME*', `${k1}.address`);
-                // XXX: route-filters
+                (params['in-route-filter'] || "").split(',').forEach(name => {
+                    route_filter(conv, `${k1}.filter.in`, name);
+                });
+                (params['out-route-filter'] || "").split(',').forEach(name => {
+                    route_filter(conv, `${k1}.filter.out`, name);
+                });
             },
 
             'network': (conv, tokens) => {
@@ -2678,8 +2710,7 @@ Converter.rules['route'] = {
 
             'router-id': (conv, tokens) => {
                 // route dynamic bgp router-id <router-id>
-                if (! conv.get_memo('bgp.enable')) { return; }
-                conv.add('bgp.router-id', tokens[4]);
+                conv.set_memo('bgp.router-id', tokens[4]);
             },
         },
 
@@ -2805,6 +2836,35 @@ Converter.rules['route'] = {
             },
 
             'ospf-to-rip': tokens => `rip.redistribute-from.ospf.redistribute: ${tokens[4]}`,
+
+            // route dynamic redistribute { static-to-bgp | rip-to-bgp | ospf-to-bgp }
+            //     { disable | enable [metric <metric>]
+            //     [route-filter <route-filter-name>[,<route-filter-name>...]] }
+            '*': (conv, tokens) => {
+                const fromto = tokens[3].match(/^(\w+)-to-(\w+)$/);
+                if (!fromto) {
+                    conv.syntaxerror(tokens[3]);
+                    return;
+                };
+                const from = fixup_ospf6(fromto[1]);
+                const to = fixup_ospf6(fromto[2]);
+                const to_prefix = (to == 'bgp') ? 'bgp.ipv4' : to;
+                if (!conv.get_memo(`${to}.enable`)) { return; }
+
+                const params = conv.read_params(null, tokens, 3, {
+                    'metric': `${to_prefix}.redistribute-from.${from}.set.metric`,
+                    'route-filter': true,
+                    'enable': 0,
+                    'disable': 0,
+                });
+                if (params['disable']) {
+                    return;
+                }
+                conv.add(`${to_prefix}.redistribute-from.${from}.redistribute`, 'enable');
+                (params['route-filter'] || "").split(',').forEach(name => {
+                    route_filter(conv, `${to_prefix}.redistribute-from.${from}.filter`, name);
+                });
+            },
 
             'rip-to-ospf': (conv, tokens) => {
                 // route dynamic redistribute rip-to-ospf {disable|enable}
@@ -2966,6 +3026,10 @@ Converter.rules['route'] = {
     },
 };
 
+function fixup_ospf6(str) {
+    return (str == 'ospf') ? 'ospf6' : str;
+}
+
 Converter.rules['route6'] = {
     'add': (conv, tokens) => {
         // route6 add {<dst_IPv6address>/<prefixlen>|default}
@@ -3063,10 +3127,6 @@ Converter.rules['route6'] = {
 
                 // route6 dynamic redistribute connected-to-ripng enable [metric <metric>]
                 'enable': (conv, tokens) => {
-                    function fixup_ospf6(str) {
-                        return (str == 'ospf') ? 'ospf6' : str;
-                    }
-
                     const fromto = tokens[3].match(/^(\w+)-to-(\w+)$/);
                     if (!fromto) {
                         conv.syntaxerror(tokens[3]);
