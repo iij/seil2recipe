@@ -2596,14 +2596,14 @@ Converter.rules['resolver'] = {
     'order': 'notsupported'
 };
 
-function route_filter(conv, prefix, name) {
-    const rf = conv.get_params('route-filter.ipv4')[name];
+function route_filter_common(conv, prefix, name, af) {
+    const rf = conv.get_params(`route-filter.${af}`)[name];
     if (rf == null) {
         return;
     }
     const k = conv.get_index(prefix);
     conv.param2recipe(rf, 'interface', `${k}.match.interface`, conv.ifmap);
-    conv.param2recipe(rf, 'network', `${k}.match.prefix`, val => `${val}-32`);
+    conv.param2recipe(rf, 'network', `${k}.match.prefix`, val => `${val}`);
     conv.param2recipe(rf, 'set-as-path-prepend', `${k}.set.as-path-prepend`,
         val => val.split(',').join(' '));
     conv.param2recipe(rf, 'set-metric', `${k}.set.metric`);
@@ -2615,6 +2615,14 @@ function route_filter(conv, prefix, name) {
     if (rf['block']) {
         conv.add(`${k}.action`, 'block');
     }
+}
+
+function route_filter(conv, prefix, name) {
+    route_filter_common(conv, prefix, name, 'ipv4');
+}
+
+function route6_filter(conv, prefix, name) {
+    route_filter_common(conv, prefix, name, 'ipv6');
 }
 
 Converter.rules['route'] = {
@@ -2896,7 +2904,7 @@ Converter.rules['route'] = {
                         }
                         const k1 = conv.get_index(`${to}.redistribute-from.${from}.filter`);
                         conv.param2recipe(rf, 'interface', `${k1}.match.interface`, conv.ifmap);
-                        conv.param2recipe(rf, 'network', `${k1}.match.prefix`, val => `${val}-32`);
+                        conv.param2recipe(rf, 'network', `${k1}.match.prefix`, val => `${val}`);
                         conv.param2recipe(rf, 'set-metric', `${k1}.set.metric`);
                         conv.param2recipe(rf, 'set-metric-type', `${k1}.set.metric-type`);
                         if (rf['pass']) {
@@ -3069,10 +3077,6 @@ Converter.rules['route6'] = {
     },
 
     'dynamic': {
-        'route-filter': {
-
-        },
-
         // https://www.seil.jp/doc/index.html#fn/route/cmd/route6_dynamic_ospf.html
         'ospf': {
             'area': (conv, tokens) => {
@@ -3206,10 +3210,31 @@ Converter.rules['route6'] = {
                     'route-filter': (conv, tokens) => {
                         // route dynamic rip interface <interface>
                         //     route-filter {in|out} <route-filter-name>[,<route-filter-name>...]
-                        // XXX: notyet
+                        const ifname = conv.ifmap(tokens[4]);
+                        const k1 = conv.get_memo(`ripng.interface.${ifname}`);
+
+                        const inout = tokens[6];
+                        tokens[7].split(',').forEach(name => {
+                            route6_filter(conv, `${k1}.filter.${inout}`, name);
+                        });
                     },
                 }
             },
+        },
+
+        'route-filter': (conv, tokens) => {
+            conv.read_params('route-filter.ipv6', tokens, 4, {
+                'network': true,
+                'prefix': true,
+                'exact-match': 0,
+                'interface': true,
+                'pass':  0,
+                'block': 0,
+                'set-as-path-prepend': true,
+                'set-metric': true,
+                'set-metric-type': true,
+                'set-weight': true,
+            });
         },
     },
 };
