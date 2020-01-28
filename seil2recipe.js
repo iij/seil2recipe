@@ -1325,7 +1325,7 @@ Converter.rules['floatlink'] = {
                     conv.add(`${k1}.algorithm`, hash);
                 });
             },
-            'encryption': (conv, tokens) => {
+            'encryption-algorithm': (conv, tokens) => {
                 tokens[4].split(",").forEach(alg => {
                     if (alg == 'aes') {
                         alg = 'aes128';
