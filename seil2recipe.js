@@ -1586,6 +1586,12 @@ Converter.rules['interface'] = {
                     });
                 }
                 const k1 = `interface.${ifname}`;
+                if (protocol['accept-interface'] != 'any') {
+                    (protocol['accept-interface'] || "").split(',').forEach(name => {
+                        const k2 = conv.get_index(`${k1}.l2tp.accept`);
+                        conv.add(`${k2}.interface`, conv.ifmap(name));
+                    });
+                }
                 conv.param2recipe(protocol, 'l2tp-keepalive-interval', `${k1}.l2tp.keepalive.interval`);
                 conv.param2recipe(protocol, 'l2tp-keepalive-timeout', `${k1}.l2tp.keepalive.timeout`);
                 conv.param2recipe(protocol, 'lcp-keepalive-interval', `${k1}.l2tp.lcp.keepalive.interval`);
