@@ -1063,14 +1063,19 @@ describe('route', () => {
         ]);
     });
 
-    it('ignore redistribution if ospf is disabled', () => {
-        assertconv([
-            'route dynamic ospf disable',
-            'route dynamic redistribute connected-to-ospf enable',
-            'route dynamic redistribute static-to-ospf enable',
-            'route dynamic redistribute rip-to-ospf enable',
-            'route dynamic redistribute bgp-to-ospf enable',
-        ], [ '' ]);
+    describe('OSPF', () => {
+        it('should generate no ospf lines if ospf is disabled', () => {
+            assertconv([
+                'route dynamic ospf router-id 192.168.0.1',
+                'route dynamic ospf disable',
+                'route dynamic ospf area add 0.0.0.0',
+                'route dynamic ospf link add lan0 area 0.0.0.0',
+                'route dynamic redistribute connected-to-ospf enable',
+                'route dynamic redistribute static-to-ospf enable',
+                'route dynamic redistribute rip-to-ospf enable',
+                'route dynamic redistribute bgp-to-ospf enable',
+            ], [ '' ]);
+        });
     });
 
     describe('BGP', () => {

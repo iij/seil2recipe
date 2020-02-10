@@ -2765,6 +2765,8 @@ Converter.rules['route'] = {
                 'intra-area':  tokens => `ospf.administrative-distance.external: ${tokens[5]}`,
             },
             'area': (conv, tokens) => {
+                if (!conv.get_memo('ospf.enable')) { return; }
+
                 // route dynamic ospf area add <area-id> [range <IPaddress/prefixlen>]
                 //     [stub {disable|enable}] [no-summary {on|off}] [default-cost <cost>]
                 const params = conv.read_params(null, tokens, 5, {
@@ -2788,6 +2790,8 @@ Converter.rules['route'] = {
             'default-route-originate': {
                 'disable': [],
                 'enable': (conv, tokens) => {
+                    if (!conv.get_memo('ospf.enable')) { return; }
+
                     conv.add('ospf.default-route-originate.originate', 'enable');
                     conv.read_params(null, tokens, 4, {
                         'metric': 'ospf.default-route-originate.set.metric',
@@ -2806,6 +2810,8 @@ Converter.rules['route'] = {
                 conv.set_memo('ospf.enable', true);
             },
             'link': (conv, tokens) => {
+                if (!conv.get_memo('ospf.enable')) { return; }
+
                 // route dynamic ospf link add <interface> area <area-id>
                 //     [authentication auth-key <key-name>] [cost <cost>]
                 //     [hello-interval <hello-interval>] [dead-interval <dead-interval>]
