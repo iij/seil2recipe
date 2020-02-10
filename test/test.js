@@ -1074,6 +1074,20 @@ describe('route', () => {
     });
 
     describe('BGP', () => {
+        it('minimal', () => {
+            assertconv([
+                'route dynamic bgp my-as-number 65001',
+                'route dynamic bgp router-id 192.168.0.1',
+                'route dynamic bgp enable',
+                'route dynamic bgp neighbor add 192.168.0.2 remote-as 65002 enable'
+            ], [
+                "bgp.my-as-number: 65001",
+                "bgp.router-id: 192.168.0.1",
+                "bgp.neighbor.100.address: 192.168.0.2",
+                "bgp.neighbor.100.remote-as: 65002"
+            ]);
+        });
+
         it('can prepend AS-path to routes from neighbors', () => {
             assertconv([
                 'route dynamic route-filter add ASPATH network 10.0.0.0/8 pass set-as-path-prepend 65009,65008',
