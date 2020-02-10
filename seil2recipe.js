@@ -25,8 +25,9 @@
  */
 
 class Converter {
-    constructor(seilconfig) {
+    constructor(seilconfig, dst) {
         this.seilconfig  = seilconfig;
+        this.dst         = new Model(dst);
         this.conversions = [];
         this.note        = new Note();
 
@@ -418,6 +419,22 @@ class Conversion {
             label = this.label;
         }
         this.errors.push(new Error('warning', message));
+    }
+}
+
+class Model {
+    constructor(shortname) {
+        this.type = shortname;
+    }
+
+    normalized() {
+        return {
+            'w1':    'SA-W1',
+            'w2':    'SA-W2',
+            'w2l':   'SA-W2L',
+            'x4':    'SEIL/X4',
+            'ayame': 'SEIL/x86 Ayame',
+        }[this.type]
     }
 }
 
