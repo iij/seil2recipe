@@ -19,7 +19,7 @@ if (process.argv[2] == '-v') {
 }
 
 const txt = fs.readFileSync(seilconfigfile, {encoding: "utf-8"});
-const s2r = new seil2recipe.Converter(txt);
+const s2r = new seil2recipe.Converter(txt, 'x4');
 
 if (!verbose) {
     console.log(s2r.recipe_config);

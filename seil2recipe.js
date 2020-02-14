@@ -27,9 +27,8 @@
 class Converter {
     constructor(seilconfig, dst) {
         this.seilconfig  = seilconfig;
-        this.dst         = new Model(dst);
         this.conversions = [];
-        this.note        = new Note();
+        this.note        = new Note(dst);
 
         this.convert();
     }
@@ -114,12 +113,13 @@ class Converter {
 
 
 class Note {
-    constructor() {
+    constructor(dst) {
         this.indices = new Map();  // (prefix) -> (last index number)
         this.params  = new Map();
         this.interfaces = new Map();  // (iftype) -> (last interface index)
         this.ifindex = new Map();  // (prefix) -> (interface) -> (index)
         this.memo    = new Map();
+        this.dst     = new Device(dst);
 
         this.memo.set('floatlink.interfaces', []);
         this.memo.set('ike.preshared-key', {});
@@ -214,6 +214,22 @@ class Conversion {
     //
     ifmap(new_name) {
         return ifmap(new_name);
+    }
+
+    missing(feature) {
+        // Note: this method returns true only if our device does not support
+        // the feature but some device supports it.
+        let f = CompatibilityList[feature];
+        var b;
+        if (this.note.dst.gen == 'seil6') {
+            b = (f[0] == 0);
+        } else {
+            b = (f[1] == 0);
+        }
+        if (b) {
+            this.notsupported(feature);
+        }
+        return b;
     }
 
     time2sec(str) {
@@ -404,7 +420,7 @@ class Conversion {
         if (label == null) {
             label = this.label;
         }
-        this.errors.push(new Error('notsupported', `"${label}" は SEIL/X4 ではサポートされていません。`));
+        this.errors.push(new Error('notsupported', `"${label}" は ${this.note.dst.name} ではサポートされていません。`));
     }
 
     syntaxerror(label) {
@@ -422,21 +438,46 @@ class Conversion {
     }
 }
 
-class Model {
+class Device {
     constructor(shortname) {
         this.type = shortname;
-    }
+        this.gen = ['w1', 'w2', 'w2l'].includes(shortname) ? 'seil6' : 'seil8';
 
-    normalized() {
-        return {
+        this.name = {
             'w1':    'SA-W1',
             'w2':    'SA-W2',
             'w2l':   'SA-W2L',
             'x4':    'SEIL/X4',
             'ayame': 'SEIL/x86 Ayame',
-        }[this.type]
+        }[shortname];
     }
 }
+
+const CompatibilityList = {
+    // feature                                          seil6 seil8
+    'arp add':                                         [    0,    1 ],
+    'authentication account-list':                     [    0,    1 ],
+//    'cbq':                                             [    0,    1 ],
+    'dhcp interface ... static add':                   [    0,    1 ],
+    'dhcp interface ... wpad':                         [    0,    1 ],
+    'dialup-device ... device-option ux312nc-3g-only': [    1,    0 ],
+    'dialup-network':                                  [    1,    0 ],
+    'filter6 add ... action forward':                  [    0,    1 ],
+    'ike peer add ... initial-contact disable':        [    0,    1 ],
+    'ike strict-padding-byte-check enable':            [    0,    1 ],
+    'interface ... add dhcp6':                         [    0,    1 ],
+//    'interface ... queue cbq':                         [    0,    1 ],
+    'nat upnp timeout':                                [    0,    1 ],
+    'option ip multipath-selection':                   [    0,    1 ],
+    'pppac option session-limit off':                  [    0,    1 ],
+    'route dynamic rip':                               [    0,    1 ],
+    'route6 dynamic ospf':                             [    0,    1 ],
+    'route6 dynamic ripng':                            [    0,    1 ],
+    'sshd authorized-key admin':                       [    0,    1 ],
+    'sshd hostkey':                                    [    0,    1 ],
+    'sshd password-authentication enable':             [    0,    1 ],
+    'telnetd':                                         [    0,    1 ],
+};
 
 class Error {
     constructor(type, message, error=undefined) {
@@ -592,6 +633,7 @@ Converter.rules['application-gateway'] = {
 Converter.rules['arp'] = {
     // https://www.seil.jp/doc/index.html#fn/arp/cmd/arp.html#add
     'add': (conv, tokens) => {
+        if (conv.missing('arp add')) { return; }
         const k = conv.get_index('arp');
         conv.add(`${k}.ipv4-address`, tokens[2]);
         conv.add(`${k}.mac-address`, tokens[3]);
@@ -613,6 +655,7 @@ Converter.rules['authentication'] = {
                     'interval': (conv, tokens) => {
                         // https://www.seil.jp/doc/index.html#fn/pppac/cmd/authentication_account-list.html
                         // https://www.seil.jp/sx4/doc/sa/pppac/config/interface.pppac.html
+                        if (conv.missing('authentication account-list')) { return; }
                         conv.set_memo(`authentication.realm.${tokens[2]}.url`, tokens[4]);
                         conv.set_memo(`authentication.realm.${tokens[2]}.interval`, tokens[6]);
                     }
@@ -876,6 +919,7 @@ Converter.rules['dhcp'] = {
             // dhcp interface <i/f> static add <MACaddress> <IPv4address>
             'static': {
                 'add': (conv, tokens) => {
+                    if (conv.missing('dhcp interface ... static add')) { return; }
                     const k1 = dhcp_get_interface(conv, tokens[2]);
                     if (k1) {
                         const k2 = conv.get_index(`${k1}.static.entry`);
@@ -918,6 +962,7 @@ Converter.rules['dhcp'] = {
             },
 
             'wpad': (conv, tokens) => {
+                if (conv.missing('dhcp interface ... wpad')) { return; }
                 const k = dhcp_get_interface(conv, tokens[2]);
                 if (k) {
                     conv.add(`${k}.wpad.url`, tokens[4]);
@@ -1288,6 +1333,11 @@ Converter.rules['filter6'] = {
                 return val;
             }
         });
+        if (params['action'] == 'forward') {
+            if (conv.missing('filter6 add ... action forward')) {
+                return;
+            }
+        }
         conv.param2recipe(params, 'action', `${k}.action`);
         conv.param2recipe(params, 'protocol', `${k}.protocol`);
         conv.param2recipe(params, 'icmp-type', `${k}.icmp-type`);
@@ -1446,6 +1496,10 @@ Converter.rules['ike'] = {
                 'prefer-new-phase1': true,
             });
             conv.set_memo(`ike.peer.address.${params['address']}`, params);
+            if (params['initial-contact'] == 'disable') {
+                conv.missing('ike peer add ... initial-contact disable');
+                // just report error
+            }
         }
     },
 
@@ -1480,8 +1534,10 @@ Converter.rules['ike'] = {
 
     'retry': tokens => `ike.retry: ${tokens[2]}`,
 
-    'strict-padding-byte-check': tokens => `ike.strict-padding-byte-check: ${tokens[2]}`,
-
+    'strict-padding-byte-check': (conv, tokens) => {
+        if (conv.missing('ike strict-padding-byte-check enable')) { return; }
+        conv.add('ike.strict-padding-byte-check', tokens[2]);
+    }
 };
 
 Converter.rules['interface'] = {
@@ -1504,6 +1560,7 @@ Converter.rules['interface'] = {
                     }
                     break;
                 case 'dhcp6':
+                    if (conv.missing('interface ... add dhcp6')) { return; }
                     af = 'ipv6';
                     val = 'dhcp6';
                     break;
@@ -2417,9 +2474,15 @@ Converter.rules['nat'] = {
             conv.add('upnp.listen.0.interface', conv.ifmap('lan0'));
         },
         'off': 'upnp.service: disable',
-        'timeout': {
-            'type': tokens => `upnp.timeout-type: ${tokens[4]}`,
-            '*':    tokens => `upnp.timeout: ${tokens[3]}`,
+        'timeout': (conv, tokens) => {
+            if (conv.missing('nat upnp timeout')) { return; }
+            if (tokens[3] == 'type') {
+                // nat upnp timeout type { normal | arp }
+                conv.add('upnp.timeout-type', tokens[4]);
+            } else {
+                // nat upnp timeout { <time> | none }
+                conv.add('upnp.timeout', tokens[3]);
+            }
         }
     },
 };
@@ -2481,7 +2544,10 @@ Converter.rules['option'] = {
         'fragment-requeueing': tokens => `option.ipv4.fragment-requeueing.service: ${on2enable(tokens[3])}`,
         'mask-reply': 'deprecated',
         'monitor-linkstate': tokens => `option.ipv4.monitor-linkstate.service: ${on2enable(tokens[3])}`,
-        'multipath-selection': tokens => `option.ipv4.multipath-selection.service: ${on2enable(tokens[3])}`,
+        'multipath-selection': (conv, tokens) => {
+            if (conv.missing('option ip multipath-selection')) { return; }
+            conv.add('option.ipv4.multipath-selection.service', on2enable(tokens[3]));
+        },
         'redirects': tokens => `option.ipv4.send-icmp-redirect.service: ${on2enable(tokens[3])}`,
         'unicast-rpf': 'notsupported',
         'update-connected-route': tokens => `option.ipv4.update-connected-route.service: ${on2enable(tokens[3])}`,
@@ -2546,6 +2612,11 @@ Converter.rules['pppac'] = {
     },
     'option': {
         'session-limit': (conv, tokens) => {
+            if (tokens[3] == 'off') {
+                if (conv.missing('pppac option session-limit off')) {
+                    return;
+                }
+            }
             conv.add('option.pppac.session-limit', on2enable(tokens[3]));
         },
     },
@@ -2818,6 +2889,7 @@ Converter.rules['route'] = {
             },
             'disable': [],
             'enable': (conv, tokens) => {
+                if (conv.missing('route6 dynamic ospf')) { return; }
                 const id = conv.get_memo('ospf.router-id');
                 if (id == null) {
                     conv.badconfig('router-id が設定されていません。');
@@ -2980,6 +3052,7 @@ Converter.rules['route'] = {
             'disable': [],
 
             'enable': (conv, tokens) => {
+                if (conv.missing('route dynamic rip')) { return; }
                 conv.set_memo('rip.enable', true);
             },
 
@@ -3218,6 +3291,7 @@ Converter.rules['route6'] = {
             'disable': [],
 
             'enable': (conv, tokens) => {
+                if (conv.missing('route6 dynamic ripng')) { return; }
                 conv.set_memo('ripng.enable', true);
             },
 
@@ -3474,6 +3548,7 @@ Converter.rules['sshd'] = {
 
     'authorized-key': {
         'admin': (conv, tokens) => {
+            if (conv.missing('sshd authorized-key admin')) { return; }
             // sshd authorized-key <user> add <name> { ssh-rsa | ssh-dss } <public_key>
             const k1 = conv.get_index('sshd.authorized-keys');
             const txt = `${tokens[5]} ${tokens[6]}`;
@@ -3502,6 +3577,7 @@ Converter.rules['sshd'] = {
         if (tokens[3] == 'auto' || tokens[3] == 'none') {
             return;
         } else if (tokens[2] == 'rsa') {
+            if (conv.missing('sshd hostkey')) { return; }
             const key = tokens[3] || "";
             var i = key.indexOf(",");
             if (i < 0) {
@@ -3524,6 +3600,7 @@ Converter.rules['sshd'] = {
     },
 
     'password-authentication': (conv, tokens) => {
+        if (conv.missing('sshd password-authentication enable')) { return; }
         // sshd password-authentication { on | off | system-default }
         conv.set_memo('sshd.password-authentication', tokens[2]);
         conv.add('sshd.password-authentication', on2enable(tokens[2]));
@@ -3641,7 +3718,10 @@ Converter.rules['telnetd'] = {
     'access': 'deprecated',
 
     // telnetd { enable | disable }
-    'enable': 'telnetd.service: enable',
+    'enable': (conv, tokens) => {
+        if (conv.missing('telnetd')) { return; }
+        conv.add('telnetd.service', 'enable');
+    },
     'disable': 'telnetd.service: disable'
 };
 
