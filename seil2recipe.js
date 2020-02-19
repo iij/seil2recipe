@@ -372,7 +372,11 @@ class Conversion {
             if (this.note.params[prefix] == null) {
                 this.note.params[prefix] = {};
             }
-            this.note.params[prefix][name] = params;
+            if (this.note.params[prefix][name] == null) {
+                this.note.params[prefix][name] = params;
+            } else {
+                Object.assign(this.note.params[prefix][name], params);
+            }
         }
         return params;
     }
@@ -1216,20 +1220,18 @@ Converter.rules['dialup-device'] = {
         // dialup-device { <foma> | <emobile> | <softbank> | <kddi> |<mdm> }
         //  keepalive add <IPv4address>
         // dialup-device <mdm> device-option ux312nc-3g-only { on | off }
-        if (tokens[2] == 'device-option') {
-            conv.set_param('dialup-device', tokens[1], `device-option.${tokens[3]}`, tokens[4]);
-        } else {
-            conv.read_params('dialup-device', tokens, 1, {
-                'connect-to': true,
-                'pin': true,
-                'auto-reset-interval': 'notsupported',
-                'auto-reset-fail-count': true,
-                'authentiction-method': true,
-                'username': true,
-                'password': true,
-                'auto-connect': true
-            });
-        }
+        conv.read_params('dialup-device', tokens, 1, {
+            'connect-to': true,
+            'pin': true,
+            'auto-reset-interval': 'notsupported',
+            'auto-reset-fail-count': true,
+            'authentication-method': true,
+            'username': true,
+            'password': true,
+            'auto-connect': true,
+            'idle-timer': true,
+            'device-option': 2,
+        });
     }
 };
 
@@ -1905,10 +1907,17 @@ Converter.rules['interface'] = {
                 const k1 = `interface.${ifname}`;
                 conv.add(`${k1}.dialup-device`, device);
 
+                conv.param2recipe(ddev, 'authentication-method', `${k1}.auth-method`);
+                conv.param2recipe(ddev, 'auto-connect', `${k1}.auto-connect`);
                 conv.param2recipe(ddev, 'auto-reset-fail-count', `${k1}.auto-reset-fail-count`);
+                conv.param2recipe(ddev, 'idle-timer', `${k1}.idle-timer`);
+                conv.param2recipe(ddev, 'password', `${k1}.password`);
                 conv.param2recipe(ddev, 'pin', `${k1}.pin`);
+                conv.param2recipe(ddev, 'username', `${k1}.id`);
 
-                if (ddev['device-option.ux312nc-3g-only'] == 'on') {
+                if (ddev['device-option'] != null &&
+                    ddev['device-option'][0] == 'ux312nc-3g-only' &&
+                    ddev['device-option'][1] == 'on') {
                     if (!conv.missing('dialup-device ... device-option ux312nc-3g-only')) {
                         conv.add(`${k1}.device-option.ux312nc-3g-only`, 'enable');
                     }

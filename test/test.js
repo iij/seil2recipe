@@ -287,7 +287,7 @@ describe('dhcp6', () => {
 });
 
 describe('dialup-device', () => {
-    it('with ppp interface', () => {
+    it('as a ppp interface', () => {
         assertconv([
             'ppp add PPP ipcp enable ipcp-address on ipcp-dns on ipv6cp enable identifier pppuser@mobile.example.jp passphrase ppppass keepalive 8 auto-connect ondemand idle-timer 60',
             'dialup-device access-point add AP cid 2 apn example.jp pdp-type ip',
@@ -315,6 +315,25 @@ describe('dialup-device', () => {
             'interface.ppp0.pdp-type: ip',
             'interface.ppp0.pin: 1234',
             'interface.ppp0.keepalive: 8'
+        ]);
+    });
+
+    it('as a wwan interface', () => {
+        assertconv([
+            'dialup-device access-point add AP apn example.jp',
+            'dialup-device mdm0 connect-to AP',
+            'dialup-device mdm0 authentication-method chap username foo password bar auto-connect always idle-timer 30',
+            'interface wwan0 over mdm0',
+            'interface wwan0 add dhcp',
+        ], [
+            'interface.wwan0.apn: example.jp',
+            'interface.wwan0.auth-method: chap',
+            'interface.wwan0.auto-connect: always',
+            'interface.wwan0.dialup-device: mdm0',
+            'interface.wwan0.idle-timer: 30',
+            'interface.wwan0.id: foo',
+            'interface.wwan0.ipv4.address: dhcp',
+            'interface.wwan0.password: bar',
         ]);
     });
 });
