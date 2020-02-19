@@ -219,7 +219,13 @@ class Conversion {
     // Conversion Utility
     //
     ifmap(new_name) {
-        return ifmap(new_name);
+        const bpv4_x4 = {
+            'lan0': 'ge1',
+            'lan1': 'ge0',
+            'lan2': 'ge2',
+            'lan*': 'ge*'
+        }
+        return bpv4_x4[new_name] || new_name;
     }
 
     missing(feature) {
@@ -568,16 +574,6 @@ function beautify(recipe_lines) {
     return sorted.join('\n') + '\n';
 }
 
-function ifmap(seilif) {
-    const bpv4_x4 = {
-        'lan0': 'ge1',
-        'lan1': 'ge0',
-        'lan2': 'ge2',
-        'lan*': 'ge*'
-    }
-    return bpv4_x4[seilif] || seilif;
-}
-
 function on2enable(onoff) {
     if (onoff == 'on') {
         return 'enable';
@@ -602,14 +598,14 @@ Converter.rules['application-gateway'] = {
         'bridging-interface': {
             'add': (conv, tokens) => {
                 const k = conv.get_index('application-gateway.input.ipv4.bridging');
-                conv.add(`${k}.interface: ${ifmap(tokens[3])}`);
+                conv.add(`${k}.interface: ${conv.ifmap(tokens[3])}`);
             },
         },
         // https://www.seil.jp/doc/index.html#fn/appgw/cmd/application-gateway_input-interface.html
         'input-interface': {
             'add': tokens => {
                 const k = newindex('application-gateway.input.ipv4.gateway');
-                return `${k}.interface: ${ifmap(tokens[3])}`;
+                return `${k}.interface: ${conv.ifmap(tokens[3])}`;
             },
         },
 
@@ -790,7 +786,7 @@ Converter.rules['bridge'] = {
                 const bridge_if = params['*ifname*'];
                 const k = conv.get_index(`interface.${bridge_if}.member`);
 
-                conv.add(`${k}.interface`, ifmap(member_if));
+                conv.add(`${k}.interface`, conv.ifmap(member_if));
             }
         }
     }
@@ -1298,7 +1294,7 @@ Converter.rules['filter'] = {
         // https://www.seil.jp/sx4/doc/sa/filter/config/filter.ipv4.html
 
         const params = conv.read_params('filter.ipv4', tokens, 2, {
-            'interface': value => ifmap(value),
+            'interface': value => conv.ifmap(value),
             'direction': true,
             'action': value => {
                 if (value == 'forward') {
@@ -1372,7 +1368,7 @@ Converter.rules['filter6'] = {
         // https://www.seil.jp/sx4/doc/sa/filter/config/filter.ipv6.html
 
         const params = conv.read_params('filter.ipv6', tokens, 2, {
-            'interface': value => ifmap(value),
+            'interface': value => conv.ifmap(value),
             'direction': true,
             'action': true,
             'protocol': true,
@@ -1614,7 +1610,7 @@ Converter.rules['interface'] = {
     // https://www.seil.jp/sx4/doc/sa/ge/config/interface.ge.html
     '*': {
         'add': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
 
             // interface <lan> add router-advertisement
             // interface <lan> add dhcp6
@@ -1676,7 +1672,7 @@ Converter.rules['interface'] = {
 
         // https://www.seil.jp/doc/index.html#fn/interface/cmd/interface_pppac.html#bind-realm
         'bind-realm': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             tokens[3].split(",").forEach(realm_name => {
                 const realm = conv.get_params('authentication.realm')[realm_name];
                 const kauth = conv.get_index(`interface.${ifname}.authentication`);
@@ -1708,7 +1704,7 @@ Converter.rules['interface'] = {
 
         'bind-tunnel-protocol': (conv, tokens) => {
             // interface <pppac> bind-tunnel-protocol <protocol_config_name>,...
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             if (!conv.get_memo('ipsec.anonymous-l2tp-transport')) {
                 conv.set_memo('ipsec.anonymous-l2tp-transport', []);
             }
@@ -1760,38 +1756,38 @@ Converter.rules['interface'] = {
         },
 
         'description': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             conv.add(`interface.${ifname}.description`, tokens[3]);
         },
 
         'floatlink': {
             'address-family': (conv, tokens) => {
-                const ifname = ifmap(tokens[1]);
+                const ifname = conv.ifmap(tokens[1]);
                 conv.add(`interface.${ifname}.floatlink.address-family`, tokens[4]);
             },
             'dynamic-local-address': (conv, tokens) => {
-                const ifname = ifmap(tokens[1]);
+                const ifname = conv.ifmap(tokens[1]);
                 conv.add(`interface.${ifname}.dynamic-local-address`, tokens[4]);
             },
             'dynamic-remote-address': (conv, tokens) => {
-                const ifname = ifmap(tokens[1]);
+                const ifname = conv.ifmap(tokens[1]);
                 conv.add(`interface.${ifname}.dynamic-remote-address`, tokens[4]);
             },
             // interface <ipsec> floatlink floatlink-key { <key> | none }
             'floatlink-key': (conv, tokens) => {
-                const ifname = ifmap(tokens[1]);
+                const ifname = conv.ifmap(tokens[1]);
                 conv.add(`interface.${ifname}.floatlink.key`, tokens[4]);
             },
             // interface <ipsec> floatlink ipv6 { disable | enable | system-default }
             'ipv6': (conv, tokens) => {
-                const ifname = ifmap(tokens[1]);
+                const ifname = conv.ifmap(tokens[1]);
                 if (tokens[4] == 'enable') {
                     conv.add(`interface.${ifname}.ipv6.forward`, 'pass');
                 }
             },
             'my-address': (conv, tokens) => {
                 // interface <ipsec> floatlink my-address { <interface> | <IPaddress> | none }
-                const ifname = ifmap(tokens[1]);
+                const ifname = conv.ifmap(tokens[1]);
                 if (tokens[4].is_ipv4_address()) {
                     conv.notsupported('my-address <IPaddress>');
                     return;
@@ -1799,7 +1795,7 @@ Converter.rules['interface'] = {
                 conv.add(`interface.${ifname}.floatlink.my-address`, conv.ifmap(tokens[4]));
             },
             'my-node-id': (conv, tokens) => {
-                const ifname = ifmap(tokens[1]);
+                const ifname = conv.ifmap(tokens[1]);
                 conv.add(`interface.${ifname}.floatlink.my-node-id`, tokens[4]);
 
                 // 後で interface.${ifname}.floatlink.name-service を書き出すためにメモに入れておく。
@@ -1807,22 +1803,22 @@ Converter.rules['interface'] = {
                 conv.get_memo('floatlink.interfaces').push(ifname);
             },
             'nat-traversal': (conv, tokens) => {
-                const ifname = ifmap(tokens[1]);
+                const ifname = conv.ifmap(tokens[1]);
                 conv.add(`interface.${ifname}.nat-traversal`, tokens[4]);
             },
             'peer-node-id': (conv, tokens) => {
-                const ifname = ifmap(tokens[1]);
+                const ifname = conv.ifmap(tokens[1]);
                 conv.add(`interface.${ifname}.floatlink.peer-node-id`, tokens[4]);
             },
             'preshared-key': (conv, tokens) => {
-                const ifname = ifmap(tokens[1]);
+                const ifname = conv.ifmap(tokens[1]);
                 conv.add(`interface.${ifname}.preshared-key`, tokens[4]);
             }
         },
 
         // interface <pppac> ipcp-configuration { none | <pppac_ipcp_config_name> }
         'ipcp-configuration': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             const ipcp = conv.get_params('pppac.ipcp-configuration')[tokens[3]];
             const pool = conv.get_params('pppac.pool')[ipcp['pool']];
 
@@ -1840,7 +1836,7 @@ Converter.rules['interface'] = {
 
             // interface <l2tp> l2tp <l2tp_name> remote-end-id <remote_end_id>
             '*': (conv, tokens) => {
-                const ifname = ifmap(tokens[1]);
+                const ifname = conv.ifmap(tokens[1]);
                 conv.add(`interface.${ifname}.remote-end-id`, tokens[5]);
 
                 const l2tp = conv.get_params('l2tp')[tokens[3]];
@@ -1857,7 +1853,7 @@ Converter.rules['interface'] = {
 
         // interface <pppac> max-session <number_of_sessions>
         'max-session': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             conv.add(`interface.${ifname}.max-session`, tokens[3]);
         },
 
@@ -1865,7 +1861,7 @@ Converter.rules['interface'] = {
 
         // interface <lan> media {<media>|auto}
         'media': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             switch (ifname) {
                 case 'ge0':
                     return `interface.ge0p0.media: ${tokens[3]}`
@@ -1948,7 +1944,7 @@ Converter.rules['interface'] = {
         },
 
         'ppp-configuration': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             const k1 = `interface.${ifname}`;
             const params = conv.get_params('ppp')[tokens[3]];
             conv.param2recipe(params, 'identifier', `${k1}.id`);
@@ -1969,24 +1965,24 @@ Converter.rules['interface'] = {
 
         // interface <vlan> tag <tag> [over <lan>]
         'tag': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             conv.add(`interface.${ifname}.vid`, tokens[3]);
-            var over_if = ifmap('lan0');
+            var over_if = conv.ifmap('lan0');
             if (tokens[4] == 'over') {
-                over_if = ifmap(tokens[5]);
+                over_if = conv.ifmap(tokens[5]);
             }
             conv.add(`interface.${ifname}.over`, over_if);
         },
 
         // interface <lan> tcp-mss { <size> | off | auto }
         // seil3 の "off" に相当する X4 コンフィグは "none" だが、"off" は show config で表示されない。
-        'tcp-mss': tokens => `interface.${ifmap(tokens[1])}.ipv4.tcp-mss: ${tokens[3]}`,
-        'tcp-mss6': tokens => `interface.${ifmap(tokens[1])}.ipv6.tcp-mss: ${tokens[3]}`,
+        'tcp-mss': tokens => `interface.${conv.ifmap(tokens[1])}.ipv4.tcp-mss: ${tokens[3]}`,
+        'tcp-mss6': tokens => `interface.${conv.ifmap(tokens[1])}.ipv6.tcp-mss: ${tokens[3]}`,
 
         // interface <ipsec> tunnel <start_IPaddress> <end_IPaddress>
         // interface <tunnel> tunnel dslite <aftr>
         'tunnel': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             if (tokens[3] == 'dslite') {
                 conv.add(`interface.${ifname}.ipv6.dslite.aftr`, tokens[4]);
             } else {
@@ -2016,27 +2012,27 @@ Converter.rules['interface'] = {
         },
 
         'tunnel-end-address': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             conv.add(`interface.${ifname}.ipv4.address`, tokens[3]);
         },
 
         // interface <ipsec> tx-tos-set { <tos> | copy | system-default }
-        'tx-tos-set': tokens => `interface.${ifmap(tokens[1])}.tx-tos-set: ${tokens[3]}`,
+        'tx-tos-set': tokens => `interface.${conv.ifmap(tokens[1])}.tx-tos-set: ${tokens[3]}`,
 
         // interface <ipsec> unnumbered [on <leased-interface>]
         'unnumbered': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             var lease;
             if (tokens[3] == 'on') {
-                lease = ifmap(tokens[4]);
+                lease = conv.ifmap(tokens[4]);
             } else {
-                lease = ifmap('lan0');
+                lease = conv.ifmap('lan0');
             }
             conv.add(`interface.${ifname}.ipv4.address`, lease);
         },
 
         'user-max-session': (conv, tokens) => {
-            const ifname = ifmap(tokens[1]);
+            const ifname = conv.ifmap(tokens[1]);
             conv.add(`interface.${ifname}.user-max-session`, tokens[3]);
         },
     },
@@ -2420,7 +2416,7 @@ Converter.rules['macfilter'] = {
             k1 = conv.get_index('macfilter.entry');
             conv.param2recipe(params, 'src', `${k1}.address`);
         }
-        conv.param2recipe(params, 'on', `${k1}.interface`, ifmap);
+        conv.param2recipe(params, 'on', `${k1}.interface`, name => conv.ifmap(name));
         conv.param2recipe(params, 'action', `${k1}.action`);
         conv.param2recipe(params, 'logging', `${k1}.logging`);
     }
@@ -2516,7 +2512,7 @@ Converter.rules['nat'] = {
             'interface': (conv, tokens) => {
                 // nat reflect add interface <interface>
                 const k1 = conv.get_index('nat.ipv4.reflect')
-                conv.add(`${k1}.interface: ${ifmap(tokens[4])}`);
+                conv.add(`${k1}.interface: ${conv.ifmap(tokens[4])}`);
             }
         }
     },
@@ -2833,7 +2829,7 @@ function route_filter_common(conv, prefix, name, af) {
         return;
     }
     const k = conv.get_index(prefix);
-    conv.param2recipe(rf, 'interface', `${k}.match.interface`, conv.ifmap);
+    conv.param2recipe(rf, 'interface', `${k}.match.interface`, val => conv.ifmap(val));
     conv.param2recipe(rf, 'network', `${k}.match.prefix`, val => `${val}`);
     conv.param2recipe(rf, 'set-as-path-prepend', `${k}.set.as-path-prepend`,
         val => val.split(',').join(' '));
@@ -3141,7 +3137,7 @@ Converter.rules['route'] = {
                             return;
                         }
                         const k1 = conv.get_index(`${to}.redistribute-from.${from}.filter`);
-                        conv.param2recipe(rf, 'interface', `${k1}.match.interface`, conv.ifmap);
+                        conv.param2recipe(rf, 'interface', `${k1}.match.interface`, val => conv.ifmap(val));
                         conv.param2recipe(rf, 'network', `${k1}.match.prefix`, val => `${val}`);
                         conv.param2recipe(rf, 'set-metric', `${k1}.set.metric`);
                         conv.param2recipe(rf, 'set-metric-type', `${k1}.set.metric-type`);
@@ -3182,7 +3178,7 @@ Converter.rules['route'] = {
                         'auth-key': (conv, tokens) => {
                             // route dynamic rip interface <interface>
                             //     authentication auth-key <key-name>
-                            const ifname = ifmap(tokens[4]);
+                            const ifname = conv.ifmap(tokens[4]);
                             const k1 = conv.get_memo(`rip.interface.${ifname}`);
                             if (k1 == null) {
                                 // route dynamic rip interface <if> disable
@@ -3207,7 +3203,7 @@ Converter.rules['route'] = {
                         'disable': [],
 
                         'enable': (conv, tokens) => {
-                            const ifname = ifmap(tokens[4]);
+                            const ifname = conv.ifmap(tokens[4]);
                             conv.set_memo(`rip.interface.${ifname}.authentication`, true);
                         },
                     },
@@ -3215,12 +3211,12 @@ Converter.rules['route'] = {
                     'disable': [],
 
                     'enable': (conv, tokens) => {
-                        const ifname = ifmap(tokens[4]);
+                        const ifname = conv.ifmap(tokens[4]);
                         conv.set_memo(`rip.interface.${ifname}`, conv.get_index('rip.interface'));
                     },
 
                     'listen-only': (conv, tokens) => {
-                        const ifname = ifmap(tokens[4]);
+                        const ifname = conv.ifmap(tokens[4]);
                         const k1 = conv.get_index('rip.interface');
                         conv.set_memo(`rip.interface.${ifname}`, k1);
                         conv.add(`${k1}.mode`, 'listen-only');
@@ -3233,7 +3229,7 @@ Converter.rules['route'] = {
                     },
 
                     'supply-only': (conv, tokens) => {
-                        const ifname = ifmap(tokens[4]);
+                        const ifname = conv.ifmap(tokens[4]);
                         const k1 = conv.get_index('rip.interface');
                         conv.set_memo(`rip.interface.${ifname}`, k1);
                         conv.add(`${k1}.mode`, 'supply-only');
@@ -3242,7 +3238,7 @@ Converter.rules['route'] = {
                     'version': (conv, tokens) => {
                         // route dynamic rip interface <interface>
                         //     version { ripv1 | ripv2 | ripv2-broadcast }
-                        const ifname = ifmap(tokens[4]);
+                        const ifname = conv.ifmap(tokens[4]);
                         const k1 = conv.get_memo(`rip.interface.${ifname}`);
                         if (k1 == null) {
                             return;
@@ -3419,7 +3415,7 @@ Converter.rules['route6'] = {
 
                         // route6 dynamic ripng interface <interface>
                         //     aggregate add <prefix/prefixlen> [metric <metric>]
-                        const ifname = ifmap(tokens[4]);
+                        const ifname = conv.ifmap(tokens[4]);
                         const k1 = conv.get_memo(`ripng.interface.${ifname}`);
                         if (k1 == null) {
                             return;
@@ -3436,7 +3432,7 @@ Converter.rules['route6'] = {
                     'enable': (conv, tokens) => {
                         if (!conv.get_memo('ripng.enable')) { return; }
 
-                        const ifname = ifmap(tokens[4]);
+                        const ifname = conv.ifmap(tokens[4]);
                         const k1 = conv.get_index('ripng.interface');
                         conv.set_memo(`ripng.interface.${ifname}`, k1);
                         conv.add(`${k1}.interface`, ifname);
@@ -3527,7 +3523,7 @@ Converter.rules['rtadvd'] = {
                 },
                 'auto': [],
                 'manual': (conv, tokens) => {
-                    const ifname = ifmap(tokens[3]);
+                    const ifname = conv.ifmap(tokens[3]);
                     conv.set_memo(`rtadvd.interface.${ifname}`, conv.get_index('router-advertisement'));
                 },
             },
@@ -3548,7 +3544,7 @@ Converter.rules['rtadvd'] = {
             },
 
             'disable': (conv, tokens) => {
-                const ifname = ifmap(tokens[2]);
+                const ifname = conv.ifmap(tokens[2]);
                 conv.set_memo(`rtadvd.interface.${ifname}`, null);
             },
 
@@ -3568,7 +3564,7 @@ Converter.rules['rtadvd'] = {
             },
 
             'enable': (conv, tokens) => {
-                const ifname = ifmap(tokens[2]);
+                const ifname = conv.ifmap(tokens[2]);
                 const k = conv.get_index('router-advertisement');
                 conv.set_memo(`rtadvd.interface.${ifname}`, k);
                 conv.add(`${k}.interface`, ifname);
@@ -3913,7 +3909,7 @@ Converter.rules['vrrp3'] = {
         const params = conv.read_params(null, tokens, 2, {
             'interface': {
                 key: `${k1}.interface`,
-                fun: conv.ifmap
+                fun: val => conv.ifmap(val)
             },
             'vrid': `${k1}.vrid`,
             'address': `${k1}.address`,
