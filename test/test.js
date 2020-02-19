@@ -287,10 +287,35 @@ describe('dhcp6', () => {
 });
 
 describe('dialup-device', () => {
-    it('is not supported', () => {
-        assert_conversions('dialup-device access-point add IIJ cid 2 apn iijmobile.jp', convs => {
-            assert(convs[0].errors[0].type == 'notsupported');
-        });
+    it('with ppp interface', () => {
+        assertconv([
+            'ppp add PPP ipcp enable ipcp-address on ipcp-dns on ipv6cp enable identifier pppuser@mobile.example.jp passphrase ppppass keepalive 8 auto-connect ondemand idle-timer 60',
+            'dialup-device access-point add AP cid 2 apn example.jp pdp-type ip',
+            'dialup-device mdm0 connect-to AP pin 1234 auto-reset-fail-count 10',
+            'dialup-device mdm0 device-option ux312nc-3g-only on',
+            'dialup-device keepalive-send-interval 30',
+            'dialup-device keepalive-down-count 20',
+            'dialup-device keepalive-timeout 3',
+            'interface ppp0 over mdm0',
+            'interface ppp0 ppp-configuration PPP',
+        ], [
+            'interface.ppp0.apn: example.jp',
+            'interface.ppp0.auto-reset-fail-count: 10',
+            'interface.ppp0.auto-reset-keepalive.down-detect-time: 10',
+            'interface.ppp0.auto-reset-keepalive.reply-timeout: 3',
+            'interface.ppp0.cid: 2',
+            'interface.ppp0.device-option.ux312nc-3g-only: enable',
+            'interface.ppp0.dialup-device: mdm0',
+            'interface.ppp0.id: pppuser@mobile.example.jp',
+            'interface.ppp0.ipcp: enable',
+            'interface.ppp0.ipcp.address: enable',
+            'interface.ppp0.ipcp.dns: enable',
+            'interface.ppp0.ipv6cp: enable',
+            'interface.ppp0.password: ppppass',
+            'interface.ppp0.pdp-type: ip',
+            'interface.ppp0.pin: 1234',
+            'interface.ppp0.keepalive: 8'
+        ]);
     });
 });
 

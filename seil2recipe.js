@@ -174,6 +174,12 @@ class Note {
     }
 
     set_param(prefix, label, key, value) {
+        if (!this.params[prefix]) {
+            this.params[prefix] = {};
+        }
+        if (!this.params[prefix][label]) {
+            this.params[prefix][label] = { '*NAME*': label };
+        }
         this.params[prefix][label][key] = value;
     }
 }
@@ -1165,8 +1171,66 @@ Converter.rules['dhcp6'] = {
     },
 };
 
-Converter.rules['dialup-device'] = (conv, tokens) => {
-    conv.notsupported()
+Converter.rules['dialup-device'] = {
+    'access-point': (conv, tokens) => {
+        // dialup-device access-point add <name>
+        //  [phone-number { <phone-number> | none }] [subaddress { <address> | none }]
+        //  [apn <apn>] [cid { <cid> | none }]
+        //  [pdp-type { ppp | ip | system-default }]
+        const name = tokens[3];
+        const params = conv.read_params('dialup-device.access-point', tokens, 3, {
+            'phone-number': 'notsupported',
+            'subaddress': 'notsupported',
+            'apn': true,
+            'cid': true,
+            'pdp-type': true
+        });
+        if (params['pdp-type'] == 'ppp') {
+            conv.notsupported('pdp-type ppp');
+            delete params['pdp-type'];
+            // it can be ignored.
+        }
+    },
+    'keepalive-down-count': (conv, tokens) => {
+        conv.set_memo('dialup-device.keepalive-down-count', tokens[2]);
+    },
+    'keepalive-send-interval': (conv, tokens) => {
+        conv.set_memo('dialup-device.keepalive-send-interval', tokens[2]);
+    },
+    'keepalive-timeout': (conv, tokens) => {
+        conv.set_memo('dialup-device.keepalive-timeout', tokens[2]);
+    },
+    '*': (conv, tokens) => {
+        // dialup-device { <foma> | <emobile> | <softbank> | <kddi> | <mdm> }
+        //  [connect-to { <access-point-name> | none }]
+        //  [pin { <pin> | none }]
+        //  [auto-reset-interval { auto | <interval> | none }]
+        //  [auto-reset-fail-count { <count> | none }]
+        // dialup-device <mdm>
+        //  [authentication-method { pap | chap | none }]
+        //  [username <username>] [password <password>]
+        //  [auto-connect { always | ondemand | system-default }]
+        //  [idle-timer { <idle-timer> | none }]
+        //  [auto-reset-interval { auto | <interval> | none }]
+        //  [auto-reset-fail-count { <count> | none }]
+        // dialup-device { <foma> | <emobile> | <softbank> | <kddi> |<mdm> }
+        //  keepalive add <IPv4address>
+        // dialup-device <mdm> device-option ux312nc-3g-only { on | off }
+        if (tokens[2] == 'device-option') {
+            conv.set_param('dialup-device', tokens[1], `device-option.${tokens[3]}`, tokens[4]);
+        } else {
+            conv.read_params('dialup-device', tokens, 1, {
+                'connect-to': true,
+                'pin': true,
+                'auto-reset-interval': 'notsupported',
+                'auto-reset-fail-count': true,
+                'authentiction-method': true,
+                'username': true,
+                'password': true,
+                'auto-connect': true
+            });
+        }
+    }
 };
 
 Converter.rules['dialup-network'] = (conv, tokens) => {
@@ -1826,12 +1890,52 @@ Converter.rules['interface'] = {
         },
 
         // interface <pppoe> over <lan>
-        'over': {
-            'lan1': [],
-            '*': (conv, tokens) => {
+        'over': (conv, tokens) => {
+            const device = tokens[3];
+            const ifname = conv.ifmap(tokens[1]);
+            const ddev = conv.get_params('dialup-device')[device];
+            if (device == 'lan1') {
+                // default value for <pppoe>
+            } else if (device.startsWith('lan')) {
+                // non-default values for <pppoe>
                 const ifname = conv.ifmap(tokens[1]);
-                conv.add(`interface.${ifname}.over`, conv.ifmap(tokens[3]));
-            },
+                conv.add(`interface.${ifname}.over`, conv.ifmap(device));
+            } else if (ddev != null) {
+                // for <ppp>
+                const k1 = `interface.${ifname}`;
+                conv.add(`${k1}.dialup-device`, device);
+
+                conv.param2recipe(ddev, 'auto-reset-fail-count', `${k1}.auto-reset-fail-count`);
+                conv.param2recipe(ddev, 'pin', `${k1}.pin`);
+
+                if (ddev['device-option.ux312nc-3g-only'] == 'on') {
+                    if (!conv.missing('dialup-device ... device-option ux312nc-3g-only')) {
+                        conv.add(`${k1}.device-option.ux312nc-3g-only`, 'enable');
+                    }
+                }
+
+                const apname = ddev['connect-to'];
+                const ap = conv.get_params('dialup-device.access-point')[apname];
+                conv.param2recipe(ap, 'apn', `${k1}.apn`);
+                conv.param2recipe(ap, 'cid', `${k1}.cid`);
+                conv.param2recipe(ap, 'pdp-type', `${k1}.pdp-type`);
+
+                const kto = conv.get_memo('dialup-device.keepalive-timeout');
+                if (kto != null) {
+                    conv.add(`${k1}.auto-reset-keepalive.reply-timeout`, kto);
+                }
+
+                // seil3 では (interval, count) の両方をそれぞれ設定したが、
+                // seil6/8 ではその積である down-detect-time のみ設定する。
+                var ksi = conv.get_memo('dialup-device.keepalive-send-interval');
+                var kdc = conv.get_memo('dialup-device.keepalive-down-countl');
+                if (ksi != null || kdc != null) {
+                    if (ksi == null) ksi = '30';
+                    if (kdc == null) kdc = '20';
+                    const ddt = String(Number(ksi) * Number(kdc) / 60);
+                    conv.add(`${k1}.auto-reset-keepalive.down-detect-time`, ddt);
+                }
+            }
         },
 
         'ppp-configuration': (conv, tokens) => {
