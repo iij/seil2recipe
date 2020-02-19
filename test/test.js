@@ -5,7 +5,7 @@ function assertconv(seil_config, recipe_config) {
     if (seil_config instanceof Array) {
         seil_config = seil_config.join('\n');
     }
-    const c = new s2r.Converter(seil_config + '\n', 'x4');
+    const c = new s2r.Converter(seil_config + '\n', 'test');
 
     const expected = (typeof recipe_config == 'string') ? [ recipe_config ] : recipe_config;
     const actual   = c.recipe_config.trim().split('\n');
@@ -19,7 +19,7 @@ function assert_conversions(seil_config, fun) {
     if (seil_config instanceof Array) {
         seil_config = seil_config.join('\n');
     }
-    const c = new s2r.Converter(seil_config + '\n');
+    const c = new s2r.Converter(seil_config + '\n', 'test');
     fun.call(null, c.conversions);
 }
 

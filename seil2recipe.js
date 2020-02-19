@@ -219,6 +219,9 @@ class Conversion {
     missing(feature) {
         // Note: this method returns true only if our device does not support
         // the feature but some device supports it.
+        if (this.note.dst.shortname == 'test') {
+            return false;
+        }
         let f = CompatibilityList[feature];
         var b;
         if (this.note.dst.gen == 'seil6') {
@@ -440,7 +443,7 @@ class Conversion {
 
 class Device {
     constructor(shortname) {
-        this.type = shortname;
+        this.shortname = shortname;
         this.gen = ['w1', 'w2', 'w2l'].includes(shortname) ? 'seil6' : 'seil8';
 
         this.name = {
