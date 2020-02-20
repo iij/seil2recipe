@@ -1084,6 +1084,7 @@ describe('route', () => {
         ], [
             'rip.interface.100.authentication.plain-text.password: himitsu',
             'rip.interface.100.authentication.type: plain-text',
+            'rip.interface.100.interface: ge1',
             'rip.interface.100.version: ripv2',
             'rip.timer.update: 5',
             'rip.timer.expire: 30',
