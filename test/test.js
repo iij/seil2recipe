@@ -2,16 +2,30 @@ const s2r = require('../seil2recipe');
 const assert = require('assert');
 
 function assertconv(seil_config, recipe_config) {
+    if (recipe_config == null) {
+        [ seil_config, recipe_config ] = seil_config.split("---\n");
+        if (recipe_config == null) {
+            assert.fail('no separator found!');
+        }
+    }
+
     if (seil_config instanceof Array) {
         seil_config = seil_config.join('\n');
     }
-    const c = new s2r.Converter(seil_config + '\n');
+    const c = new s2r.Converter(seil_config + '\n', 'test');
 
-    const expected = (typeof recipe_config == 'string') ? [ recipe_config ] : recipe_config;
-    const actual   = c.recipe_config.trim().split('\n');
-
+    const actual = c.recipe_config.trim().split('\n');
     actual.sort();
+
+    var expected = recipe_config;
+    if (!(expected instanceof Array)) {
+        expected = expected.split('\n').map(s => s.trim()).filter(s => (s != ''));
+    }
+    if (expected.length == 0) {
+        expected = [''];
+    }
     expected.sort();
+
     assert.deepStrictEqual(actual, expected);
 }
 
@@ -19,7 +33,7 @@ function assert_conversions(seil_config, fun) {
     if (seil_config instanceof Array) {
         seil_config = seil_config.join('\n');
     }
-    const c = new s2r.Converter(seil_config + '\n');
+    const c = new s2r.Converter(seil_config + '\n', 'test');
     fun.call(null, c.conversions);
 }
 
@@ -287,18 +301,72 @@ describe('dhcp6', () => {
 });
 
 describe('dialup-device', () => {
-    it('is not supported', () => {
-        assert_conversions('dialup-device access-point add IIJ cid 2 apn iijmobile.jp', convs => {
-            assert(convs[0].errors[0].type == 'notsupported');
-        });
+    it('as a ppp interface', () => {
+        assertconv([
+            'ppp add PPP ipcp enable ipcp-address on ipcp-dns on ipv6cp enable identifier pppuser@mobile.example.jp passphrase ppppass keepalive 8 auto-connect ondemand idle-timer 60',
+            'dialup-device access-point add AP cid 2 apn example.jp pdp-type ip',
+            'dialup-device mdm0 connect-to AP pin 1234 auto-reset-fail-count 10',
+            'dialup-device mdm0 device-option ux312nc-3g-only on',
+            'dialup-device keepalive-send-interval 30',
+            'dialup-device keepalive-down-count 20',
+            'dialup-device keepalive-timeout 3',
+            'interface ppp0 over mdm0',
+            'interface ppp0 ppp-configuration PPP',
+        ], [
+            'interface.ppp0.apn: example.jp',
+            'interface.ppp0.auto-reset-fail-count: 10',
+            'interface.ppp0.auto-reset-keepalive.down-detect-time: 10',
+            'interface.ppp0.auto-reset-keepalive.reply-timeout: 3',
+            'interface.ppp0.cid: 2',
+            'interface.ppp0.device-option.ux312nc-3g-only: enable',
+            'interface.ppp0.dialup-device: mdm0',
+            'interface.ppp0.id: pppuser@mobile.example.jp',
+            'interface.ppp0.ipcp: enable',
+            'interface.ppp0.ipcp.address: enable',
+            'interface.ppp0.ipcp.dns: enable',
+            'interface.ppp0.ipv6cp: enable',
+            'interface.ppp0.password: ppppass',
+            'interface.ppp0.pdp-type: ip',
+            'interface.ppp0.pin: 1234',
+            'interface.ppp0.keepalive: 8'
+        ]);
+    });
+
+    it('as a wwan interface', () => {
+        assertconv([
+            'dialup-device access-point add AP apn example.jp',
+            'dialup-device mdm0 connect-to AP',
+            'dialup-device mdm0 authentication-method chap username foo password bar auto-connect always idle-timer 30',
+            'interface wwan0 over mdm0',
+            'interface wwan0 add dhcp',
+        ], [
+            'interface.wwan0.apn: example.jp',
+            'interface.wwan0.auth-method: chap',
+            'interface.wwan0.auto-connect: always',
+            'interface.wwan0.dialup-device: mdm0',
+            'interface.wwan0.idle-timer: 30',
+            'interface.wwan0.id: foo',
+            'interface.wwan0.ipv4.address: dhcp',
+            'interface.wwan0.password: bar',
+        ]);
     });
 });
 
 describe('dialup-network', () => {
-    it('is not supported', () => {
-        assert_conversions('dialup-network l2tp-dn0 connect-to 172.16.0.1 ipsec-preshared-key "ipsecpskey"', convs => {
-            assert(convs[0].errors[0].type == 'notsupported');
-        });
+    it('basic', () => {
+        assertconv(`
+            dialup-network l2tp-dn0 connect-to 172.16.0.1 ipsec-preshared-key "ipsecpskey"
+            ppp add DUN ipcp enable ipcp-address on authentication-method mschapv2 identifier foo passphrase bar
+            interface ppp0 over l2tp-dn0
+            interface ppp0 ppp-configuration DUN
+            ---
+            interface.rac0.id: foo
+            interface.rac0.ipcp: enable
+            interface.rac0.ipcp.address: enable
+            interface.rac0.ipsec-preshared-key: ipsecpskey
+            interface.rac0.password: bar
+            interface.rac0.server.ipv4.address: 172.16.0.1
+        `);
     });
 });
 

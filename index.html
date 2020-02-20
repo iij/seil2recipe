@@ -23,7 +23,7 @@
   <div>
     <div class="config-area">
       <div id="seilconfig" class="config-row">
-        <div class="model">SEIL BPV4 (6.01)</div>
+        <div class="model">From: SEIL/X1, X2, B1, x86 Fuji, BPV4 (6.01)</div>
         <textarea class="config-text" v-model="text" rows="20" cols="64" spellcheck="false"
           placeholder="Enter SEIL config here."></textarea>
       </div>
@@ -32,11 +32,19 @@
         &#9654;
       </div>
 
-      <div id="recipeconfig" class="config-row">
-        <div class="model">SEIL/X4 (2.01)</div>
-        <textarea class="config-text" v-model="text" rows="20" cols="64" spellcheck="false"
+      <div class="config-row">
+        <div class="model">To:
+          <select id="model-dst" v-model="selected">
+            <option value="w1">SA-W1 (4.40)</option>
+            <option value="w2">SA-W2 (4.40)</option>
+            <option value="w2l">SA-W2L (4.40)</option>
+            <option value="x4" selected>SEIL/X4 (2.01)</option>
+            <option value="ayame">SEIL/x86 Ayame (2.01)</option>
+          </select>
+        </div>
+        <textarea id="recipeconfig" class="config-text" v-model="text" rows="20" cols="64" spellcheck="false"
           placeholder="Converted recipe config will be shown here." readonly></textarea>
-      </div>
+        </div>
     </div>
 
     <ul id="status" style="list-style-type: none; margin: 10px 50px;">
@@ -53,7 +61,6 @@
 
   <div class="usage">
     <ul class="usage-list">
-      <li>SEIL BPV4 バージョン 6.01 のコンフィグを SEIL/X4 バージョン 2.01 のコンフィグに変換します。</li>
       <li>入力されるコンフィグには "show config" コマンドで表示される形式を想定しています。</li>
       <ul>
           <li>うまく変換できない場合は、いったん実機にコンフィグを投入して "show config" を実行し、正規化してみてください。</li>
@@ -69,6 +76,13 @@
   </div>
 
   <script>
+    var dst = new Vue({
+      el: '#model-dst',
+      data: {
+        selected: 'x4'
+      }
+    })
+
     var seilconfig = new Vue({
       el: '#seilconfig',
       data: {
@@ -151,7 +165,7 @@ vendor OEM
       },
       computed: {
         s2r: function () {
-          return new Converter(seilconfig.text);
+          return new Converter(seilconfig.text, dst.selected);
         }
       }
     })
