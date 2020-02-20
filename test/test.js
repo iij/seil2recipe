@@ -353,10 +353,20 @@ describe('dialup-device', () => {
 });
 
 describe('dialup-network', () => {
-    it('is not supported', () => {
-        assert_conversions('dialup-network l2tp-dn0 connect-to 172.16.0.1 ipsec-preshared-key "ipsecpskey"', convs => {
-            assert(convs[0].errors[0].type == 'notsupported');
-        });
+    it('basic', () => {
+        assertconv(`
+            dialup-network l2tp-dn0 connect-to 172.16.0.1 ipsec-preshared-key "ipsecpskey"
+            ppp add DUN ipcp enable ipcp-address on authentication-method mschapv2 identifier foo passphrase bar
+            interface ppp0 over l2tp-dn0
+            interface ppp0 ppp-configuration DUN
+            ---
+            interface.rac0.id: foo
+            interface.rac0.ipcp: enable
+            interface.rac0.ipcp.address: enable
+            interface.rac0.ipsec-preshared-key: ipsecpskey
+            interface.rac0.password: bar
+            interface.rac0.server.ipv4.address: 172.16.0.1
+        `);
     });
 });
 

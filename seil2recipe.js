@@ -128,6 +128,16 @@ class Note {
         this.memo.set('floatlink.interfaces', []);
         this.memo.set('ike.preshared-key', {});
         this.memo.set('interface.l2tp.tunnel', {});
+
+        this.if_mappings = {
+            'lan0': 'ge1',
+            'lan1': 'ge0',
+            'lan2': 'ge2',
+            'lan3': 'ge3',
+            'lan4': 'ge4',
+            'lan5': 'ge5',
+            'lan*': 'ge*'
+        };
     }
 
     get_memo(key) {
@@ -223,13 +233,11 @@ class Conversion {
     // Conversion Utility
     //
     ifmap(new_name) {
-        const bpv4_x4 = {
-            'lan0': 'ge1',
-            'lan1': 'ge0',
-            'lan2': 'ge2',
-            'lan*': 'ge*'
-        }
-        return bpv4_x4[new_name] || new_name;
+        return this.note.if_mappings[new_name] || new_name;
+    }
+
+    set_ifmap(old_name, new_name) {
+        this.note.if_mappings[old_name] = new_name;
     }
 
     missing(feature) {
@@ -1236,7 +1244,13 @@ Converter.rules['dialup-device'] = {
 };
 
 Converter.rules['dialup-network'] = (conv, tokens) => {
-    conv.notsupported()
+    // dialup-network <dialup-network> connect-to { <IPaddress> | <hostname> | "" }
+    //   [ipsec-preshared-key { <preshared-key> | "" }]
+    if (conv.missing('dialup-network')) { return; }
+    conv.read_params('dialup-network', tokens, 1, {
+        'connect-to': true,
+        'ipsec-preshared-key': true,
+    });
 };
 
 Converter.rules['dns'] = {
@@ -1896,6 +1910,7 @@ Converter.rules['interface'] = {
             const device = tokens[3];
             const ifname = conv.ifmap(tokens[1]);
             const ddev = conv.get_params('dialup-device')[device];
+            const dnet = conv.get_params('dialup-network')[device];
             if (device == 'lan1') {
                 // default value for <pppoe>
             } else if (device.startsWith('lan')) {
@@ -1944,6 +1959,11 @@ Converter.rules['interface'] = {
                     const ddt = String(Number(ksi) * Number(kdc) / 60);
                     conv.add(`${k1}.auto-reset-keepalive.down-detect-time`, ddt);
                 }
+            } else if (dnet != null) {
+                conv.set_ifmap(ifname, 'rac0');
+                const k1 = `interface.rac0`;
+                conv.param2recipe(dnet, 'connect-to', `${k1}.server.ipv4.address`);
+                conv.param2recipe(dnet, 'ipsec-preshared-key', `${k1}.ipsec-preshared-key`);
             }
         },
 
@@ -2699,7 +2719,7 @@ Converter.rules['ppp'] = {
             'idle-timer': 'notsupported',
             'mppe': 'notsupported'
         });
-        if (params['authentication-method'] != 'auto') {
+        if (!['auto', 'mschapv2'].includes(params['authentication-method'])) {
             conv.notsupported(`ppp authentication-method ${params['authentication-method']}`);
         }
     },
