@@ -1061,7 +1061,16 @@ describe('resolver', () => {
 });
 
 describe('route', () => {
-    it('RIP', () => {
+    it('RIP minimal', () => {
+        assertconv(`
+        route dynamic rip enable
+        route dynamic rip interface lan0 enable
+        ---
+        rip.interface.100.interface: ge1
+        `);
+    });
+
+    it('RIP with authenticaiton', () => {
         assertconv([
             'route dynamic auth-key add FOO type plain-text password himitsu',
             'route dynamic rip enable',

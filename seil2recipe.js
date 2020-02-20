@@ -3236,7 +3236,9 @@ Converter.rules['route'] = {
 
                     'enable': (conv, tokens) => {
                         const ifname = conv.ifmap(tokens[4]);
-                        conv.set_memo(`rip.interface.${ifname}`, conv.get_index('rip.interface'));
+                        const k1 = conv.get_index('rip.interface');
+                        conv.set_memo(`rip.interface.${ifname}`, k1);
+                        conv.add(`${k1}.interface`, ifname);
                     },
 
                     'listen-only': (conv, tokens) => {
