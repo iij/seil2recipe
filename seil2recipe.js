@@ -97,7 +97,11 @@ class Converter {
                     node['.'](conv, tokens);
                 }
             } catch (error) {
-                conv.exception(error)
+                if (this.note.dst.shortname != 'test') {
+                    conv.exception(error)
+                } else {
+                    throw error;
+                }
             }
 
             this.conversions.push(conv);
