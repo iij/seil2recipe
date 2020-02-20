@@ -2,16 +2,30 @@ const s2r = require('../seil2recipe');
 const assert = require('assert');
 
 function assertconv(seil_config, recipe_config) {
+    if (recipe_config == null) {
+        [ seil_config, recipe_config ] = seil_config.split("---\n");
+        if (recipe_config == null) {
+            assert.fail('no separator found!');
+        }
+    }
+
     if (seil_config instanceof Array) {
         seil_config = seil_config.join('\n');
     }
     const c = new s2r.Converter(seil_config + '\n', 'test');
 
-    const expected = (typeof recipe_config == 'string') ? [ recipe_config ] : recipe_config;
-    const actual   = c.recipe_config.trim().split('\n');
-
+    const actual = c.recipe_config.trim().split('\n');
     actual.sort();
+
+    var expected = recipe_config;
+    if (!(expected instanceof Array)) {
+        expected = expected.split('\n').map(s => s.trim()).filter(s => (s != ''));
+    }
+    if (expected.length == 0) {
+        expected = [''];
+    }
     expected.sort();
+
     assert.deepStrictEqual(actual, expected);
 }
 
