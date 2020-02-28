@@ -2189,7 +2189,9 @@ Converter.rules['ipsec'] = {
                         conv.add(`${ke}.algorithm`, alg);
                     });
                     conv.param2recipe(ikep, 'dh-group', `${k2}.dh-group`);
-                    conv.param2recipe(ikep, 'lifetime-of-time', `${k2}.lifetime`);
+
+                    // IKE phase1 lifetime のデフォルト値は 28800 → 86400 に変更されている。
+                    conv.add(`${k2}.lifetime`, ikep['lifetime-of-time'] || '8h') ;
                 }
             } else {
                 // ipsec security-association add <name> { tunnel | transport }

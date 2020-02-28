@@ -723,6 +723,28 @@ describe('interface', () => {
 });
 
 describe('ipsec', () => {
+    it('mimimal routing-based ipsec', () => {
+        assertconv(`
+            interface ipsec0 tunnel 10.0.0.1 10.0.0.2
+            ike preshared-key add "10.0.0.2" "hogehogehoge"
+            ike proposal add IKEP encryption aes128 hash sha256 authentication preshared-key dh-group modp1536
+            ike peer add IKEPEER address 10.0.0.2 exchange-mode main proposals IKEP tunnel-interface enable
+            ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes256
+            ipsec security-association add SA tunnel-interface ipsec0 ike SAP esp enable
+            ---
+            interface.ipsec0.ipv4.source: 10.0.0.1
+            interface.ipsec0.ipv4.destination: 10.0.0.2
+            interface.ipsec0.ipv6.forward: pass
+            interface.ipsec0.preshared-key: hogehogehoge
+            interface.ipsec0.ike.proposal.phase1.encryption.100.algorithm: aes128
+            interface.ipsec0.ike.proposal.phase1.hash.100.algorithm: sha256
+            interface.ipsec0.ike.proposal.phase1.dh-group: modp1536
+            interface.ipsec0.ike.proposal.phase1.lifetime: 8h
+            interface.ipsec0.ike.proposal.phase2.authentication.100.algorithm: hmac-sha1
+            interface.ipsec0.ike.proposal.phase2.encryption.100.algorithm: aes256
+        `);
+    });
+
     it('ルーティングベース IPsec', () => {
         assertconv([
             'interface ipsec0 tunnel 10.0.0.1 10.0.0.2',
