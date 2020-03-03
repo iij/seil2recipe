@@ -112,8 +112,20 @@ class Converter {
                 fun(conv);
             });
         });
+
+        const deferconv = new Conversion("", 0, this.note);
+        Converter.defers.forEach((fun) => {
+            fun(deferconv);
+        });
+        this.conversions.push(deferconv);
+    }
+
+    static defer(fun) {
+        Converter.defers.push(fun);
     }
 }
+
+Converter.defers = [];
 
 
 class Note {
@@ -240,7 +252,7 @@ class Conversion {
         this.note.if_mappings[old_name] = new_name;
     }
 
-    missing(feature) {
+    missing(feature, nowarning) {
         // Note: this method returns true only if our device does not support
         // the feature but some device supports it.
         if (this.note.dst.shortname == 'test') {
@@ -253,7 +265,7 @@ class Conversion {
         } else {
             b = (f[1] == 0);
         }
-        if (b) {
+        if (b && !nowarning) {
             this.notsupported(feature);
         }
         return b;
@@ -499,6 +511,7 @@ const CompatibilityList = {
     'interface ... add dhcp6':                         [    0,    1 ],
 //    'interface ... queue cbq':                         [    0,    1 ],
     'nat upnp timeout':                                [    0,    1 ],
+    'option ip fragment-requeueing off':               [    0,    1 ],
     'option ip multipath-selection':                   [    0,    1 ],
     'pppac option session-limit off':                  [    0,    1 ],
     'route dynamic rip':                               [    0,    1 ],
@@ -2679,7 +2692,12 @@ Converter.rules['option'] = {
         'accept-redirect': 'notsupported',
         'broadcast-icmp': 'notsupported',
         'directed-broadcast': tokens => `option.ipv4.directed-broadcast.service: ${on2enable(tokens[3])}`,
-        'fragment-requeueing': tokens => `option.ipv4.fragment-requeueing.service: ${on2enable(tokens[3])}`,
+        'fragment-requeueing': (conv, tokens) => {
+            const onoff = tokens[3];
+            if (conv.missing('option ip fragment-requeueing off', onoff == 'on')) { return };
+            conv.set_memo('option.ip.fragment-requeueing', onoff);
+            conv.add('option.ipv4.fragment-requeueing.service', on2enable(onoff));
+        },
         'mask-reply': 'deprecated',
         'monitor-linkstate': tokens => `option.ipv4.monitor-linkstate.service: ${on2enable(tokens[3])}`,
         'multipath-selection': (conv, tokens) => {
@@ -2701,6 +2719,12 @@ Converter.rules['option'] = {
 
     'statistics': 'notsupported',
 };
+
+Converter.defer((conv) => {
+    if (!conv.get_memo('option.ip.fragment-requeueing')) {
+        conv.add('option.ipv4.fragment-requeueing.service', 'disable');
+    }
+});
 
 Converter.rules['ppp'] = {
     'add': (conv, tokens) => {

@@ -1,6 +1,9 @@
 const s2r = require('../seil2recipe');
 const assert = require('assert');
 
+
+const default_config_set = new Set(new s2r.Converter('', 'test').recipe_config.trim().split('\n'));
+
 function assertconv(seil_config, recipe_config) {
     if (recipe_config == null) {
         [ seil_config, recipe_config ] = seil_config.split("---\n");
@@ -14,15 +17,15 @@ function assertconv(seil_config, recipe_config) {
     }
     const c = new s2r.Converter(seil_config + '\n', 'test');
 
-    const actual = c.recipe_config.trim().split('\n');
+    var actual = c.recipe_config.trim().split('\n').filter(line => {
+        return !default_config_set.has(line);
+    });
     actual.sort();
 
     var expected = recipe_config;
     if (!(expected instanceof Array)) {
-        expected = expected.split('\n').map(s => s.trim()).filter(s => (s != ''));
-    }
-    if (expected.length == 0) {
-        expected = [''];
+        expected = expected.split('\n').map(s => s.trim())
+            .filter(line => { return line != '' });
     }
     expected.sort();
 
@@ -36,6 +39,7 @@ function assert_conversions(seil_config, fun) {
     const c = new s2r.Converter(seil_config + '\n', 'test');
     fun.call(null, c.conversions);
 }
+
 
 describe('application-gateway', () => {
     it('is not supported.', () => {
@@ -124,9 +128,7 @@ describe('bridge', () => {
             'bridge disable',
             'bridge ip-bridging on',
             'bridge ipv6-bridging on',
-        ], [
-            ""
-        ]);
+        ], []);
     });
 
     it('bridge group => interface.bridge0...', () => {
@@ -1026,7 +1028,13 @@ describe('option', () => {
             'option.ipv4.directed-broadcast.service: enable',
             'option.ipv4.fragment-requeueing.service: enable',
         ])
+    });
 
+    it('may be omitted from recipe_config part of a test case', () => {
+        assertconv(`
+            option ip fragment-requeueing off
+            ---
+        `);
     });
 });
 
@@ -1174,7 +1182,7 @@ describe('route', () => {
                 'route dynamic redistribute static-to-ospf enable',
                 'route dynamic redistribute rip-to-ospf enable',
                 'route dynamic redistribute bgp-to-ospf enable',
-            ], [ '' ]);
+            ], []);
         });
     });
 
