@@ -512,7 +512,12 @@ const CompatibilityList = {
 //    'interface ... queue cbq':                         [    0,    1 ],
     'nat upnp timeout':                                [    0,    1 ],
     'option ip fragment-requeueing off':               [    0,    1 ],
+    'option ip monitor-linkstate off':                 [    0,    1 ],
     'option ip multipath-selection':                   [    0,    1 ],
+    'option ip redirects on':                          [    0,    1 ],
+    'option ipv6 fragment-requeueing off':             [    0,    1 ],
+    'option ipv6 monitor-linkstate off':               [    0,    1 ],
+    'option ipv6 redirects on':                        [    0,    1 ],
     'pppac option session-limit off':                  [    0,    1 ],
     'route dynamic rip':                               [    0,    1 ],
     'route6 dynamic ospf':                             [    0,    1 ],
@@ -2689,41 +2694,93 @@ Converter.rules['ntp'] = {
 
 Converter.rules['option'] = {
     'ip': {
-        'accept-redirect': 'notsupported',
-        'broadcast-icmp': 'notsupported',
+        'accept-redirect': (conv, tokens) => {
+            if (tokens[3] != 'off') {
+                conv.notsupported();
+            }
+        },
+        'broadcast-icmp': (conv, tokens) => {
+            if (tokens[3] != 'ignore') {
+                conv.notsupported();
+            }
+        },
         'directed-broadcast': tokens => `option.ipv4.directed-broadcast.service: ${on2enable(tokens[3])}`,
         'fragment-requeueing': (conv, tokens) => {
-            const onoff = tokens[3];
-            if (conv.missing('option ip fragment-requeueing off', onoff == 'on')) { return };
-            conv.set_memo('option.ip.fragment-requeueing', onoff);
-            conv.add('option.ipv4.fragment-requeueing.service', on2enable(onoff));
+            conv.set_memo('option.ipv4.fragment-requeueing.service',
+                [ conv, on2enable(tokens[3]) ]);
         },
-        'mask-reply': 'deprecated',
-        'monitor-linkstate': tokens => `option.ipv4.monitor-linkstate.service: ${on2enable(tokens[3])}`,
+        'mask-reply': (conv, tokens) => {
+            if (tokens[3] != 'off') {
+                conv.notsupported();
+            }
+        },
+        'monitor-linkstate': (conv, tokens) => {
+            conv.set_memo('option.ipv4.monitor-linkstate.service',
+                [ conv, on2enable(tokens[3]) ]);
+        },
         'multipath-selection': (conv, tokens) => {
             if (conv.missing('option ip multipath-selection')) { return; }
             conv.add('option.ipv4.multipath-selection.service', on2enable(tokens[3]));
         },
-        'redirects': tokens => `option.ipv4.send-icmp-redirect.service: ${on2enable(tokens[3])}`,
-        'unicast-rpf': 'notsupported',
+        'redirects': (conv, tokens) => {
+            conv.set_memo('option.ipv4.send-icmp-redirect.service',
+                [ conv, on2enable(tokens[3]) ]);
+        },
+        'unicast-rpf': (conv, tokens) => {
+            if (tokens[3] != 'none') {
+                conv.notsupported();
+            }
+        },
         'update-connected-route': tokens => `option.ipv4.update-connected-route.service: ${on2enable(tokens[3])}`,
     },
 
     'ipv6': {
         'avoid-path-mtu-discovery': 'deprecated',
-        'monitor-linkstate': tokens => `option.ipv6.monitor-linkstate.service: ${on2enable(tokens[3])}`,
-        'redirects': tokens => `option.ipv6.send-icmp-redirect.service: ${on2enable(tokens[3])}`,
-        'unicast-rpf': 'notsupported',
+        'fragment-requeueing': (conv, tokens) => {
+            conv.set_memo('option.ipv6.fragment-requeueing.service',
+                [conv, on2enable(tokens[3])]);
+        },
+        'monitor-linkstate': (conv, tokens) => {
+            conv.set_memo('option.ipv6.monitor-linkstate.service',
+                [conv, on2enable(tokens[3])]);
+        },
+        'redirects': (conv, tokens) => {
+            conv.set_memo('option.ipv6.send-icmp-redirect.service',
+                [conv, on2enable(tokens[3])]);
+        },
+        'unicast-rpf': (conv, tokens) => {
+            if (tokens[3] != 'none') {
+                conv.notsupported();
+            }
+        },
         'update-connected-route': tokens => `option.ipv6.update-connected-route.service: ${on2enable(tokens[3])}`,
     },
 
     'statistics': 'notsupported',
 };
 
-Converter.defer((conv) => {
-    if (!conv.get_memo('option.ip.fragment-requeueing')) {
-        conv.add('option.ipv4.fragment-requeueing.service', 'disable');
+function spec_changed_options(conv, feature, new_key, old_default_value, new_default_value) {
+    const [old_conv, old_value] = conv.get_memo(new_key) || [null, null];
+    if (!conv.missing(feature, true)) {
+        conv.add(new_key, old_value || old_default_value);
+    } else if (new_value != new_default_value) {
+        old_conv.notsupported();
     }
+}
+
+Converter.defer((conv) => {
+    spec_changed_options(conv, 'option ip fragment-requeueing off',
+        'option.ipv4.fragment-requeueing.service', 'disable', 'enable');
+    spec_changed_options(conv, 'option ip monitor-linkstate off',
+        'option.ipv4.monitor-linkstate.service', 'disable', 'enable');
+    spec_changed_options(conv, 'option ip redirects on',
+        'option.ipv4.send-icmp-redirect.service', 'enable', 'disable');
+    spec_changed_options(conv, 'option ipv6 fragment-requeueing off',
+        'option.ipv6.fragment-requeueing.service', 'disable', 'enable');
+    spec_changed_options(conv, 'option ipv6 monitor-linkstate off',
+        'option.ipv6.monitor-linkstate.service', 'disable', 'enable');
+    spec_changed_options(conv, 'option ipv6 redirects on',
+        'option.ipv6.send-icmp-redirect.service', 'enable', 'disable');
 });
 
 Converter.rules['ppp'] = {

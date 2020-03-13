@@ -1021,18 +1021,33 @@ describe('ntp', () => {
 
 describe('option', () => {
     it('options', () => {
-        assertconv([
-            'option ip directed-broadcast on',
-            'option ip fragment-requeueing on',
-        ], [
-            'option.ipv4.directed-broadcast.service: enable',
-            'option.ipv4.fragment-requeueing.service: enable',
-        ])
+        assertconv(`
+            option ip directed-broadcast on
+            option ip fragment-requeueing on
+            option ip monitor-linkstate on
+            option ip redirects off
+            option ipv6 fragment-requeueing on
+            option ipv6 monitor-linkstate on
+            option ipv6 redirects off
+            ---
+            option.ipv4.directed-broadcast.service: enable
+            option.ipv4.fragment-requeueing.service: enable
+            option.ipv4.monitor-linkstate.service: enable
+            option.ipv4.send-icmp-redirect.service: disable
+            option.ipv6.fragment-requeueing.service: enable
+            option.ipv6.monitor-linkstate.service: enable
+            option.ipv6.send-icmp-redirect.service: disable
+        `);
     });
 
     it('may be omitted from recipe_config part of a test case', () => {
         assertconv(`
             option ip fragment-requeueing off
+            option ip monitor-linkstate off
+            option ip redirects on
+            option ipv6 fragment-requeueing off
+            option ipv6 monitor-linkstate off
+            option ipv6 redirects on
             ---
         `);
     });
