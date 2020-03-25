@@ -1017,6 +1017,17 @@ describe('ntp', () => {
                 'ntp.client.100.address: 1.1.1.2',
             ]);
     });
+
+    it('accepts compatibility syntax', () => {
+        assertconv(`
+            ntp enable
+            ntp server 10.0.0.1
+            ---
+            ntp.service: enable
+            ntp.server: enable
+            ntp.client.100.address: 10.0.0.1
+        `);
+    });
 });
 
 describe('option', () => {

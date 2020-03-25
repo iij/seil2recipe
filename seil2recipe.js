@@ -2685,9 +2685,16 @@ Converter.rules['ntp'] = {
     // ntp server add {<IPaddress>|dhcp6 } [prefer {on|off}]
     'server': (conv, tokens) => {
         const k1 = conv.get_index('ntp.client');
-        conv.add(`${k1}.address`, tokens[3]);
-        if (tokens[4] == 'prefer') {
-            conv.notsupported('ntp prefer parameter');
+        if (tokens[2] == 'add') {
+            conv.add(`${k1}.address`, tokens[3]);
+            if (tokens[4] == 'prefer') {
+                conv.notsupported('ntp prefer parameter');
+            }
+        } else if (tokens[2].is_ipv4_address()) {
+            // Compatibility Syntax: ntp server <IPv4address>
+            conv.add(`${k1}.address`, tokens[2]);
+        } else {
+            conv.syntaxerror(`ntp server ${tokens[2]}`);
         }
     },
 };
