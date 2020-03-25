@@ -2018,8 +2018,12 @@ Converter.rules['interface'] = {
 
         // interface <lan> tcp-mss { <size> | off | auto }
         // seil3 の "off" に相当する X4 コンフィグは "none" だが、"off" は show config で表示されない。
-        'tcp-mss': tokens => `interface.${conv.ifmap(tokens[1])}.ipv4.tcp-mss: ${tokens[3]}`,
-        'tcp-mss6': tokens => `interface.${conv.ifmap(tokens[1])}.ipv6.tcp-mss: ${tokens[3]}`,
+        'tcp-mss': (conv, tokens) => {
+            conv.add(`interface.${conv.ifmap(tokens[1])}.ipv4.tcp-mss`, tokens[3]);
+        },
+        'tcp-mss6': (conv, tokens) => {
+            conv.add(`interface.${conv.ifmap(tokens[1])}.ipv6.tcp-mss`, tokens[3]);
+        },
 
         // interface <ipsec> tunnel <start_IPaddress> <end_IPaddress>
         // interface <tunnel> tunnel dslite <aftr>

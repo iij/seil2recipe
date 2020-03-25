@@ -627,6 +627,17 @@ describe('interface', () => {
          'interface.ge0.description: "IIJmio Hikari"');
     });
 
+    it('can change tcp-mss / tcp-mss6', () => {
+        assertconv(`
+            interface ge0 tcp-mss 1400
+            interface ge0 tcp-mss6 1380
+            ---
+            interface.ge0.ipv4.tcp-mss: 1400
+            interface.ge0.ipv6.tcp-mss: 1380
+        `);
+    });
+
+
     // ルーティングベース IPsec 全体のテストは 'ipsec' の方に書く。
     it('ipsec0 unnumbered', () => {
         assertconv([
