@@ -1024,11 +1024,10 @@ Converter.rules['dhcp'] = {
 };
 
 function dhcp6_client_get_interface(conv, iftoken) {
-    const mode = conv.get_memo('dhcp6.client');
     const ifname = conv.ifmap(iftoken);
-    const idx1 = conv.if2index('dhcp6.client.interface', ifname);
-    if (conv.get_memo(`dhcp6.client.interface.${idx1}`)) {
-        return `dhcp6.client.${idx1}`;
+    const idx = conv.if2index('dhcp6.client.interface', ifname);
+    if (conv.get_memo(`dhcp6.client.${idx}`)) {
+        return `dhcp6.client.${idx}`;
     } else {
         return null;
     }
@@ -1064,16 +1063,19 @@ Converter.rules['dhcp6'] = {
                 'disable': false,
 
                 'enable': (conv, tokens) => {
-                    const k1 = dhcp6_client_get_interface(tokens[3]);
-                    conv.set_memo(k1, true);
+                    const ifname = conv.ifmap(tokens[3])
+                    const idx = conv.if2index('dhcp6.client.interface', ifname);
+                    conv.set_memo(`dhcp6.client.${idx}`, true);
+                    conv.add(`dhcp6.client.${idx}.interface`, ifname);
                 },
 
                 'prefix-delegation': {
                     'add': (conv, tokens) => {
-                        const k1 = dhcp6_client_get_interface(tokens[3]);
                         const subnet = conv.ifmap(tokens[6]);
                         const sla_id = conv.ifmap(tokens[8]);
-                        const k2 = conv.if2index(`${k1}.prefix-delegation`, subnet);
+                        const k1 = dhcp6_client_get_interface(conv, tokens[3]);
+                        const idx2 = conv.if2index(k1, subnet);
+                        const k2 = `${k1}.prefix-delegation.${idx2}`;
                         conv.add(`${k2}.subnet`, subnet);
                         conv.add(`${k2}.sla-id`, sla_id);
 
@@ -1082,7 +1084,7 @@ Converter.rules['dhcp6'] = {
                         }
                     },
                     'force-option': (conv, tokens) => {
-                        const k1 = dhcp6_client_get_interface(tokens[3]);
+                        const k1 = dhcp6_client_get_interface(conv, tokens[3]);
                         conv.add(`${k1}.prefix-delegation.force`, on2enable(tokens[6]));
                     },
                 },
@@ -1128,7 +1130,7 @@ Converter.rules['dhcp6'] = {
         // dhcp6 client primary-interface <i/f>
         'primary-interface': (conv, tokens) => {
             const ifname = conv.ifmap(tokens[3])
-            conv.if2index('dhcp6.interface', ifname);  // reserve ifindex
+            conv.if2index('dhcp6.client.interface', ifname);  // reserve ifindex
         },
 
         // dhcp6 client rapid-commit { on | off }

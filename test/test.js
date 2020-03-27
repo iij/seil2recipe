@@ -300,6 +300,27 @@ describe('dhcp6', () => {
                 'dhcp6.client.100.prefix-delegation.100.interface-id: ::1234',
             ]);
     });
+
+    it('can be run on multiple interfaces', () => {
+        assertconv(`
+            dhcp6 client enable
+            dhcp6 client multiple enable
+            dhcp6 client primary-interface lan1
+            dhcp6 client interface lan0 enable
+            dhcp6 client interface lan0 prefix-delegation force-option on
+            dhcp6 client interface lan1 enable
+            dhcp6 client interface lan1 prefix-delegation add lan1 sla-id 0x1234 interface-id ::2345 enable
+            dhcp6 client interface lan2 disable
+            ---
+            dhcp6.client.service: enable
+            dhcp6.client.100.interface: ge0
+            dhcp6.client.100.prefix-delegation.100.subnet: ge0
+            dhcp6.client.100.prefix-delegation.100.sla-id: 0x1234
+            dhcp6.client.100.prefix-delegation.100.interface-id: ::2345
+            dhcp6.client.200.interface: ge1
+            dhcp6.client.200.prefix-delegation.force: enable
+        `);
+    });
 });
 
 describe('dialup-device', () => {
