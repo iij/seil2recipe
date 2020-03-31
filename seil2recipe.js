@@ -1147,8 +1147,14 @@ Converter.rules['dhcp6'] = {
                 'disable': [],
 
                 'enable': (conv, tokens) => {
+                    if (! conv.get_memo('dhcp6.server.enable')) {
+                            conv.set_memo('dhcp6.server.enable', true);
+                            conv.add('dhcp6.server.service', 'enable');
+                    }
+
                     const ifname = conv.ifmap(tokens[3]);
                     const idx1 = conv.if2index('dhcp6.server', ifname);
+                    conv.add(`dhcp6.server.${idx1}.interface`, ifname);
                     conv.set_memo(`dhcp6.server.${idx1}`, true);
                 },
 
@@ -1161,7 +1167,7 @@ Converter.rules['dhcp6'] = {
                     const k2 = conv.get_index(`${k1}.dns`);
                     conv.add(`${k2}.address`, tokens[6]);
                     if (tokens[7] == 'from') {
-                        conv.add(`${k2}.client-interface`, tokens[8]);
+                        conv.add(`${k2}.client-interface`, conv.ifmap(tokens[8]));
                     }
                 },
 
@@ -1171,9 +1177,12 @@ Converter.rules['dhcp6'] = {
                     if (k1 == null) {
                         return;
                     }
-                    const k2 = conv.get_index(`${k1}.domain`);
-                    conv.add(`${k2}.domain`, tokens[6]);
-                    // XXX X4 accepts only 1 domain name.
+                    if (conv.get_memo(`${k1}.domain`)) {
+                        conv.warning(`${conv.note.dst.name} では DHCP6 サーバで配布できるドメイン名は 1 つのみです。`);
+                        return;
+                    }
+                    conv.set_memo(`${k1}.domain`, true);
+                    conv.add(`${k1}.domain`, tokens[6]);
                 },
 
                 // dhcp6 server interface <i/f> preference <preference>
@@ -1194,10 +1203,9 @@ Converter.rules['dhcp6'] = {
                     const k2 = conv.get_index(`${k1}.sntp`);
                     conv.add(`${k2}.address`, tokens[6]);
                     if (tokens[7] == 'from') {
-                        conv.add(`${k2}.client-interface`, tokens[8]);
+                        conv.add(`${k2}.client-interface`, conv.ifmap(tokens[8]));
                     }
                 },
-
             },
         },
     },

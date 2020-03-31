@@ -321,6 +321,31 @@ describe('dhcp6', () => {
             dhcp6.client.200.prefix-delegation.force: enable
         `);
     });
+
+    describe('server', () => {
+        it('supports almost all parameters', () => {
+            assertconv(`
+                dhcp6 server interface lan0 enable
+                dhcp6 server interface lan0 domain add example.jp
+                dhcp6 server interface lan0 dns add 2001:db8::1
+                dhcp6 server interface lan0 dns add dhcp6 from lan1
+                dhcp6 server interface lan0 sntp add 2001:db8::2
+                dhcp6 server interface lan0 sntp add dhcp6 from vlan0
+                dhcp6 server interface lan0 preference 3
+                ---
+                dhcp6.server.service: enable
+                dhcp6.server.100.interface: ge1
+                dhcp6.server.100.domain: example.jp
+                dhcp6.server.100.dns.100.address: 2001:db8::1
+                dhcp6.server.100.dns.200.address: dhcp6
+                dhcp6.server.100.dns.200.client-interface: ge0
+                dhcp6.server.100.sntp.100.address: 2001:db8::2
+                dhcp6.server.100.sntp.200.address: dhcp6
+                dhcp6.server.100.sntp.200.client-interface: vlan0
+                dhcp6.server.100.preference: 3
+            `);
+        });
+    });
 });
 
 describe('dialup-device', () => {
