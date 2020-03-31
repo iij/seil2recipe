@@ -503,6 +503,7 @@ const CompatibilityList = {
 //    'cbq':                                             [    0,    1 ],
     'dhcp interface ... static add':                   [    0,    1 ],
     'dhcp interface ... wpad':                         [    0,    1 ],
+    'dhcp6 server':                                    [    0,    1 ],
     'dialup-device ... device-option ux312nc-3g-only': [    1,    0 ],
     'dialup-network':                                  [    1,    0 ],
     'filter6 add ... action forward':                  [    0,    1 ],
@@ -1147,6 +1148,7 @@ Converter.rules['dhcp6'] = {
                 'disable': [],
 
                 'enable': (conv, tokens) => {
+                    if (conv.missing('dhcp6 server')) { return; }
                     if (! conv.get_memo('dhcp6.server.enable')) {
                             conv.set_memo('dhcp6.server.enable', true);
                             conv.add('dhcp6.server.service', 'enable');
