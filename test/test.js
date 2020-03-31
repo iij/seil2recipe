@@ -1661,3 +1661,16 @@ describe('vendor', () => {
         assertconv('vendor IIJ', '');
     });
 });
+
+describe('seil6', () => {
+    it('can be a target device', () => {
+        const c = new s2r.Converter('hostname foo\n', 'w1');
+        assert.strictEqual(c.recipe_config, 'hostname: foo\n');
+    });
+
+    it('does not support "option statistics access"', () => {
+        const c = new s2r.Converter('option statistics access on', 'w1');
+        const e = c.conversions[0].errors[0]
+        assert.strictEqual(e.type, 'notsupported');
+    });
+});
