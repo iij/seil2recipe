@@ -8,18 +8,22 @@ if (process.argv.length < 3) {
 }
 
 var seilconfigfile;
-var verbose;
+var model = 'x4';
+var verbose = false;
 
-if (process.argv[2] == '-v') {
-    verbose = true;
-    seilconfigfile = process.argv[3];
-} else {
-    verbose = false;
-    seilconfigfile = process.argv[2];
+let args = process.argv.slice(2);
+while (args[0][0] == '-') {
+    let arg = args.shift();
+    if (arg == '-v') {
+        verbose = true;
+    } else if (arg == '-m') {
+        model = args.shift();
+    }
 }
+seilconfigfile = args[0];
 
 const txt = fs.readFileSync(seilconfigfile, {encoding: "utf-8"});
-const s2r = new seil2recipe.Converter(txt, 'x4');
+const s2r = new seil2recipe.Converter(txt, model);
 
 if (!verbose) {
     console.log(s2r.recipe_config);
