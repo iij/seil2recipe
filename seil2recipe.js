@@ -2784,7 +2784,7 @@ function spec_changed_options(conv, feature, new_key, old_default_value, new_def
     const [old_conv, old_value] = conv.get_memo(new_key) || [null, null];
     if (!conv.missing(feature, true)) {
         conv.add(new_key, old_value || old_default_value);
-    } else if (new_value != new_default_value) {
+    } else if (old_value && old_value != new_default_value) {
         old_conv.notsupported();
     }
 }
