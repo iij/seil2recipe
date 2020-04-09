@@ -795,6 +795,7 @@ describe('ipsec', () => {
             interface.ipsec0.ipv4.destination: 10.0.0.2
             interface.ipsec0.ipv6.forward: pass
             interface.ipsec0.preshared-key: hogehogehoge
+            interface.ipsec0.ike.check-level: strict
             interface.ipsec0.ike.proposal.phase1.encryption.100.algorithm: aes128
             interface.ipsec0.ike.proposal.phase1.hash.100.algorithm: sha256
             interface.ipsec0.ike.proposal.phase1.dh-group: modp1536
@@ -804,53 +805,112 @@ describe('ipsec', () => {
         `);
     });
 
-    it('ルーティングベース IPsec', () => {
-        assertconv([
-            'interface ipsec0 tunnel 10.0.0.1 10.0.0.2',
-            'ike preshared-key add "10.0.0.2" "two"',
-            'ike proposal add IKEP encryption aes128,3des hash sha256,md5 authentication preshared-key dh-group modp1536 lifetime-of-time 24h',
-            'ike peer add TWO address 10.0.0.2 exchange-mode main proposals IKEP my-identifier address peers-identifier address initial-contact enable tunnel-interface enable',
-            'ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes256 lifetime-of-time 8h',
-            'ipsec security-association add SA tunnel-interface ipsec0 ike SAP esp enable',
-        ], [
-            'interface.ipsec0.ipv4.source: 10.0.0.1',
-            'interface.ipsec0.ipv4.destination: 10.0.0.2',
-            'interface.ipsec0.ipv6.forward: pass',
-            'interface.ipsec0.preshared-key: two',
-            'interface.ipsec0.ike.initial-contact: enable',
-            'interface.ipsec0.ike.proposal.phase1.dh-group: modp1536',
-            'interface.ipsec0.ike.proposal.phase1.encryption.100.algorithm: aes128',
-            'interface.ipsec0.ike.proposal.phase1.encryption.200.algorithm: 3des',
-            'interface.ipsec0.ike.proposal.phase1.hash.100.algorithm: sha256',
-            'interface.ipsec0.ike.proposal.phase1.hash.200.algorithm: md5',
-            'interface.ipsec0.ike.proposal.phase1.lifetime: 24h',
-            'interface.ipsec0.ike.proposal.phase2.authentication.100.algorithm: hmac-sha1',
-            'interface.ipsec0.ike.proposal.phase2.encryption.100.algorithm: aes256',
-            'interface.ipsec0.ike.proposal.phase2.lifetime-of-time: 8h',
-        ]);
+    it('more routing-based ipsec', () => {
+        assertconv(`
+            interface ipsec0 tunnel 10.0.0.1 10.0.0.2
+            ike preshared-key add "10.0.0.2" "two"
+            ike proposal add IKEP encryption aes128,3des hash sha256,md5 authentication preshared-key dh-group modp1536 lifetime-of-time 24h
+            ike peer add TWO address 10.0.0.2 exchange-mode main proposals IKEP my-identifier address peers-identifier address initial-contact enable tunnel-interface enable
+            ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes256 lifetime-of-time 8h
+            ipsec security-association add SA tunnel-interface ipsec0 ike SAP esp enable
+            ----
+            interface.ipsec0.ipv4.source: 10.0.0.1
+            interface.ipsec0.ipv4.destination: 10.0.0.2
+            interface.ipsec0.ipv6.forward: pass
+            interface.ipsec0.preshared-key: two
+            interface.ipsec0.ike.initial-contact: enable
+            interface.ipsec0.ike.proposal.phase1.dh-group: modp1536
+            interface.ipsec0.ike.check-level: strict
+            interface.ipsec0.ike.my-identifier.type: address
+            interface.ipsec0.ike.peers-identifier.type: address
+            interface.ipsec0.ike.proposal.phase1.encryption.100.algorithm: aes128
+            interface.ipsec0.ike.proposal.phase1.encryption.200.algorithm: 3des
+            interface.ipsec0.ike.proposal.phase1.hash.100.algorithm: sha256
+            interface.ipsec0.ike.proposal.phase1.hash.200.algorithm: md5
+            interface.ipsec0.ike.proposal.phase1.lifetime: 24h
+            interface.ipsec0.ike.proposal.phase2.authentication.100.algorithm: hmac-sha1
+            interface.ipsec0.ike.proposal.phase2.encryption.100.algorithm: aes256
+            interface.ipsec0.ike.proposal.phase2.lifetime-of-time: 8h
+        `);
     });
 
-    it('policy mode', () => {
-        assertconv([
-            'ipsec security-association proposal add SAP authentication-algorithm hmac-sha256,hmac-sha1 encryption-algorithm aes256,aes128,3des',
-            'ipsec security-association add SA tunnel 10.0.0.1 10.0.0.2 ike SAP esp enable',
-            'ipsec security-policy add A security-association SA protocol udp src 172.16.0.1/32 srcport 1234 dst 172.16.0.2/32 dstport 4321'
-        ], [
-            'ipsec.security-association.sa0.address-type: static',
-            'ipsec.security-association.sa0.local-address: 10.0.0.1',
-            'ipsec.security-association.sa0.remote-address: 10.0.0.2',
-            'ipsec.security-policy.100.destination.address: 172.16.0.2/32',
-            'ipsec.security-policy.100.destination.port: 4321',
-            'ipsec.security-policy.100.ike.proposal.authentication.100.algorithm: hmac-sha256',
-            'ipsec.security-policy.100.ike.proposal.authentication.200.algorithm: hmac-sha1',
-            'ipsec.security-policy.100.ike.proposal.encryption.100.algorithm: aes256',
-            'ipsec.security-policy.100.ike.proposal.encryption.200.algorithm: aes128',
-            'ipsec.security-policy.100.ike.proposal.encryption.300.algorithm: 3des',
-            'ipsec.security-policy.100.protocol: udp',
-            'ipsec.security-policy.100.security-association: sa0',
-            'ipsec.security-policy.100.source.address: 172.16.0.1/32',
-            'ipsec.security-policy.100.source.port: 1234',
-        ]);
+    it('a typical policy-based ipsec', () => {
+        assertconv(`
+            ike preshared-key add "10.0.0.2" "two"
+            ike proposal add IKEP encryption 3des hash sha1 authentication preshared-key dh-group modp1024 lifetime-of-time 08h
+            ike peer add TWO address 10.0.0.2 exchange-mode aggressive proposals IKEP my-identifier fqdn TWO
+            ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm 3des lifetime-of-time 03h pfs-group modp1024
+            ipsec security-association add SA tunnel pppoe0 10.0.0.2 ike SAP esp enable
+            ipsec security-policy add SP security-association SA src 172.16.0.1/32 dst 172.16.0.2/32
+            ----
+            ike.peer.100.address: 10.0.0.2
+            ike.peer.100.check-level: strict
+            ike.peer.100.exchange-mode: aggressive
+            ike.peer.100.my-identifier.type: fqdn
+            ike.peer.100.my-identifier.fqdn: TWO
+            ike.peer.100.nat-traversal: disable
+            ike.peer.100.preshared-key: two
+            ike.peer.100.proposal.dh-group: modp1024
+            ike.peer.100.proposal.encryption.100.algorithm: 3des
+            ike.peer.100.proposal.hash.100.algorithm: sha1
+            ike.peer.100.proposal.lifetime: 08h
+            ipsec.security-association.sa0.address-type: static
+            ipsec.security-association.sa0.local-address: pppoe0
+            ipsec.security-association.sa0.remote-address: 10.0.0.2
+            ipsec.security-policy.100.destination.address: 172.16.0.2/32
+            ipsec.security-policy.100.ike.proposal.authentication.100.algorithm: hmac-sha1
+            ipsec.security-policy.100.ike.proposal.encryption.100.algorithm: 3des
+            ipsec.security-policy.100.ike.proposal.lifetime-of-time: 03h
+            ipsec.security-policy.100.ike.proposal.pfs-group: modp1024
+            ipsec.security-policy.100.security-association: sa0
+            ipsec.security-policy.100.source.address: 172.16.0.1/32
+        `);
+    });
+
+    it('policy parameters', () => {
+        assertconv(`
+            ike preshared-key add "10.0.0.2" "two"
+            ike proposal add IKEP encryption 3des hash sha1 authentication preshared-key dh-group modp1024 lifetime-of-time 08h
+            ike peer add TWO exchange-mode aggressive proposals IKEP address 10.0.0.2 check-level claim initial-contact enable my-identifier fqdn ONE peers-identifier user-fqdn TWO nonce-size 32 variable-size-key-exchange-payload enable dpd enable esp-fragment-size 1400 nat-traversal force responder-only on prefer-new-phase1 enable
+            ipsec security-association proposal add SAP authentication-algorithm hmac-sha256,hmac-sha1 encryption-algorithm aes256,aes128,3des
+            ipsec security-association add SA tunnel 10.0.0.1 10.0.0.2 ike SAP esp enable
+            ipsec security-policy add A security-association SA protocol udp src 172.16.0.1/32 srcport 1234 dst 172.16.0.2/32 dstport 4321
+            ----
+            ike.peer.100.address: 10.0.0.2
+            ike.peer.100.check-level: claim
+            ike.peer.100.dpd: enable
+            ike.peer.100.esp-fragment-size: 1400
+            ike.peer.100.exchange-mode: aggressive
+            ike.peer.100.initial-contact: enable
+            ike.peer.100.my-identifier.type: fqdn
+            ike.peer.100.my-identifier.fqdn: ONE
+            ike.peer.100.nat-traversal: force
+            ike.peer.100.nonce-size: 32
+            ike.peer.100.peers-identifier.type: user-fqdn
+            ike.peer.100.peers-identifier.user-fqdn: TWO
+            ike.peer.100.preshared-key: two
+            ike.peer.100.proposal.dh-group: modp1024
+            ike.peer.100.proposal.encryption.100.algorithm: 3des
+            ike.peer.100.proposal.hash.100.algorithm: sha1
+            ike.peer.100.proposal.lifetime: 08h
+            ike.peer.100.responder-only: enable
+            ike.peer.100.prefer-new-phase1: enable
+            ike.peer.100.variable-size-key-exchange-payload: enable
+            ipsec.security-association.sa0.address-type: static
+            ipsec.security-association.sa0.local-address: 10.0.0.1
+            ipsec.security-association.sa0.remote-address: 10.0.0.2
+            ipsec.security-policy.100.destination.address: 172.16.0.2/32
+            ipsec.security-policy.100.destination.port: 4321
+            ipsec.security-policy.100.ike.proposal.authentication.100.algorithm: hmac-sha256
+            ipsec.security-policy.100.ike.proposal.authentication.200.algorithm: hmac-sha1
+            ipsec.security-policy.100.ike.proposal.encryption.100.algorithm: aes256
+            ipsec.security-policy.100.ike.proposal.encryption.200.algorithm: aes128
+            ipsec.security-policy.100.ike.proposal.encryption.300.algorithm: 3des
+            ipsec.security-policy.100.protocol: udp
+            ipsec.security-policy.100.security-association: sa0
+            ipsec.security-policy.100.source.address: 172.16.0.1/32
+            ipsec.security-policy.100.source.port: 1234
+        `);
     });
 
     it('dynamic', () => {

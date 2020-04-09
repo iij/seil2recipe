@@ -507,7 +507,9 @@ const CompatibilityList = {
     'dialup-device ... device-option ux312nc-3g-only': [    1,    0 ],
     'dialup-network':                                  [    1,    0 ],
     'filter6 add ... action forward':                  [    0,    1 ],
+    'ike peer add ... check-level':                    [    0,    1 ],
     'ike peer add ... initial-contact disable':        [    0,    1 ],
+    'ike peer add ... nat-traversal disable':          [    0,    1 ],
     'ike strict-padding-byte-check enable':            [    0,    1 ],
     'interface ... add dhcp6':                         [    0,    1 ],
 //    'interface ... queue cbq':                         [    0,    1 ],
@@ -1593,26 +1595,34 @@ Converter.rules['ike'] = {
                 'exchange-mode': true,
                 'proposals': true,
                 'address': true,
-                'port': true,
+                'port': 'notsupported',
                 'check-level': true,
                 'initial-contact': true,
-                'my-identifier': true,    // XXX
-                'peers-identifier': true, // XXX
+                'my-identifier': val => {
+                    if (val == 'address') {
+                            return 1;
+                    } else {
+                            return 2;  // fqdn or user-fqdn
+                    }
+                },
+                'peers-identifier': val => {
+                    if (val == 'address') {
+                            return 1;
+                    } else {
+                            return 2;  // fqdn or user-fqdn
+                    }
+                },
                 'nonce-size': true,
                 'variable-size-key-exchange-payload': true,
                 'tunnel-interface': true,
                 'dpd': true,
                 'esp-fragment-size': true,
                 'nat-traversal': true,
-                'send-transport-phase2-id ': true,
+                'send-transport-phase2-id ': 'notsupported',
                 'responder-only': true,
                 'prefer-new-phase1': true,
             });
             conv.set_memo(`ike.peer.address.${params['address']}`, params);
-            if (params['initial-contact'] == 'disable') {
-                conv.missing('ike peer add ... initial-contact disable');
-                // just report error
-            }
         }
     },
 
@@ -2096,6 +2106,96 @@ Converter.rules['interface'] = {
     },
 };
 
+function ike_peer(conv, prefix, id, if_prefix) {
+    const peer = conv.get_memo(`ike.peer.address.${id}`);
+    if (peer == null) { return; }
+
+    const prefix_ike = if_prefix ? `${prefix}.ike` : prefix;
+    const prefix_proposal = if_prefix ? `${prefix}.ike.proposal.phase1` : `${prefix}.proposal`;
+
+    conv.param2recipe(peer, 'dpd', `${prefix}.dpd`);
+    conv.param2recipe(peer, 'esp-fragment-size', `${prefix}.esp-fragment-size`);
+    conv.param2recipe(peer, 'nonce-size', `${prefix}.nonce-size`);
+    conv.param2recipe(peer, 'prefer-new-phase1', `${prefix}.prefer-new-phase1`);
+    conv.param2recipe(peer, 'responder-only', `${prefix}.responder-only`, on2enable);
+    conv.param2recipe(peer, 'variable-size-key-exchange-payload', `${prefix}.variable-size-key-exchange-payload`);
+
+    if (!if_prefix) {
+        conv.param2recipe(peer, 'address', `${prefix}.address`);
+        conv.param2recipe(peer, 'exchange-mode', `${prefix_ike}.exchange-mode`);
+    }
+
+    // check-level はデフォルト値が strict -> obey に変更され、
+    // かつ seil6 では設定不可。
+    if (conv.missing('ike peer add ... check-level', true)) {
+        if (peer['check-level'] && peer['check-level'] != 'obey') {
+            conv.warning('check-level は obey のみサポートしています。');
+        }
+    } else {
+        conv.add(`${prefix_ike}.check-level`, peer['check-level'] || 'strict');
+    }
+
+    if (peer['initial-contact'] == 'disable' &&
+        conv.missing('ike peer add ... initial-contact disable')) {
+            // just report an error.
+    } else {
+        conv.param2recipe(peer, 'initial-contact', `${prefix_ike}.initial-contact`);
+    }
+
+    // nat-traversal はデフォルト値が disable -> enable に変更され、
+    // かつ seil6 と、interface.ipsecN には disable が書けない。
+    if (conv.missing('ike peer add ... nat-traversal disable', true) || if_prefix) {
+        if (peer['nat-traversal'] == 'disable') {
+            conv.notsupported('ike peer add ... nat-traversal disable');
+        } else if (peer['nat-traversal']) {
+            conv.add(`${prefix}.nat-traversal`, peer['nat-traversal']);
+        }
+    } else {
+        conv.add(`${prefix}.nat-traversal`, peer['nat-traversal'] || 'disable');
+    }
+
+    const psk = conv.get_memo('ike.preshared-key')[id];
+    conv.add(`${prefix}.preshared-key`, psk);
+
+    const ikep_name = peer['proposals'];
+    const ikep = conv.get_params('ike.proposal')[ikep_name];
+    if (ikep) {
+        const k1 = `${prefix}.proposal`;
+        (ikep['encryption'] || '').split(',').forEach(alg => {
+            const ke = conv.get_index(`${prefix_proposal}.encryption`);
+            conv.add(`${ke}.algorithm`, alg);
+        });
+        (ikep['hash'] || '').split(',').forEach(alg => {
+            const ke = conv.get_index(`${prefix_proposal}.hash`);
+            conv.add(`${ke}.algorithm`, alg);
+        });
+        conv.param2recipe(ikep, 'dh-group', `${prefix_proposal}.dh-group`);
+
+        // IKE phase1 lifetime のデフォルト値は 28800 → 86400 に変更されている。
+        conv.add(`${prefix_proposal}.lifetime`, ikep['lifetime-of-time'] || '8h') ;
+    }
+
+    const my_id = peer['my-identifier'];
+    if (my_id) {
+        if (my_id == 'address') {
+            conv.add(`${prefix_ike}.my-identifier.type`, 'address');
+        } else {
+            conv.add(`${prefix_ike}.my-identifier.type`, my_id[0]);
+            conv.add(`${prefix_ike}.my-identifier.${my_id[0]}`, my_id[1]);
+        }
+    }
+
+    const peer_id = peer['peers-identifier'];
+    if (peer_id) {
+        if (peer_id == 'address') {
+            conv.add(`${prefix_ike}.peers-identifier.type`, 'address');
+        } else {
+            conv.add(`${prefix_ike}.peers-identifier.type`, peer_id[0]);
+            conv.add(`${prefix_ike}.peers-identifier.${peer_id[0]}`, peer_id[1]);
+        }
+    }
+}
+
 Converter.rules['ipsec'] = {
     // https://www.seil.jp/doc/index.html#fn/ipsec/cmd/ipsec_anonymous-l2tp-transport.html
     'anonymous-l2tp-transport': {
@@ -2148,16 +2248,6 @@ Converter.rules['ipsec'] = {
                     conv.add(`interface.${ifname}.ipv6.forward`, 'block');
                 }
 
-
-                // ike preshared-key ...
-                const dst = conv.get_memo(`interface.${ifname}.tunnel.destination`);
-                if (dst) {
-                    const psk = conv.get_memo('ike.preshared-key')[dst];
-                    if (psk) {
-                        conv.add(`interface.${ifname}.preshared-key`, psk);
-                    }
-                }
-
                 // ipsec security-association proposal ...
                 const kphase2 = `interface.${ifname}.ike.proposal.phase2`;
                 const sap = conv.get_params('ipsec.security-association.proposal')[params['ike']];
@@ -2187,9 +2277,9 @@ Converter.rules['ipsec'] = {
                     conv.add(`${kphase2}.lifetime-of-time`, lifetime);
                 }
 
-                // ike peer add ...
-                const peer = conv.get_memo(`ike.peer.address.${dst}`);
-                conv.param2recipe(peer, 'initial-contact', `interface.${ifname}.ike.initial-contact`);
+                // ike preshared-key & peer
+                const dst = conv.get_memo(`interface.${ifname}.tunnel.destination`);
+                ike_peer(conv, `interface.${ifname}`, dst, true);
 
                 const proxy_id_local = params['proxy-id-local'];
                 if (proxy_id_local) {
@@ -2210,6 +2300,10 @@ Converter.rules['ipsec'] = {
                 }
 
                 // ike proposal -> ike.phase1
+if (false) {
+                const peer = conv.get_memo(`ike.peer.address.${dst}`);
+                conv.param2recipe(peer, 'initial-contact', `interface.${ifname}.ike.initial-contact`);
+
                 const ikep_name = peer['proposals'];
                 const ikep = conv.get_params('ike.proposal')[ikep_name];
                 if (ikep) {
@@ -2227,6 +2321,7 @@ Converter.rules['ipsec'] = {
                     // IKE phase1 lifetime のデフォルト値は 28800 → 86400 に変更されている。
                     conv.add(`${k2}.lifetime`, ikep['lifetime-of-time'] || '8h') ;
                 }
+}
             } else {
                 // ipsec security-association add <name> { tunnel | transport }
                 //     { <start_IPaddress> <end_IPaddress> | <start_Interface> <end_IPaddress> | dynamic | auto }
@@ -2409,15 +2504,15 @@ Converter.rules['ipsec'] = {
             const ka = conv.get_index(`${kprop}.encryption`);
             conv.add(`${ka}.algorithm`, alg);
         });
-        if (sa['lifetime-of-time']) {
-            conv.add(`${kprop}.lifetime-of-time`, sa['lifetime-of-time']);
+        if (sap['lifetime-of-time']) {
+            conv.add(`${kprop}.lifetime-of-time`, sap['lifetime-of-time']);
         }
-        const pfs_group = sa['pfs-group'];
+        const pfs_group = sap['pfs-group'];
         if (pfs_group) {
             if (pfs_group == 'modp768') {
                 conv.notsupported(`dh-group ${pfs_group}`);
             } else {
-                conv.add(`${kprop}.pfs-group`, sa['pfs-group']);
+                conv.add(`${kprop}.pfs-group`, sap['pfs-group']);
             }
         }
 
@@ -2429,6 +2524,11 @@ Converter.rules['ipsec'] = {
         conv.param2recipe(params, 'srcport', `${k1}.source.port`);
         conv.param2recipe(params, 'dstport', `${k1}.destination.port`);
         conv.param2recipe(params, 'protocol', `${k1}.protocol`);
+
+        //
+        // ike peer add ...
+        //
+        ike_peer(conv, conv.get_index('ike.peer'), sa['dst'], false);
     },
 };
 
