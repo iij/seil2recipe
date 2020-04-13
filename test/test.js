@@ -527,6 +527,7 @@ describe('filter', () => {
             'filter.ipv4.100.logging: state-only',
         ]);
     });
+
     it('application parameter is deprecated', () => {
         assert_conversions('filter add FOO interface vlan0 direction in action pass application winny', convs => {
             assert.equal(convs[0].errors[0].type, 'deprecated');
@@ -541,6 +542,16 @@ describe('filter', () => {
             'filter.forward.ipv4.100.direction: in',
             'filter.forward.ipv4.100.gateway: 192.168.0.1',
         ]);
+    });
+
+    it('"direction out" implies "interface any"', () => {
+        assertconv(`
+            filter add FOO direction out action forward 192.168.0.1
+            ---
+            filter.forward.ipv4.100.direction: out
+            filter.forward.ipv4.100.interface: any
+            filter.forward.ipv4.100.gateway: 192.168.0.1
+        `);
     });
 
     it('direction in/out -> inout', () => {

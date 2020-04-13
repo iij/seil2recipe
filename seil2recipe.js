@@ -1386,6 +1386,9 @@ Converter.rules['filter'] = {
                 conv.notsupported('filter ... action forward discard');
                 return;
             }
+            if (params['direction'] == 'out') {
+                conv.add(`${k}.interface`, 'any');
+            }
             conv.add(`${k}.gateway`, gateway);
         }
 
