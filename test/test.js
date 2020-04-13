@@ -599,6 +599,17 @@ describe('filter6', () => {
             'filter.ipv6.100.logging: state-only',
         ]);
     });
+
+    it('policy routing (action forward)', () => {
+        assertconv(`
+            filter6 add FOO interface vlan0 direction out action forward 1::1
+            ---
+            filter.forward.ipv6.100.direction: out
+            filter.forward.ipv6.100.gateway: 1::1
+            filter.forward.ipv6.100.interface: vlan0
+        `);
+    });
+
 });
 
 describe('floatlink', () => {

@@ -1423,7 +1423,13 @@ Converter.rules['filter6'] = {
         const params = conv.read_params('filter.ipv6', tokens, 2, {
             'interface': value => conv.ifmap(value),
             'direction': true,
-            'action': true,
+            'action': value => {
+                if (value == 'forward') {
+                    return 2;
+                } else {
+                    return value;
+                }
+            },
             'protocol': true,
             'icmp-type': true,
             'src': true,
@@ -1442,7 +1448,23 @@ Converter.rules['filter6'] = {
             return;
         }
 
-        const k = conv.get_index('filter.ipv6');
+        var k;
+        if (params['action'] == 'pass' || params['action'] == 'block') {
+            k = conv.get_index('filter.ipv6');
+            conv.param2recipe(params, 'action', `${k}.action`);
+        } else {
+            if (conv.missing('filter6 add ... action forward')) {
+                return;
+            }
+            k = conv.get_index('filter.forward.ipv6');
+            const gateway = params['action'][1];
+            if (gateway == 'discard') {
+                conv.notsupported('filter6 ... action forward discard');
+                return;
+            }
+            conv.add(`${k}.gateway`, gateway);
+        }
+
         conv.param2recipe(params, 'interface', `${k}.interface`, val => val);
         conv.param2recipe(params, 'direction', `${k}.direction`, val => {
             if (val == 'in/out') {
@@ -1451,12 +1473,6 @@ Converter.rules['filter6'] = {
                 return val;
             }
         });
-        if (params['action'] == 'forward') {
-            if (conv.missing('filter6 add ... action forward')) {
-                return;
-            }
-        }
-        conv.param2recipe(params, 'action', `${k}.action`);
         conv.param2recipe(params, 'protocol', `${k}.protocol`);
         conv.param2recipe(params, 'icmp-type', `${k}.icmp-type`);
         conv.param2recipe(params, 'src', `${k}.source.address`);
