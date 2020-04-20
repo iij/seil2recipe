@@ -754,26 +754,26 @@ describe('interface', () => {
 
     // l2tp interface -> look for "describe('l2tp', ...)
 
-    it('pppoe0', () => {
-        assertconv([
-            'ppp add IIJ keepalive 30 ipcp enable ipcp-address on ipcp-dns on ipv6cp disable' +
-            ' authentication-method auto identifier user@example.jp passphrase PASS tcp-mss 1404 tcp-mss6 1406',
-            'interface pppoe0 over lan1',
-            'interface pppoe0 ppp-configuration IIJ'
-        ], [
-                'interface.pppoe0.id: user@example.jp',
-                'interface.pppoe0.ipcp: enable',
-                'interface.pppoe0.ipcp.address: enable',
-                'interface.pppoe0.ipcp.dns: enable',
-                'interface.pppoe0.ipv4.tcp-mss: 1404',
-                'interface.pppoe0.ipv6.tcp-mss: 1406',
-                'interface.pppoe0.ipv6cp: disable',
-                'interface.pppoe0.keepalive: 30',
-                'interface.pppoe0.password: PASS',
-            ]);
-    });
-
     describe('pppoe', () => {
+        it('all ppp parameters', () => {
+            assertconv(`
+                ppp add PPP ipcp enable ipv6cp enable keepalive 30 ipcp-address on ipcp-dns on authentication-method auto identifier user@example.jp passphrase PASS tcp-mss 1404 tcp-mss6 1406
+                interface pppoe0 ppp-configuration PPP
+                interface pppoe0 over lan1
+                ---
+                interface.pppoe0.id: user@example.jp
+                interface.pppoe0.ipcp: enable
+                interface.pppoe0.ipcp.address: enable
+                interface.pppoe0.ipcp.dns: enable
+                interface.pppoe0.ipv4.tcp-mss: 1404
+                interface.pppoe0.ipv6.tcp-mss: 1406
+                interface.pppoe0.ipv6cp: enable
+                interface.pppoe0.keepalive: 30
+                interface.pppoe0.over: ge0
+                interface.pppoe0.password: PASS
+            `);
+        });
+
         it('supports PPPoE over any ge interfaces', () => {
             assertconv([
                 'interface pppoe0 over lan0',
