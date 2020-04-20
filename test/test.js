@@ -769,7 +769,6 @@ describe('interface', () => {
                 interface.pppoe0.ipv6.tcp-mss: 1406
                 interface.pppoe0.ipv6cp: enable
                 interface.pppoe0.keepalive: 30
-                interface.pppoe0.over: ge0
                 interface.pppoe0.password: PASS
             `);
         });
