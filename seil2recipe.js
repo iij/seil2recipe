@@ -1964,6 +1964,7 @@ Converter.rules['interface'] = {
             }
         },
 
+        // interface <ppp> over <device>
         // interface <pppoe> over <lan>
         'over': (conv, tokens) => {
             const device = tokens[3];
@@ -2039,6 +2040,27 @@ Converter.rules['interface'] = {
             conv.param2recipe(params, 'tcp-mss', `${k1}.ipv4.tcp-mss`);
             conv.param2recipe(params, 'tcp-mss6', `${k1}.ipv6.tcp-mss`);
             conv.param2recipe(params, 'keepalive', `${k1}.keepalive`);
+
+            // auto-connect
+            if (ifname.match(/^ppp\d+$/)) {
+                if (params['auto-connect'] == 'vrrp') {
+                    // ignored
+                } else if (params['auto-connect'] == 'none') {
+                    conv.notsupported('auto-connect none');
+                } else {
+                    conv.param2recipe(params, 'auto-connect', `${k1}.auto-connect`);
+                }
+            }
+            if (ifname.match(/^pppoe\d+$/)) {
+                if (params['auto-connect'] == 'vrrp') {
+                    conv.notsupported('auto-connect vrrp');
+                }
+            }
+
+            // idle-timer
+            if (!ifname.match(/^pppoe\d+$/)) {
+                conv.param2recipe(params, 'idle-timer', `${k1}.idle-timer`);
+            }
         },
 
         'queue': {
@@ -2940,11 +2962,11 @@ Converter.rules['ppp'] = {
             'passphrase': true,
             'tcp-mss': true,
             'tcp-mss6': true,
-            'auto-connect': 'notsupported',
-            'idle-timer': 'notsupported',
+            'auto-connect': true,
+            'idle-timer': true,
             'mppe': 'notsupported'
         });
-        if (!['auto', 'mschapv2'].includes(params['authentication-method'])) {
+        if (['chap', 'none', 'pap'].includes(params['authentication-method'])) {
             conv.notsupported(`ppp authentication-method ${params['authentication-method']}`);
         }
     },
