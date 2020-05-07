@@ -371,10 +371,10 @@ class Conversion {
             if (val instanceof Function) {
                 val = val.call(null, tokens[idx + 1]);
             }
-            if (defs[pname] == 'notsupported') {
+            if (val == 'notsupported') {
                 this.notsupported(pname);
                 idx += 2;
-            } else if (defs[pname] == 'deprecated') {
+            } else if (val == 'deprecated') {
                 this.deprecated(pname);
                 idx += 2;
             } else if (Number.isInteger(val)) {
@@ -385,7 +385,7 @@ class Conversion {
                     params[pname] = tokens.slice(idx + 1, idx + 1 + num);
                 }
                 idx += 1 + num;
-            } else if (defs[pname] == true) {
+            } else if (val == true) {
                 params[pname] = tokens[idx + 1];
                 idx += 2;
             } else if (typeof val == 'string' && !(defs[pname] instanceof Function)) {
