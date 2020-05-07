@@ -4190,15 +4190,16 @@ Converter.rules['vrrp3'] = {
             'priority': `${k1}.priority`,
             'interval': `${k1}.interval`,
             'watch': true,
-            'preempt': val => {
-                if (val == 'on') {
-                    return true;
-                } else {
-                    return 'notsupported';
-                }
-            },
+            'preempt': true,
             'delay': `${k1}.delay`,
         });
+
+        if (params['preempt'] == 'off') {
+            conv.deprecated('preempt off');
+        } else if (params['preempt'] != 'on') {
+            conv.syntaxerror(`preempt ${params['preempt']}`);
+        }
+
         if (params['watch']) {
             const watch = conv.get_params('vrrp3.watch-group')[params['watch']];
             if (watch['interface']) {

@@ -1741,7 +1741,7 @@ describe('vrrp3', () => {
     it('all parameters', () => {
         assertconv(`
             vrrp3 watch-group add WG interface pppoe0 keepalive 2001:db8::1 alive-detect 2 dead-detect 3 route-up 2001:db8::/64
-            vrrp3 add FOO interface lan0 vrid 1 address fe80::112 priority 123 interval 12 preempt on watch WG delay 234
+            vrrp3 add FOO interface lan0 vrid 1 address fe80::112 priority 123 interval 12 preempt on watch WG preempt on delay 234
             ---
             vrrp.vrouter.100.version: 3
             vrrp.vrouter.100.interface: ge1
@@ -1756,6 +1756,12 @@ describe('vrrp3', () => {
             vrrp.vrouter.100.watch.dead-detect: 3
             vrrp.vrouter.100.watch.route-up: 2001:db8::/64
         `)
+    });
+
+    it('deprecates "preempt off"', () => {
+        assert_conversions(`vrrp3 add FOO interface lan0 vrid 1 address fe80::112 preempt off`, convs => {
+            assert(convs[0].errors[0].type == 'deprecated');
+        });
     });
 });
 
