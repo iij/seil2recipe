@@ -529,6 +529,7 @@ const CompatibilityList = {
     'sshd hostkey':                                    [    0,    1 ],
     'sshd password-authentication enable':             [    0,    1 ],
     'telnetd':                                         [    0,    1 ],
+    'vrrp add ... watch':                              [    0,    1 ],
 };
 
 class Error {
@@ -4147,26 +4148,68 @@ Converter.rules['vrrp'] = {
         const k1 = conv.get_index('vrrp.vrouter');
         conv.add(`${k1}.version`, '2');
         conv.add(`${k1}.interface`, conv.ifmap(tokens[1]));
-        conv.read_params(null, tokens, 2, {
+        const params = conv.read_params(null, tokens, 2, {
             'vrid': `${k1}.vrid`,
-            'address': `${k1}.address`,
+            'address': true,
             'priority': `${k1}.priority`,
             'interval': `${k1}.interval`,
-            'watch': 'notsupported',
-            'preempt': val => {
-                if (val == 'on') {
-                    return true;
-                } else {
-                    return 'notsupported';
-                }
-            },
-            'virtual-mac': 'notsupported',
+            'watch': true,
+            'preempt': true,
+            'virtual-mac': true,
             'delay': `${k1}.delay`,
-            'dead-detect': 'notsupported',
-            'alive-detect': 'notsupported',
+            'dead-detect': true,
+            'alive-detect': true,
+        });
+
+        const m = params['address'].match(/^(\S+)\/(\d+)$/);
+        if (m) {
+            if (m[2] != '32') {
+                conv.warning(`${conv.note.dst.name} では address のプレフィクス長は /32 固定です。`);
+            }
+            conv.add(`${k1}.address`, m[1]);
+        } else {
+            conv.add(`${k1}.address`, params['address']);
+        }
+
+        if (params['preempt'] == 'off') {
+            conv.deprecated('preempt off');
+        } else if (params['preempt'] && params['preempt'] != 'on') {
+            conv.syntaxerror(`preempt ${params['preempt']}`);
+        }
+
+        if (params['virtual-mac'] == null || params['virtual-mac'] == 'off') {
+            conv.deprecated('virtual-mac off');
+        }
+
+        if (params['watch'] && conv.missing('vrrp add ... watch')) { return; }
+        if (params['watch']) {
+            const watch = conv.get_params('vrrp.watch-group')[params['watch']];
+            if (watch['interface']) {
+                conv.add(`${k1}.watch.interface`, conv.ifmap(watch['interface']));
+            }
+            if (watch['keepalive']) {
+                conv.add(`${k1}.watch.keepalive`, watch['keepalive']);
+            }
+            if (watch['route-up']) {
+                conv.add(`${k1}.watch.route-up`, watch['route-up']);
+            }
+        }
+        conv.param2recipe(params, 'dead-detect', `${k1}.watch.dead-detect`);
+        conv.param2recipe(params, 'alive-detect', `${k1}.watch.alive-detect`);
+    },
+    'watch-group': (conv, tokens) => {
+        // vrrp watch-group add <name>
+        //     [interface { <lan> | <pppoe> | <ppp> }]
+        //     [keepalive <IPv4address>]
+        //     [route-up <IPv4address>/<prefixlen>] ...
+        //     [route-down <IPv4address>/<prefixlen>] ...
+        conv.read_params('vrrp.watch-group', tokens, 3, {
+            'interface': true,
+            'keepalive': true,
+            'route-up': true,
+            'route-down': 'deprecated',
         });
     },
-    'watch-group': 'notsupported',
 };
 
 Converter.rules['vrrp3'] = {
@@ -4196,7 +4239,7 @@ Converter.rules['vrrp3'] = {
 
         if (params['preempt'] == 'off') {
             conv.deprecated('preempt off');
-        } else if (params['preempt'] != 'on') {
+        } else if (params['preempt'] && params['preempt'] != 'on') {
             conv.syntaxerror(`preempt ${params['preempt']}`);
         }
 

@@ -1712,16 +1712,35 @@ describe('timezone', () => {
 });
 
 describe('vrrp', () => {
-    it('vrrp version 2', () => {
+    it('minimal', () => {
         assertconv([
-            'vrrp lan0 add vrid 1 address 172.16.0.112/32 priority 100',
+            'vrrp lan0 add vrid 1 address 172.16.0.112/32',
         ], [
             'vrrp.vrouter.100.version: 2',
             'vrrp.vrouter.100.interface: ge1',
             'vrrp.vrouter.100.vrid: 1',
-            'vrrp.vrouter.100.address: 172.16.0.112/32',
-            'vrrp.vrouter.100.priority: 100',
+            'vrrp.vrouter.100.address: 172.16.0.112',
         ]);
+    });
+
+    it('all parameters', () => {
+        assertconv(`
+            vrrp watch-group add WG interface pppoe0 keepalive 192.168.0.2 route-up 192.168.4.0/24
+            vrrp lan0 add vrid 1 address 192.168.0.1/32 priority 123 interval 12 watch WG preempt on virtual-mac on delay 234 alive-detect 2 dead-detect 3
+            ---
+            vrrp.vrouter.100.version: 2
+            vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.vrid: 1
+            vrrp.vrouter.100.address: 192.168.0.1
+            vrrp.vrouter.100.priority: 123
+            vrrp.vrouter.100.interval: 12
+            vrrp.vrouter.100.delay: 234
+            vrrp.vrouter.100.watch.interface: pppoe0
+            vrrp.vrouter.100.watch.keepalive: 192.168.0.2
+            vrrp.vrouter.100.watch.alive-detect: 2
+            vrrp.vrouter.100.watch.dead-detect: 3
+            vrrp.vrouter.100.watch.route-up: 192.168.4.0/24
+        `)
     });
 });
 
