@@ -11,7 +11,7 @@
     "nyc": "^15.0.0"
   },
   "scripts": {
-    "test": "mocha",
+    "test": "mocha --no-diff",
     "coverage": "nyc --reporter=text --reporter=html mocha",
     "watch": "mocha --watch --reporter min"
   },
