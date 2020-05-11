@@ -29,7 +29,7 @@ function assertconv(seil_config, recipe_config) {
     }
     expected.sort();
 
-    assert.deepStrictEqual(actual, expected);
+    assert.deepStrictEqual(actual, expected, '');
 }
 
 function assert_conversions(seil_config, fun) {
