@@ -183,18 +183,6 @@ class Note {
         return `${prefix}${idx}`;
     }
 
-    get_saindex() {
-        const prefix = 'ipsec.security-association.sa';
-        var idx = this.indices.get(prefix);
-        if (idx) {
-            idx += 1;
-        } else {
-            idx = 0;
-        }
-        this.indices.set(prefix, idx);
-        return `sa${idx}`;
-    }
-
     if2index(prefix, ifname) {
         var ifmap = this.ifindex.get(prefix);
         if (ifmap == null) {
@@ -335,10 +323,6 @@ class Conversion {
 
     get_named_index(prefix) {
         return this.note.get_named_index(prefix);
-    }
-
-    get_saindex() {
-        return this.note.get_saindex();
     }
 
     get_trap_index() {
@@ -2536,7 +2520,7 @@ if (false) {
                 //     { <start_IPaddress> <end_IPaddress> | <start_Interface> <end_IPaddress> | dynamic | auto }
                 //     ike <SAP_name> ah { enable | disable } esp { enable | disable }
                 const params = {};
-                const sa_idx = conv.get_saindex();
+                const sa_idx = conv.get_named_index('sa');
                 const k1 = `ipsec.security-association.${sa_idx}`;
 
                 params['idx'] = sa_idx;
