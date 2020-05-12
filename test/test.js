@@ -24,7 +24,9 @@ function assertconv(seil_config, recipe_config) {
 
     var expected = recipe_config;
     if (!(expected instanceof Array)) {
-        expected = expected.split('\n').map(s => s.trim())
+        expected = expected.replace(/(?<=^[^:]+):  +/gm, ': ')
+            .split('\n')
+            .map(line => line.trim())
             .filter(line => { return line != '' });
     }
     expected.sort();
@@ -152,10 +154,67 @@ describe('bridge', () => {
 });
 
 describe('cbq', () => {
-    it('is not supported', () => {
-        assert_conversions('cbq class add HOGE parent default pbandwidth 100 borrow on', convs => {
-            assert(convs[0].errors[0].type == 'notsupported');
-        });
+    it('simple', () => {
+        assertconv(`
+            interface lan1 queue cbq
+            cbq link-bandwidth 1Gbps
+            cbq class add ALL parent default pbandwidth 20 borrow off
+            cbq filter add ALL4 class ALL category ip
+            ---
+            qos.service:                              enable
+            qos.interface.100.default-class:          root
+            qos.interface.100.class.class0.label:     ALL
+            qos.interface.100.class.class0.parent:    root
+            qos.interface.100.class.class0.bandwidth: 200
+            qos.interface.100.class.class0.borrow:    disable
+            qos.interface.100.interface:              ge0
+            qos.filter.ipv4.100.direction:            out
+            qos.filter.ipv4.100.interface:            any
+            qos.filter.ipv4.100.label:                ALL4
+            qos.filter.ipv4.100.marking.qos-class: class0
+        `);
+    });
+
+    it('more parameters', () => {
+        assertconv(`
+            interface lan1 queue cbq
+            cbq link-bandwidth 1Gbps
+            cbq class add C0 parent default pbandwidth 50 borrow off priority 2
+            cbq class add C1 parent C0 pbandwidth 20 borrow on priority 3
+            cbq filter add F0 class C0 category ip protocol tcp tos 0x12/0x56 src 192.168.0.1/32 srcport 1 dst 192.168.0.2/32 dstport 2 enable
+            cbq filter add F1 class C1 category ipv6 protocol udp src 2001:db8:1::/48 dst 2001:db8:2::/48
+            ---
+            qos.service:                              enable
+            qos.interface.100.default-class:          root
+            qos.interface.100.class.class0.label:     C0
+            qos.interface.100.class.class0.parent:    root
+            qos.interface.100.class.class0.bandwidth: 500
+            qos.interface.100.class.class0.borrow:    disable
+            qos.interface.100.class.class0.priority:  2
+            qos.interface.100.class.class1.label:     C1
+            qos.interface.100.class.class1.parent:    class0
+            qos.interface.100.class.class1.bandwidth: 200
+            qos.interface.100.class.class1.borrow:    enable
+            qos.interface.100.class.class1.priority:  3
+            qos.interface.100.interface:              ge0
+            qos.filter.ipv4.100.direction:            out
+            qos.filter.ipv4.100.interface:            any
+            qos.filter.ipv4.100.label:                F0
+            qos.filter.ipv4.100.marking.qos-class: class0
+            qos.filter.ipv4.100.tos: 0x12/0x56
+            qos.filter.ipv4.100.protocol: tcp
+            qos.filter.ipv4.100.source.address: 192.168.0.1/32
+            qos.filter.ipv4.100.source.port: 1
+            qos.filter.ipv4.100.destination.address: 192.168.0.2/32
+            qos.filter.ipv4.100.destination.port: 2
+            qos.filter.ipv6.100.direction:            out
+            qos.filter.ipv6.100.interface:            any
+            qos.filter.ipv6.100.label:                F1
+            qos.filter.ipv6.100.marking.qos-class: class1
+            qos.filter.ipv6.100.protocol: udp
+            qos.filter.ipv6.100.source.address: 2001:db8:1::/48
+            qos.filter.ipv6.100.destination.address: 2001:db8:2::/48
+        `);
     });
 
     it('link-bandwidth should be ignored', () => {

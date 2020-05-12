@@ -140,6 +140,7 @@ class Note {
         this.memo.set('floatlink.interfaces', []);
         this.memo.set('ike.preshared-key', {});
         this.memo.set('interface.l2tp.tunnel', {});
+        this.memo.set('qos.class', { 'default': 'root' });
 
         this.if_mappings = {
             'lan0': 'ge1',
@@ -171,6 +172,17 @@ class Note {
         return `${iftype}${idx}`;
     }
 
+    get_named_index(prefix) {
+        var idx = this.indices.get(prefix);
+        if (idx == null) {
+            idx = 0;
+        } else {
+            idx += 1;
+        }
+        this.indices.set(prefix, idx);
+        return `${prefix}${idx}`;
+    }
+
     get_saindex() {
         const prefix = 'ipsec.security-association.sa';
         var idx = this.indices.get(prefix);
@@ -187,14 +199,14 @@ class Note {
         var ifmap = this.ifindex.get(prefix);
         if (ifmap == null) {
             ifmap = new Map();
-            ifmap['*'] = 100;
+            ifmap.set('*', 100);
             this.ifindex.set(prefix, ifmap);
         }
-        var idx = ifmap[ifname];
+        var idx = ifmap.get(ifname);
         if (idx == null) {
-            idx = ifmap['*'];
-            ifmap['*'] += 100;
-            ifmap[ifname] = idx;
+            idx = ifmap.get('*');
+            ifmap.set(ifname, idx);
+            ifmap.set('*', idx + 100);
         }
         return idx;
     }
@@ -222,12 +234,18 @@ class Conversion {
         this.defers = [];
     }
 
+    get devname() {
+        return this.note.dst.name;
+    }
+
     // add a key/value pair of recipe config.
     add(key, value) {
         if (arguments.length == 1) {
             this.recipe.push(key);
         } else {
-            if (value == '') {
+            if (value == null) {
+                throw `add('${key}', null) !!`;
+            } else if (value == '') {
                 value = '""';
             } else if (value.match(/['"\\ ]/)) {
                 value = '"' + value.replace(/(["\\])/g, "\\$1") +'"';
@@ -315,6 +333,10 @@ class Conversion {
         return this.note.get_memo(key);
     }
 
+    get_named_index(prefix) {
+        return this.note.get_named_index(prefix);
+    }
+
     get_saindex() {
         return this.note.get_saindex();
     }
@@ -342,6 +364,14 @@ class Conversion {
 
     if2index(prefix, ifname) {
         return this.note.if2index(prefix, ifname);
+    }
+
+    ifindex_foreach(prefix, fun) {
+        this.note.ifindex.get(prefix).forEach((idx, ifname) => {
+            if (ifname != '*') {
+                fun(ifname, idx);
+            }
+        });
     }
 
     read_params(prefix, tokens, idx, defs) {
@@ -500,7 +530,7 @@ const CompatibilityList = {
     // feature                                          seil6 seil8
     'arp add':                                         [    0,    1 ],
     'authentication account-list':                     [    0,    1 ],
-//    'cbq':                                             [    0,    1 ],
+    'cbq':                                             [    0,    1 ],
     'dhcp interface ... static add':                   [    0,    1 ],
     'dhcp interface ... wpad':                         [    0,    1 ],
     'dhcp6 server':                                    [    0,    1 ],
@@ -512,7 +542,6 @@ const CompatibilityList = {
     'ike peer add ... nat-traversal disable':          [    0,    1 ],
     'ike strict-padding-byte-check enable':            [    0,    1 ],
     'interface ... add dhcp6':                         [    0,    1 ],
-//    'interface ... queue cbq':                         [    0,    1 ],
     'nat upnp timeout':                                [    0,    1 ],
     'option ip fragment-requeueing off':               [    0,    1 ],
     'option ip monitor-linkstate off':                 [    0,    1 ],
@@ -827,11 +856,142 @@ Converter.rules['bridge'] = {
 };
 
 Converter.rules['cbq'] = {
-    'class': 'notsupported',
-    'filter': 'notsupported',
+    // cbq class add <name> parent <parent_name> pbandwidth <percent>
+    //     [borrow { on | off }] [priority { normal | <priority> }]
+    //     [maxburst { normal | <maxburst> }] [minburst { normal | <minburst> }]
+    //     [packetsize { normal | <size> }] [maxdelay { normal | <delay> }]
+    'class': (conv, tokens) => {
+        if (conv.missing('cbq')) { return; }
+        if (!conv.get_memo('qos.service')) {
+            conv.add('qos.service', 'enable');
+            conv.set_memo('qos.service', true);
+        }
+        const class_map = conv.get_memo('qos.class');
+        const params = conv.read_params(null, tokens, 3, {
+            'parent': true,
+            'pbandwidth': true,
+            'borrow': true,
+            'priority': true,
+            'maxburst': 'notsupported',
+            'minburst': 'notsupported',
+            'packetsize': 'notsupported',
+            'maxdelay': 'notsupported',
+        });
+        conv.ifindex_foreach('qos.interface', (ifname, idx) => {
+            const k1 = `qos.interface.${idx}`;
+            const clname = conv.get_named_index('class');
+            class_map[params['*NAME*']] = clname;
+            const k2 = `${k1}.class.${clname}`;
+            conv.param2recipe(params, '*NAME*', `${k2}.label`);
+            conv.add(`${k2}.parent`, class_map[params['parent']]);
 
-    // Without CBQ class/filter, link-bandwith can be ignored.
-    'link-bandwidth': [],
+            const linkbandwidth = conv.get_memo('cbq.link-bandwidth');
+            const percent = params['pbandwidth'];
+            const mbps = (percent / 100) * linkbandwidth;
+            if (Math.round(mbps * 100) % 100 != 0) {
+                conv.warning(`${conv.devname} では 1Mbps より細かい指定はできません。`);
+            }
+            conv.add(`${k2}.bandwidth`, String(Math.round(mbps)));
+
+            conv.param2recipe(params, 'borrow', `${k2}.borrow`, on2enable);
+            conv.param2recipe(params, 'priority', `${k2}.priority`,
+                prio => (prio == 'normal') ? 1 : prio);
+        });
+    },
+
+    // cbq filter add <name> class <class_name>
+    //  [length { any | <length_range> }]
+    //  [vlan-id {any | <vlan_id_range>}]
+    //  [vlan-pri { any | <vlan_priority_range>}]
+    //  [category { ip | ipv6 | ether }] [tos { any | <tos/mask>} ]
+    //  [protocol { any | tcp | tcp-ack | udp | icmp | ipv6-icmp | igmp | <protocol> }]
+    //  [src { any | <src_IPaddress/prefixlen>}]
+    //  [srcport { any | <src_port_range> }]
+    //  [dst { any | <dst_IPaddress/prefixlen> }]
+    //  [dstport { any | <dst_port_range> }]
+    //  [mactype { any | arp | sna | <mactype>}]
+    //  [enable | disable]
+    'filter': (conv, tokens) => {
+        if (conv.missing('cbq')) { return; }
+        const class_map = conv.get_memo('qos.class');
+        const params = conv.read_params(null, tokens, 3, {
+            'class': true,
+            'length': 'notsupported',
+            'vlan-id': 'notsupported',
+            'vlan-pri': 'notsupported',
+            'category': true,
+            'tos': true,
+            'protocol': true,
+            'src': true,
+            'srcport': true,
+            'dst': true,
+            'dstport': true,
+            'mactype': 'notsupported',
+            'enable': 0,
+            'disable': 0,
+        });
+        if (params['disable']) { return; }
+        let cat;
+        if (params['category'] == null || params['category'] == 'ip') {
+            cat = 'ipv4';
+        } else if (params['category'] == 'ipv6') {
+            cat = 'ipv6';
+        } else {
+            conv.notsupported('category ether');
+            return;
+        }
+        conv.ifindex_foreach('qos.interface', (ifname, idx) => {
+            const k1 = conv.get_index(`qos.filter.${cat}`);
+            conv.add(`${k1}.interface`, 'any');
+            conv.add(`${k1}.direction`, 'out');
+            conv.add(`${k1}.label`, params['*NAME*']);
+
+            const cl_old = params['class'];
+            const cl_new = class_map[cl_old];
+            if (cl_new == null) {
+                conv.badconfig(`${cl_old} は定義されていません。`);
+                return;
+            }
+            conv.add(`${k1}.marking.qos-class`, cl_new);
+
+            const proto = params['protocol'];
+            if (proto) {
+                if (proto == 'tcp-ack') {
+                    conv.deprecated(`protocol tcp-ack`);
+                    return;
+                } else if (proto == 'ipv6-icmp') {
+                    proto = '58';
+                }
+                conv.add(`${k1}.protocol`, proto);
+            }
+
+            conv.param2recipe(params, 'tos', `${k1}.tos`);
+            if (params['src'] != 'any') {
+                conv.param2recipe(params, 'src', `${k1}.source.address`);
+            }
+            conv.param2recipe(params, 'srcport', `${k1}.source.port`);
+            if (params['dst'] != 'any') {
+                conv.param2recipe(params, 'dst', `${k1}.destination.address`);
+            }
+            conv.param2recipe(params, 'dstport', `${k1}.destination.port`);
+        });
+
+    },
+
+    // cbq link-bandwidth { 1Gbps | 100Mbps | 10Mbps }
+    'link-bandwidth': (conv, tokens) => {
+        var bw;
+        if (tokens[2] == '1Gbps') {
+            bw = 1000;
+        } else if (tokens[2] == '100Mbps') {
+            bw = 100;
+        } else if (tokens[2] == '10Mbps') {
+            bw = 10;
+        } else {
+            conv.syntaxerror();
+        }
+        conv.set_memo('cbq.link-bandwidth', bw);
+    }
 };
 
 Converter.rules['certificate'] = {
@@ -1183,7 +1343,7 @@ Converter.rules['dhcp6'] = {
                         return;
                     }
                     if (conv.get_memo(`${k1}.domain`)) {
-                        conv.warning(`${conv.note.dst.name} では DHCP6 サーバで配布できるドメイン名は 1 つのみです。`);
+                        conv.warning(`${conv.devname} では DHCP6 サーバで配布できるドメイン名は 1 つのみです。`);
                         return;
                     }
                     conv.set_memo(`${k1}.domain`, true);
@@ -2066,7 +2226,14 @@ Converter.rules['interface'] = {
 
         'queue': {
             'normal': [],
-            'cbq': 'notsupported',
+            'cbq': (conv, tokens) => {
+                if (conv.missing('cbq')) { return; }
+                const ifname = conv.ifmap(tokens[1]);
+                const idx1 = conv.if2index('qos.interface', ifname);
+                const k1 = `qos.interface.${idx1}`;
+                conv.add(`${k1}.interface`, ifname);
+                conv.add(`${k1}.default-class`, 'root');
+            }
         },
 
         // interface <vlan> tag <tag> [over <lan>]
@@ -4164,7 +4331,7 @@ Converter.rules['vrrp'] = {
         const m = params['address'].match(/^(\S+)\/(\d+)$/);
         if (m) {
             if (m[2] != '32') {
-                conv.warning(`${conv.note.dst.name} では address のプレフィクス長は /32 固定です。`);
+                conv.warning(`${conv.devname} では address のプレフィクス長は /32 固定です。`);
             }
             conv.add(`${k1}.address`, m[1]);
         } else {
