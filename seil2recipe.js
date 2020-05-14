@@ -132,7 +132,6 @@ class Note {
     constructor(dst) {
         this.indices = new Map();  // (prefix) -> (last index number)
         this.params  = new Map();
-        this.interfaces = new Map();  // (iftype) -> (last interface index)
         this.ifindex = new Map();  // (prefix) -> (interface) -> (index)
         this.memo    = new Map();
         this.dst     = new Device(dst);
@@ -159,17 +158,6 @@ class Note {
 
     set_memo(key, value) {
         this.memo.set(key, value);
-    }
-
-    get_interface(iftype) {
-        var idx = this.interfaces.get(iftype);
-        if (idx) {
-            idx += 1;
-        } else {
-            idx = 0;
-        }
-        this.interfaces.set(iftype, idx);
-        return `${iftype}${idx}`;
     }
 
     get_named_index(prefix) {
@@ -311,10 +299,6 @@ class Conversion {
         }
         this.note.indices.set(prefix, idx);
         return `${prefix}.${idx}`;
-    }
-
-    get_interface(iftype) {
-        return this.note.get_interface(iftype);
     }
 
     get_memo(key) {
@@ -783,7 +767,7 @@ Converter.rules['bridge'] = {
     // https://www.seil.jp/doc/index.html#fn/bridge/cmd/bridge_group.html#add
     'group': {
         'add': (conv, tokens) => {
-            const bridge_if = conv.get_interface('bridge');
+            const bridge_if = conv.get_named_index('bridge');
             const params = conv.read_params('bridge.group', tokens, 3, {
                 'aging-time': 'notsupported',
                 'forward-delay': true,
