@@ -626,6 +626,18 @@ describe('filter', () => {
             'filter.ipv4.100.state: disable'
         ]);
     });
+
+    it('srcport/dstport implies protocol tcpudp (if not specified)', () => {
+        assertconv(`
+            filter add A interface lan1 direction in action pass srcport 1
+            ---
+            filter.ipv4.100.action: pass
+            filter.ipv4.100.interface: ge0
+            filter.ipv4.100.direction: in
+            filter.ipv4.100.source.port: 1
+            filter.ipv4.100.protocol: tcpudp
+        `);
+    });
 });
 
 describe('filter6', () => {
@@ -671,6 +683,17 @@ describe('filter6', () => {
         `);
     });
 
+    it('srcport/dstport implies protocol tcpudp (if not specified)', () => {
+        assertconv(`
+            filter6 add A interface lan1 direction in action pass dstport 1
+            ---
+            filter.ipv6.100.action: pass
+            filter.ipv6.100.interface: ge0
+            filter.ipv6.100.direction: in
+            filter.ipv6.100.destination.port: 1
+            filter.ipv6.100.protocol: tcpudp
+        `);
+    });
 });
 
 describe('floatlink', () => {

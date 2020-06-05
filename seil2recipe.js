@@ -1529,7 +1529,13 @@ Converter.rules['filter'] = {
                 return val;
             }
         });
-        conv.param2recipe(params, 'protocol', `${k}.protocol`);
+        if (params['protocol']) {
+            conv.param2recipe(params, 'protocol', `${k}.protocol`);
+        } else {
+            if (params['srcport'] || params['dstport']) {
+                conv.add(`${k}.protocol`, 'tcpudp');
+            }
+        }
         conv.param2recipe(params, 'icmp-type', `${k}.icmp-type`);
         conv.param2recipe(params, 'src', `${k}.source.address`);
         conv.param2recipe(params, 'srcport', `${k}.source.port`);
@@ -1602,7 +1608,13 @@ Converter.rules['filter6'] = {
                 return val;
             }
         });
-        conv.param2recipe(params, 'protocol', `${k}.protocol`);
+        if (params['protocol']) {
+            conv.param2recipe(params, 'protocol', `${k}.protocol`);
+        } else {
+            if (params['srcport'] || params['dstport']) {
+                conv.add(`${k}.protocol`, 'tcpudp');
+            }
+        }
         conv.param2recipe(params, 'icmp-type', `${k}.icmp-type`);
         conv.param2recipe(params, 'src', `${k}.source.address`);
         conv.param2recipe(params, 'srcport', `${k}.source.port`);
