@@ -1457,10 +1457,12 @@ Converter.rules['dns'] = {
 
 Converter.rules['encrypted-password'] = 'deprecated';
 
-Converter.rules['encrypted-password-long'] = {
-    'admin': (conv, tokens) => {
-        conv.add('login.admin.encrypted-password', tokens[2]);
-    },
+Converter.rules['encrypted-password-long'] = (conv, tokens) => {
+    if (tokens[1] != 'admin') {
+        conv.notsupported(`encrypted-password-long ${tokens[1]}`);
+        return;
+    }
+    conv.add('login.admin.encrypted-password', tokens[2]);
 };
 
 Converter.rules['environment'] = {

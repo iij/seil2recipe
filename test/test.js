@@ -550,12 +550,18 @@ describe('dns forwarder', () => {
 });
 
 describe('encrypted-password-long', () => {
-    it('login-timer', () => {
+    it('can convert admin password', () => {
         assertconv([
             'encrypted-password-long admin $2a$07$YDRU02fiS6Fy7sr1TcIBkuOFqA/mQaTYmgza4m5QppasE8RIUpZ/m',
         ], [
             'login.admin.encrypted-password: $2a$07$YDRU02fiS6Fy7sr1TcIBkuOFqA/mQaTYmgza4m5QppasE8RIUpZ/m',
         ]);
+    });
+
+    it('does not support "user" account', () => {
+        const c = new s2r.Converter('encrypted-password-long user foo');
+        const e = c.conversions[0].errors[0]
+        assert.strictEqual(e.type, 'notsupported');
     });
 });
 
