@@ -3999,7 +3999,7 @@ Converter.rules['rtadvd'] = {
                 if (k1 == null) {
                     return;
                 }
-                conv.read_params(null, tokens, 1, {
+                conv.read_params(null, tokens, 2, {
                     'curhoplimit': `${k1}.curhoplimit`,
                     'managed-flag': {
                         key: `${k1}.managed-flag`,
