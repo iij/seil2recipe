@@ -1224,6 +1224,20 @@ describe('nat', () => {
     });
 });
 
+describe('nat6', () => {
+    it('simple', () => {
+        assertconv(`
+            nat6 add FOO type ngn interface lan0 internal 2001:db8:1::/64 external 2001:db8:2::/64 ndproxy on
+            ---
+            nat.ipv6.100.type: ngn
+            nat.ipv6.100.interface: ge1
+            nat.ipv6.100.internal: 2001:db8:1::/64
+            nat.ipv6.100.external: 2001:db8:2::/64
+            nat.ipv6.100.ndproxy: enable
+        `);
+    });
+});
+
 describe('ntp', () => {
     it('ntp server', () => {
         assertconv([

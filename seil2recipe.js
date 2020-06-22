@@ -511,6 +511,7 @@ const CompatibilityList = {
     'ike strict-padding-byte-check enable':            [    0,    1 ],
     'interface ... add dhcp6':                         [    0,    1 ],
     'nat upnp timeout':                                [    0,    1 ],
+    'nat6':                                            [    0,    1 ],
     'option ip fragment-requeueing off':               [    0,    1 ],
     'option ip monitor-linkstate off':                 [    0,    1 ],
     'option ip multipath-selection':                   [    0,    1 ],
@@ -2954,15 +2955,22 @@ Converter.rules['nat6'] = {
         // nat6 add <name> type {ngn|transparent} internal <prefix/prefixlen>
         //     external <prefix/prefixlen> interface <interface>
         //     [ndproxy { on | off | system-default }]
+        if (conv.missing('nat6')) { return; }
         const k1 = conv.get_index('nat.ipv6');
-        conv.add(`${k1}.type`, tokens[4]);
-        conv.add(`${k1}.internal`, tokens[6]);
-        conv.add(`${k1}.external`, tokens[8]);
-        conv.add(`${k1}.interface`, conv.ifmap(tokens[10]));
-        if (tokens[11] == 'ndproxy') {
-            conv.add(`${k1}.ndproxy`, on2enable(tokens[12]));
-        }
-    },
+        conv.read_params(null, tokens, 2, {
+            'type': `${k1}.type`,
+            'internal': `${k1}.internal`,
+            'external': `${k1}.external`,
+            'interface': {
+                key: `${k1}.interface`,
+                fun: val => conv.ifmap(val)
+            },
+            'ndproxy': {
+                key: `${k1}.ndproxy`,
+                fun: on2enable
+            }
+        });
+    }
 };
 
 Converter.rules['ntp'] = {
