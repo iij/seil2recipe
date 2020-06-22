@@ -1649,6 +1649,34 @@ describe('rtadvd', () => {
                 'router-advertisement.100.advertise.100.onlink-flag: disable',
             ]);
     });
+
+    it('per-interface parameters', () => {
+        assertconv(`
+            rtadvd enable
+            rtadvd interface lan0 enable
+            rtadvd interface lan0 curhoplimit 1
+            rtadvd interface lan0 managed-flag on
+            rtadvd interface lan0 max-interval 30
+            rtadvd interface lan0 min-interval 10
+            rtadvd interface lan0 mtu 1420
+            rtadvd interface lan0 other-flag on
+            rtadvd interface lan0 reachable-time 123
+            rtadvd interface lan0 retransmit-timer 234
+            rtadvd interface lan0 router-lifetime 345
+            ---
+            router-advertisement.service: enable
+            router-advertisement.100.interface: ge1
+            router-advertisement.100.curhoplimit: 1
+            router-advertisement.100.managed-flag: enable
+            router-advertisement.100.max-interval: 30
+            router-advertisement.100.min-interval: 10
+            router-advertisement.100.mtu: 1420
+            router-advertisement.100.other-flag: enable
+            router-advertisement.100.reachable-time: 123
+            router-advertisement.100.retrans-timer: 234
+            router-advertisement.100.router-lifetime: 345
+        `);
+    });
 });
 
 describe('snmp', () => {
