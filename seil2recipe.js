@@ -4013,7 +4013,7 @@ Converter.rules['rtadvd'] = {
                          fun: on2enable
                     },
                     'reachable-time': `${k1}.reachable-time`,
-                    'retrans-timer': `${k1}.retrans-timer`,
+                    'retransmit-timer': `${k1}.retrans-timer`,
                     'router-lifetime': `${k1}.router-lifetime`,
                 });
             }
