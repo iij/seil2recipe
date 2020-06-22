@@ -57,6 +57,14 @@ describe('arp', () => {
             'arp.100.proxy: enable'
         ])
     });
+
+    it('reply-nat on', () => {
+        assertconv(`
+            arp reply-nat on
+            ---
+            nat.ipv4.arpreply: enable
+        `);
+    });
 });
 
 describe('authentication+pppac', () => {

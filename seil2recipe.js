@@ -681,9 +681,10 @@ Converter.rules['arp'] = {
             conv.add(`${k}.proxy`, on2enable(tokens[5]));
         }
     },
-    'reply-nat': {
-        'on': 'notsupported',
-        'off': [],
+
+    // arp reply-nat { on | off }
+    'reply-nat': (conv, tokens) => {
+        conv.add('nat.ipv4.arpreply', on2enable(tokens[2]));
     }
 };
 
