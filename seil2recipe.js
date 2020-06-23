@@ -171,22 +171,6 @@ class Note {
         return `${prefix}${idx}`;
     }
 
-    if2index(prefix, ifname) {
-        var ifmap = this.ifindex.get(prefix);
-        if (ifmap == null) {
-            ifmap = new Map();
-            ifmap.set('*', 100);
-            this.ifindex.set(prefix, ifmap);
-        }
-        var idx = ifmap.get(ifname);
-        if (idx == null) {
-            idx = ifmap.get('*');
-            ifmap.set(ifname, idx);
-            ifmap.set('*', idx + 100);
-        }
-        return idx;
-    }
-
     set_param(prefix, label, key, value) {
         if (!this.params[prefix]) {
             this.params[prefix] = {};
@@ -330,8 +314,22 @@ class Conversion {
         }
     }
 
-    if2index(prefix, ifname) {
-        return this.note.if2index(prefix, ifname);
+    if2index(prefix, ifname, nocreate=false) {
+        var ifmap = this.note.ifindex.get(prefix);
+        if (ifmap == null) {
+            if (nocreate) { return null; }
+            ifmap = new Map();
+            ifmap.set('*', 100);
+            this.note.ifindex.set(prefix, ifmap);
+        }
+        var idx = ifmap.get(ifname);
+        if (idx == null) {
+            if (nocreate) { return null; }
+            idx = ifmap.get('*');
+            ifmap.set(ifname, idx);
+            ifmap.set('*', idx + 100);
+        }
+        return idx;
     }
 
     ifindex_foreach(prefix, fun) {
