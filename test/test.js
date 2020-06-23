@@ -413,6 +413,19 @@ describe('dhcp6', () => {
             `);
         });
     });
+
+    describe('relay', () => {
+        it('simple', () => {
+            assertconv(`
+                dhcp6 relay interface lan0 enable
+                dhcp6 relay interface lan0 server add 2001:db8::1
+                ---
+                dhcp6.relay.service: enable
+                dhcp6.relay.100.interface: ge1
+                dhcp6.relay.100.server.100.address: 2001:db8::1
+            `);
+        });
+    });
 });
 
 describe('dialup-device', () => {

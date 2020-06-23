@@ -499,6 +499,7 @@ const CompatibilityList = {
     'cbq':                                             [    0,    1 ],
     'dhcp interface ... static add':                   [    0,    1 ],
     'dhcp interface ... wpad':                         [    0,    1 ],
+    'dhcp6 relay':                                     [    0,    1 ],
     'dhcp6 server':                                    [    0,    1 ],
     'dialup-device ... device-option ux312nc-3g-only': [    1,    0 ],
     'dialup-network':                                  [    1,    0 ],
@@ -1271,7 +1272,37 @@ Converter.rules['dhcp6'] = {
         'reconf-accept': tokens => `dhcp6.client.reconf-accept: ${on2enable(tokens[3])}`,
     },
 
-    'relay': 'notsupported',
+    'relay': {
+        'interface': {
+            '*': {
+                'disable': [],
+
+                'enable': (conv, tokens) => {
+                    if (conv.missing('dhcp6 relay')) { return; }
+                    if (! conv.get_memo('dhcp6.relay.enable')) {
+                            conv.set_memo('dhcp6.relay.enable', true);
+                            conv.add('dhcp6.relay.service', 'enable');
+                    }
+                    const ifname = conv.ifmap(tokens[3]);
+                    const idx1 = conv.if2index('dhcp6.relay', ifname);
+                    conv.add(`dhcp6.relay.${idx1}.interface`, ifname);
+                },
+
+                // dhcp6 relay interface { <lan> | <vlan> } server add <ipaddr>
+                'server': {
+                    'add': (conv, tokens) => {
+                        if (conv.missing('dhcp6 relay')) { return; }
+                        const ifname = conv.ifmap(tokens[3]);
+                        const idx1 = conv.if2index('dhcp6.relay', ifname, true);
+                        if (idx1) {
+                            const k1 = conv.get_index(`dhcp6.relay.${idx1}.server`);
+                            conv.add(`${k1}.address`, tokens[6]);
+                        }
+                    }
+                }
+            }
+        }
+    },
 
     'server': {
         'interface': {
