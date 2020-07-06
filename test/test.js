@@ -1026,7 +1026,7 @@ describe('ipsec', () => {
         assertconv(`
             ike preshared-key add "10.0.0.2" "two"
             ike proposal add IKEP encryption 3des hash sha1 authentication preshared-key dh-group modp1024 lifetime-of-time 08h
-            ike peer add TWO exchange-mode aggressive proposals IKEP address 10.0.0.2 check-level claim initial-contact enable my-identifier fqdn ONE peers-identifier user-fqdn TWO nonce-size 32 variable-size-key-exchange-payload enable dpd enable esp-fragment-size 1400 nat-traversal force responder-only on prefer-new-phase1 enable
+            ike peer add TWO exchange-mode aggressive proposals IKEP address 10.0.0.2 check-level claim initial-contact enable my-identifier fqdn ONE peers-identifier user-fqdn TWO nonce-size 32 dpd enable nat-traversal force responder-only on prefer-new-phase1 enable
             ipsec security-association proposal add SAP authentication-algorithm hmac-sha256,hmac-sha1 encryption-algorithm aes256,aes128,3des
             ipsec security-association add SA tunnel 10.0.0.1 10.0.0.2 ike SAP esp enable
             ipsec security-policy add A security-association SA protocol udp src 172.16.0.1/32 srcport 1234 dst 172.16.0.2/32 dstport 4321
@@ -1034,7 +1034,6 @@ describe('ipsec', () => {
             ike.peer.100.address: 10.0.0.2
             ike.peer.100.check-level: claim
             ike.peer.100.dpd: enable
-            ike.peer.100.esp-fragment-size: 1400
             ike.peer.100.exchange-mode: aggressive
             ike.peer.100.initial-contact: enable
             ike.peer.100.my-identifier.type: fqdn
@@ -1050,7 +1049,6 @@ describe('ipsec', () => {
             ike.peer.100.proposal.lifetime: 08h
             ike.peer.100.responder-only: enable
             ike.peer.100.prefer-new-phase1: enable
-            ike.peer.100.variable-size-key-exchange-payload: enable
             ipsec.security-association.sa0.address-type: static
             ipsec.security-association.sa0.local-address: 10.0.0.1
             ipsec.security-association.sa0.remote-address: 10.0.0.2

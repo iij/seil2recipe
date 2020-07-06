@@ -1818,10 +1818,10 @@ Converter.rules['ike'] = {
                     }
                 },
                 'nonce-size': true,
-                'variable-size-key-exchange-payload': true,
+                'variable-size-key-exchange-payload': 'notsupported',
                 'tunnel-interface': true,
                 'dpd': true,
-                'esp-fragment-size': true,
+                'esp-fragment-size': 'notsupported',
                 'nat-traversal': true,
                 'send-transport-phase2-id ': 'notsupported',
                 'responder-only': true,
