@@ -359,8 +359,10 @@ class Conversion {
                 if (pdef.fun) {
                     val = pdef.fun(val);
                 }
-                params[pname] = val;
-                this.add(pdef.key, val);
+                if (val != null) {
+                    params[pname] = val;
+                    this.add(pdef.key, val);
+                }
                 idx += 2;
                 continue;
             }
@@ -507,7 +509,7 @@ const CompatibilityList = {
     'ike peer add ... check-level':                    [    0,    1 ],
     'ike peer add ... initial-contact disable':        [    0,    1 ],
     'ike peer add ... nat-traversal disable':          [    0,    1 ],
-    'ike strict-padding-byte-check enable':            [    0,    1 ],
+    'ike global-parameters':                           [    0,    1 ],
     'interface ... add dhcp6':                         [    0,    1 ],
     'nat upnp timeout':                                [    0,    1 ],
     'nat6':                                            [    0,    1 ],
@@ -1747,40 +1749,46 @@ Converter.rules['httpd'] = {
     'module': 'notsupported',
 };
 
-function ike_timers(conv, tokens) {
-    // ike interval 40s [phase1-timeout 41m] [phase2-timeout 42m]
-    conv.read_params(null, tokens, 0, {
-        'retry': 'ike.retry',
-        'interval': {
-            key: 'ike.interval',
-            fun: conv.time2sec,
-        },
-        'per-send': 'ike.per-send',
-        'phase1-timeout': 'ike.phase1-timeout',
-        'phase2-timeout': 'ike.phase2-timeout',
-        'nat-keepalive-interval': 'ike.nat-keepalive-interval',
-        'dpd-interval': 'ike.dpd-interval',
-        'dpd-maxfail': 'ike.dpd-maxfail',
-    });
+function ike_params(conv, tokens) {
+    // ike interval 40s
+    pdefs = {};
+    function add(word, defval, is_time=false) {
+        pdefs[word] = {
+            key: `ike.${word}`,
+            fun: val => {
+                if (conv.missing('ike global-parameters', true)) {
+                    if (is_time) {
+                        val = conv.time2sec(val);
+                    }
+                    if (val != defval) {
+                        conv.warning(`ike ${word} は ${conv.note.dst.name} ではサポートされていません。`);
+                    }
+                    return null;
+                }
+                return val;
+            }
+        }
+    }
+    add('auto-initiation', 'enable');
+    add('dpd-interval', 20);
+    add('dpd-maxfail', 5);
+    add('exclusive-tail', 'enable');
+    add('interval', 10, true);
+    add('maximum-padding-length', 20);
+    add('nat-keepalive-interval', 120);
+    add('per-send', 1);
+    add('phase1-timeout', 30, true);
+    add('phase2-timeout', 30, true);
+    add('randomize-padding-length', 'disable');
+    add('randomize-padding-value', 'enable');
+    add('retry', 5);
+    add('strict-padding-byte-check', 'disable');
+    conv.read_params(null, tokens, 0, pdefs);
 }
 
 Converter.rules['ike'] = {
     // ike auto-initiation { enable | disable | system-default }
     // https://www.seil.jp/sx4/doc/sa/ipsec/config/ipsec.sa.html
-    'auto-initiation': tokens => `ike.auto-initiation: ${tokens[2]}`,
-
-    'dpd-interval': ike_timers,
-
-    'dpd-maxfail': ike_timers,
-
-    'exclusive-tail': tokens => `ike.exclusive-tail: ${tokens[2]}`,
-
-    'interval': ike_timers,
-
-    'maximum-padding-length': tokens => `ike.maximum-padding-length: ${tokens[2]}`,
-
-    'nat-keepalive-interval': ike_timers,
-
     // https://www.seil.jp/doc/index.html#fn/ipsec/cmd/ike_peer.html#add
     'peer': {
         'add': (conv, tokens) => {
@@ -1818,11 +1826,6 @@ Converter.rules['ike'] = {
             conv.set_memo(`ike.peer.address.${params['address']}`, params);
         }
     },
-
-    'per-send': ike_timers,
-    'phase1-timeout': ike_timers,
-    'phase2-timeout': ike_timers,
-
     'preshared-key': {
         // ike preshared-key add <peers-identifier> <key>
         'add': (conv, tokens) => {
@@ -1843,17 +1846,7 @@ Converter.rules['ike'] = {
             });
         }
     },
-
-    'randomize-padding-length': tokens => `ike.randomize-padding-length: ${tokens[2]}`,
-
-    'randomize-padding-value': tokens => `ike.randomize-padding-value: ${tokens[2]}`,
-
-    'retry': tokens => `ike.retry: ${tokens[2]}`,
-
-    'strict-padding-byte-check': (conv, tokens) => {
-        if (conv.missing('ike strict-padding-byte-check enable')) { return; }
-        conv.add('ike.strict-padding-byte-check', tokens[2]);
-    }
+    '*': ike_params
 };
 
 Converter.rules['interface'] = {

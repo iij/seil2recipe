@@ -805,7 +805,7 @@ describe('ike', () => {
             ike.dpd-maxfail: 6
             ike.dpd-interval: 43
             ike.exclusive-tail: disable
-            ike.interval: 40
+            ike.interval: 40s
             ike.maximum-padding-length: 21
             ike.nat-keepalive-interval: 121
             ike.per-send: 2
