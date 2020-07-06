@@ -1765,6 +1765,10 @@ function ike_params(conv, tokens) {
                     }
                     return null;
                 }
+                // interval だけは受け入れる表記が異なる。
+                if (word == 'interval') {
+                    val = conv.time2sec(val);
+                }
                 return val;
             }
         }
@@ -1773,7 +1777,7 @@ function ike_params(conv, tokens) {
     add('dpd-interval', 20);
     add('dpd-maxfail', 5);
     add('exclusive-tail', 'enable');
-    add('interval', 10, true);
+    add('interval', 10);
     add('maximum-padding-length', 20);
     add('nat-keepalive-interval', 120);
     add('per-send', 1);
