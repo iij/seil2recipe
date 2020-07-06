@@ -784,15 +784,38 @@ describe('httpd', () => {
 });
 
 describe('ike', () => {
-    it('timers', () => {
-        assertconv([
-            'ike interval 40s phase1-timeout 41s phase2-timeout 42s dpd-interval 43',
-        ], [
-            'ike.interval: 40',
-            'ike.phase1-timeout: 41s',
-            'ike.phase2-timeout: 42s',
-            'ike.dpd-interval: 43',
-        ]);
+    it('global parameters', () => {
+        assertconv(`
+            ike auto-initiation disable
+            ike dpd-interval 43
+            ike dpd-maxfail 6
+            ike exclusive-tail disable
+            ike interval 40s
+            ike maximum-padding-length 21
+            ike nat-keepalive-interval 121
+            ike per-send 2
+            ike phase1-timeout 41s
+            ike phase2-timeout 42s
+            ike randomize-padding-length enable
+            ike randomize-padding-value disable
+            ike retry 6
+            ike strict-padding-byte-check enable
+            ---
+            ike.auto-initiation: disable
+            ike.dpd-maxfail: 6
+            ike.dpd-interval: 43
+            ike.exclusive-tail: disable
+            ike.interval: 40
+            ike.maximum-padding-length: 21
+            ike.nat-keepalive-interval: 121
+            ike.per-send: 2
+            ike.phase1-timeout: 41s
+            ike.phase2-timeout: 42s
+            ike.randomize-padding-length: enable
+            ike.randomize-padding-value: disable
+            ike.retry: 6
+            ike.strict-padding-byte-check: enable
+        `);
     });
 });
 

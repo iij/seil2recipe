@@ -1760,7 +1760,7 @@ function ike_timers(conv, tokens) {
         'phase2-timeout': 'ike.phase2-timeout',
         'nat-keepalive-interval': 'ike.nat-keepalive-interval',
         'dpd-interval': 'ike.dpd-interval',
-        'dpd-maxfail': 'dpd-maxfail',
+        'dpd-maxfail': 'ike.dpd-maxfail',
     });
 }
 
