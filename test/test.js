@@ -1142,6 +1142,69 @@ describe('macfilter', () => {
     });
 });
 
+describe('monitor', () => {
+    it('full', () => {
+        assertconv(`
+            monitor enable
+            monitor source add MS1 type ppp-connection interface pppoe0 event enable trigger disconnect,connect
+            monitor source add MS2 type ppp-connection interface ppp0 event enable trigger disconnect,connect
+            monitor source add MS3 type boot-information event enable trigger watchdog-reboot,soft-reboot,power-on-boot
+            monitor source add MS4 type usb-port event enable trigger unplug,plug
+            monitor source add MS5 type physical-interface-link interface lan0 event enable trigger linkup,linkdown
+            monitor source add MS6 type physical-interface-link interface lan1 event enable trigger linkup,linkdown
+            monitor source add MS7 type ping target-host 192.168.0.3 source-address 192.168.0.4 description hogehoge down-count 3 watch-interval 15 event enable trigger up,down
+            monitor source-group-name add MSG1
+            monitor source-group MSG1 source add MS1
+            monitor source-group MSG1 source add MS2
+            monitor source-group MSG1 source add MS3
+            monitor source-group MSG1 source add MS4
+            monitor source-group MSG1 source add MS5
+            monitor source-group MSG1 source add MS6
+            monitor source-group-name add MSG2
+            monitor source-group MSG2 source add MS7
+            monitor notification-server-group-name add MNSG1
+            monitor notification-server-group MNSG1 server add MNS1 protocol snmp-trap-v3 user-name testuser1 destination-address 192.168.0.1 security authpriv authentication-password password1 authentication-method hmac-sha-96 privacy-password password2 privacy-algorithm cfb128-aes-128 port 16201
+            monitor notification-server-group MNSG1 server add MNS2 protocol snmp-trap-v3 user-name testuser2 destination-address 2001:db8::1 security authpriv authentication-password password3 authentication-method hmac-sha-96 privacy-password password4 privacy-algorithm cfb128-aes-128 port 16202
+            monitor binding add MB1 source-group MSG1 notification-server-group MNSG1
+            monitor binding add MB2 source-group MSG2 notification-server-group MNSG1
+            ---
+            monitor.service: enable
+            monitor.physical-interface-link.100.interface: ge1
+            monitor.physical-interface-link.100.trigger.100.event: linkup
+            monitor.physical-interface-link.100.trigger.200.event: linkdown
+            monitor.physical-interface-link.200.interface: ge0
+            monitor.physical-interface-link.200.trigger.100.event: linkup
+            monitor.physical-interface-link.200.trigger.200.event: linkdown
+            monitor.ppp-connection.100.interface: pppoe0
+            monitor.ppp-connection.100.trigger.100.event: disconnect
+            monitor.ppp-connection.100.trigger.200.event: connect
+            monitor.ppp-connection.200.interface: ppp0
+            monitor.ppp-connection.200.trigger.100.event: disconnect
+            monitor.ppp-connection.200.trigger.200.event: connect
+            monitor.usb-port.trigger.100.event: unplug
+            monitor.usb-port.trigger.200.event: plug
+            monitor.boot-information.trigger.100.event: unknown
+            monitor.ping.100.address: 192.168.0.3
+            monitor.ping.100.source-address: 192.168.0.4
+            monitor.ping.100.description: hogehoge
+            monitor.ping.100.down-count: 3
+            monitor.ping.100.watch-interval: 15
+            monitor.ping.100.trigger.100.event: up
+            monitor.ping.100.trigger.200.event: down
+            monitor.notification.snmp-trap.100.address: 192.168.0.1
+            monitor.notification.snmp-trap.100.port: 16201
+            monitor.notification.snmp-trap.100.user-name: testuser1
+            monitor.notification.snmp-trap.100.authentication-password: password1
+            monitor.notification.snmp-trap.100.privacy-password: password2
+            monitor.notification.snmp-trap.200.address: 2001:db8::1
+            monitor.notification.snmp-trap.200.port: 16202
+            monitor.notification.snmp-trap.200.user-name: testuser2
+            monitor.notification.snmp-trap.200.authentication-password: password3
+            monitor.notification.snmp-trap.200.privacy-password: password4
+        `);
+    });
+});
+
 describe('nat', () => {
     it('bypass', () => {
         assertconv([
