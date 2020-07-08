@@ -237,6 +237,9 @@ class Conversion {
             return false;
         }
         let f = CompatibilityList[feature];
+        if (f == null) {
+            return false;
+        }
         var b;
         if (this.note.dst.gen == 'seil6') {
             b = (f[0] == 0);
@@ -496,11 +499,8 @@ class Device {
 
 const CompatibilityList = {
     // feature                                          seil6 seil8
-    'arp add':                                         [    0,    1 ],
     'authentication account-list':                     [    0,    1 ],
     'cbq':                                             [    0,    1 ],
-    'dhcp interface ... static add':                   [    0,    1 ],
-    'dhcp interface ... wpad':                         [    0,    1 ],
     'dhcp6 relay':                                     [    0,    1 ],
     'dhcp6 server':                                    [    0,    1 ],
     'dialup-device ... device-option ux312nc-3g-only': [    1,    0 ],
