@@ -2801,6 +2801,160 @@ Converter.rules['macfilter'] = {
     }
 };
 
+function monitor_source_group(conv, group_name) {
+    const l = conv.get_memo(`monitor.source-group.${group_name}`);
+    if (l == null) { return; }
+    const source_map = conv.get_params('monitor.source');
+    l.forEach(source_name => {
+        const params = source_map[source_name];
+        const type = params['type'];
+        const k1 = (type == 'boot-information' || type == 'usb-port')
+            ? `monitor.${type}`
+            : conv.get_index(`monitor.${type}`);
+
+        conv.param2recipe(params, 'description', `${k1}.description`);
+        conv.param2recipe(params, 'down-count', `${k1}.down-count`);
+        conv.param2recipe(params, 'target-host', `${k1}.address`);
+        conv.param2recipe(params, 'interface', `${k1}.interface`, ifname => conv.ifmap(ifname));
+        conv.param2recipe(params, 'source-address', `${k1}.source-address`);
+        conv.param2recipe(params, 'watch-interval', `${k1}.watch-interval`);
+
+        if (type == 'boot-information' && params['trigger'] != 'all') {
+            params['trigger'] = 'unknown';
+        }
+        params['trigger'].split(',').forEach(t => {
+            const k2 = conv.get_index(`${k1}.trigger`);
+            conv.add(`${k2}.event`, t);
+        });
+    });
+}
+
+function monitor_server_group(conv, group_name) {
+    const l = conv.get_memo(`notification-server-group-name.${group_name}`);
+    if (l == null) { return; }
+
+    l.forEach(params => {
+        const k1 = conv.get_index('monitor.notification.snmp-trap');
+        conv.param2recipe(params, 'authentication-password', `${k1}.authentication-password`);
+        conv.param2recipe(params, 'destination-address', `${k1}.address`);
+        conv.param2recipe(params, 'engine-id', `${k1}.engine-id`);
+        conv.param2recipe(params, 'port', `${k1}.port`);
+        conv.param2recipe(params, 'privacy-password', `${k1}.privacy-password`);
+        conv.param2recipe(params, 'user-name', `${k1}.user-name`);
+        if (params['source-address'] != 'auto') {
+            conv.param2recipe(params, 'source-address', `${k1}.source-address`);
+        }
+    });
+
+    conv.set_memo(`notification-server-group-name.${group_name}`, null);
+}
+
+Converter.rules['monitor'] = {
+    'binding': {
+        'add': {
+            '*': {
+                // monitor binding add <binding_name>
+                //  source-group <source_group_name>
+                //  [notification-server-group <notification_server_group_name>]
+                'source-group': (conv, tokens) => {
+                    const source = tokens[5];
+                    if (tokens[6] != 'notification-server-group') { return; };
+                    const server = tokens[7];
+                    monitor_source_group(conv, source);
+                    monitor_server_group(conv, server);
+                }
+            }
+        }
+    },
+    'disable': [],
+    'enable': 'monitor.service: enable',
+
+    // monitor notification-server-group <notification_server_group_name>
+    //  server add <notification_server_name>
+    //   protocol snmp-trap-v3 user-name <user_name>
+    //    destination-address <destination_address>
+    //     ...
+    'notification-server-group': {
+        '*': {
+            'server': {
+                'add': (conv, tokens) => {
+                    if (tokens[7] != 'snmp-trap-v3') {
+                        conv.notsupported(`protocol ${tokens[7]}`);
+                        return;
+                    }
+                    const group_name = tokens[2];
+                    const params = conv.read_params('monitor.notification-server', tokens, 5, {
+                        'authentication-method': true,
+                        'authentication-password': true,
+                        'destination-address': true,
+                        'engine-id': true,
+                        'port': true,
+                        'privacy-algorithm': true,
+                        'privacy-password': true,
+                        'protocol': true,
+                        'security': true,
+                        'send-count': true,
+                        'send-interval': true,
+                        'source-address': true,
+                        'user-name': true,
+                    });
+                    (conv.get_memo(`notification-server-group-name.${group_name}`) || []).push(params);
+                }
+            }
+        }
+    },
+    'notification-server-group-name': {
+        // monitor notification-server-group-name add <name>
+        'add': (conv, tokens) => {
+            const name = tokens[3];
+            conv.set_memo(`notification-server-group-name.${name}`, []);
+        }
+    },
+    // monitor source add <name> type ...
+    'source': {
+        'add': {
+            '*': {
+                'type': (conv, tokens) => {
+                    const type = tokens[5];
+                    const rules = {
+                        'event': true,
+                        'description': true,
+                        'down-count': true,
+                        'interface': true,
+                        'source-address': true,
+                        'target-host': true,
+                        'trigger': true,
+                        'type': true,
+                        'watch-interval': true
+                    };
+                    if (type != 'ping') {
+                        rules['watch-interval'] = 'notsupported';
+                    }
+                    conv.read_params('monitor.source', tokens, 3, rules);
+                }
+            }
+        }
+    },
+    'source-group': {
+        // monitor source-group <source_group_name> source add <name>
+        '*': {
+            'source': {
+                'add': (conv, tokens) => {
+                    const group_name = tokens[2];
+                    const source_name = tokens[5];
+                    conv.get_memo(`monitor.source-group.${group_name}`).push(source_name);
+                }
+            }
+        }
+    },
+    'source-group-name': {
+        // monitor source-group-name add <name>
+        'add': (conv, tokens) => {
+            const name = tokens[3];
+            conv.set_memo(`monitor.source-group.${name}`, []);
+        }
+    },
+};
 
 Converter.rules['nat'] = {
     'bypass': {
