@@ -626,6 +626,7 @@ describe('filter', () => {
         assertconv([
             'filter add FOO interface vlan0 direction in action forward 192.168.0.1',
         ], [
+            'filter.forward.ipv4.100.label: FOO',
             'filter.forward.ipv4.100.interface: vlan0',
             'filter.forward.ipv4.100.direction: in',
             'filter.forward.ipv4.100.gateway: 192.168.0.1',
@@ -636,6 +637,7 @@ describe('filter', () => {
         assertconv(`
             filter add FOO direction out action forward 192.168.0.1
             ---
+            filter.forward.ipv4.100.label: FOO
             filter.forward.ipv4.100.direction: out
             filter.forward.ipv4.100.interface: any
             filter.forward.ipv4.100.gateway: 192.168.0.1
@@ -646,6 +648,7 @@ describe('filter', () => {
         assertconv([
             'filter add FOO interface vlan0 direction in/out action pass state disable logging on enable',
         ], [
+            'filter.ipv4.100.label: FOO',
             'filter.ipv4.100.action: pass',
             'filter.ipv4.100.direction: inout',
             'filter.ipv4.100.interface: vlan0',
@@ -658,6 +661,7 @@ describe('filter', () => {
         assertconv(`
             filter add A interface lan1 direction in action pass srcport 1
             ---
+            filter.ipv4.100.label: A
             filter.ipv4.100.action: pass
             filter.ipv4.100.interface: ge0
             filter.ipv4.100.direction: in
@@ -672,6 +676,7 @@ describe('filter6', () => {
         assertconv([
             'filter6 add FOO interface vlan0 direction in/out action pass',
         ], [
+            'filter.ipv6.100.label: FOO',
             'filter.ipv6.100.action: pass',
             'filter.ipv6.100.direction: inout',
             'filter.ipv6.100.interface: vlan0',
@@ -704,6 +709,7 @@ describe('filter6', () => {
         assertconv(`
             filter6 add FOO interface vlan0 direction out action forward 1::1
             ---
+            filter.forward.ipv6.100.label: FOO
             filter.forward.ipv6.100.direction: out
             filter.forward.ipv6.100.gateway: 1::1
             filter.forward.ipv6.100.interface: vlan0
@@ -714,6 +720,7 @@ describe('filter6', () => {
         assertconv(`
             filter6 add A interface lan1 direction in action pass dstport 1
             ---
+            filter.ipv6.100.label: A
             filter.ipv6.100.action: pass
             filter.ipv6.100.interface: ge0
             filter.ipv6.100.direction: in

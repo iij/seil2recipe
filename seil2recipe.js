@@ -1581,6 +1581,11 @@ Converter.rules['filter'] = {
         conv.param2recipe(params, 'state-ttl', `${k}.state.ttl`);
         conv.param2recipe(params, 'keepalive', `${k}.keepalive`);
         conv.param2recipe(params, 'logging', `${k}.logging`);
+
+        // label が設定されていない場合はエントリ名を label に設定する。
+        if (params['label'] == null) {
+            params['label'] = params['*NAME*'];
+        }
         conv.param2recipe(params, 'label', `${k}.label`);
     }
 };
@@ -1659,6 +1664,11 @@ Converter.rules['filter6'] = {
         conv.param2recipe(params, 'state', `${k}.state`);
         conv.param2recipe(params, 'state-ttl', `${k}.state.ttl`);
         conv.param2recipe(params, 'logging', `${k}.logging`);
+
+        // filter のコメントを見よ。
+        if (params['label'] == null) {
+            params['label'] = params['*NAME*'];
+        }
         conv.param2recipe(params, 'label', `${k}.label`);
     }
 };
