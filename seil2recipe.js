@@ -528,6 +528,7 @@ const CompatibilityList = {
     'sshd hostkey':                                    [    0,    1 ],
     'sshd password-authentication enable':             [    0,    1 ],
     'telnetd':                                         [    0,    1 ],
+    'upnp.listen.[].interface':                        [    0,    1 ],
     'vrrp add ... watch':                              [    0,    1 ],
 };
 
@@ -3126,7 +3127,9 @@ Converter.rules['nat'] = {
         },
         'on': (conv, tokens) => {
             conv.add('upnp.service', 'enable');
-            conv.add('upnp.listen.0.interface', conv.ifmap('lan0'));
+            if (! conv.missing('upnp.listen.[].interface', true)) {
+                conv.add('upnp.listen.0.interface', conv.ifmap('lan0'));
+            }
         },
         'off': 'upnp.service: disable',
         'timeout': (conv, tokens) => {
