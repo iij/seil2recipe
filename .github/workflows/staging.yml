@@ -1,0 +1,40 @@
+name: Deploy to staging environment
+on: pull_request
+jobs:
+  copy-in:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        path: code
+    - name: Checkout pages
+      uses: actions/checkout@v2
+      with:
+        repository: iij/seil2recipe-stg
+        token: ${{ secrets.STG_PAT }}
+        path: pages
+    - name: Copy
+      run: |
+        cd pages
+        NUM=${{ github.event.pull_request.number }}
+        rm -rf $NUM
+        mkdir $NUM
+        cp ../code/{index.html,seil2recipe.js,style.css} $NUM
+        cd $NUM
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git add .
+        git commit -m "deploy pull-request/$NUM" && git push || true
+    - name: Comment pull-request
+      uses: actions/github-script@v3
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          github.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: 'Deployed on https://iij.github.io/seil2recipe-stg/' +
+                  '${{ github.event.pull_request.number }}'
+          })
