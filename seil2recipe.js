@@ -137,6 +137,7 @@ class Note {
         this.dst     = new Device(dst);
 
         this.memo.set('floatlink.interfaces', []);
+        this.memo.set('ike.peer.dynamic', []);
         this.memo.set('ike.preshared-key', {});
         this.memo.set('interface.l2tp.tunnel', {});
         this.memo.set('qos.class', { 'default': 'root' });
@@ -1840,6 +1841,10 @@ Converter.rules['ike'] = {
                 'prefer-new-phase1': true,
             });
             conv.set_memo(`ike.peer.address.${params['address']}`, params);
+
+            if (params['address'] == 'dynamic') {
+                conv.get_memo('ike.peer.dynamic').push(params);
+            }
         }
     },
     'preshared-key': {
@@ -2337,10 +2342,7 @@ Converter.rules['interface'] = {
     },
 };
 
-function ike_peer(conv, prefix, id, if_prefix) {
-    const peer = conv.get_memo(`ike.peer.address.${id}`);
-    if (peer == null) { return; }
-
+function ike_peer(conv, prefix, peer, if_prefix) {
     const prefix_ike = if_prefix ? `${prefix}.ike` : prefix;
     const prefix_proposal = if_prefix ? `${prefix}.ike.proposal.phase1` : `${prefix}.proposal`;
 
@@ -2385,9 +2387,6 @@ function ike_peer(conv, prefix, id, if_prefix) {
         conv.add(`${prefix}.nat-traversal`, peer['nat-traversal'] || 'disable');
     }
 
-    const psk = conv.get_memo('ike.preshared-key')[id];
-    conv.add(`${prefix}.preshared-key`, psk);
-
     const ikep_name = peer['proposals'];
     const ikep = conv.get_params('ike.proposal')[ikep_name];
     if (ikep) {
@@ -2424,6 +2423,19 @@ function ike_peer(conv, prefix, id, if_prefix) {
             conv.add(`${prefix_ike}.peers-identifier.type`, peer_id[0]);
             conv.add(`${prefix_ike}.peers-identifier.${peer_id[0]}`, peer_id[1]);
         }
+    }
+
+    var psk_id;
+    if (peer_id == null || peer_id == 'address') {
+        psk_id = peer['address'];
+    } else {
+        psk_id = peer_id[1];
+    }
+    const psk = conv.get_memo('ike.preshared-key')[psk_id];
+    if (psk) {
+        conv.add(`${prefix}.preshared-key`, psk);
+    } else {
+        conv.error('${psk_id} に対する preshared-key がありません。');
     }
 }
 
@@ -2510,7 +2522,10 @@ Converter.rules['ipsec'] = {
 
                 // ike preshared-key & peer
                 const dst = conv.get_memo(`interface.${ifname}.tunnel.destination`);
-                ike_peer(conv, `interface.${ifname}`, dst, true);
+                const peer = conv.get_memo(`ike.peer.address.${dst}`);
+                if (peer) {
+                    ike_peer(conv, `interface.${ifname}`, peer, true);
+                }
 
                 const proxy_id_local = params['proxy-id-local'];
                 if (proxy_id_local) {
@@ -2555,8 +2570,10 @@ if (false) {
 }
             } else {
                 // ipsec security-association add <name> { tunnel | transport }
-                //     { <start_IPaddress> <end_IPaddress> | <start_Interface> <end_IPaddress> | dynamic | auto }
-                //     ike <SAP_name> ah { enable | disable } esp { enable | disable }
+                //     { <start_IPaddress> <end_IPaddress> |
+                //       <start_Interface> <end_IPaddress> | dynamic | auto }
+                //     ike <SAP_name> ah { enable | disable }
+                //                    esp { enable | disable }
                 const params = {};
                 const sa_idx = conv.get_named_index('sa');
                 const k1 = `ipsec.security-association.${sa_idx}`;
@@ -2569,21 +2586,22 @@ if (false) {
                     idx = 5;
                     switch (tokens[5]) {
                         case 'dynamic':
-                            conv.add(`${k1}.address-type`, 'dynamic');
+                            params['address-type'] = 'dynamic';
                             idx += 1;
                             break;
                         case 'auto':
                             conv.notsupported('security-association auto');
                             break;
                         default:
+                            params['address-type'] = 'static';
                             params['src'] = tokens[5];
                             params['dst'] = tokens[6];
-                            conv.add(`${k1}.address-type`, 'static');
                             conv.add(`${k1}.local-address`, tokens[5]);
                             conv.add(`${k1}.remote-address`, tokens[6]);
                             idx += 2;
                             break;
                     }
+                    conv.add(`${k1}.address-type`, params['address-type']);
                 } else if (tokens[4] == 'transport') {
                     // X4 では transport モード IPsec は L2TPv3 でしか使えない。
                     const src = tokens[5];
@@ -2759,7 +2777,16 @@ if (false) {
         //
         // ike peer add ...
         //
-        ike_peer(conv, conv.get_index('ike.peer'), sa['dst'], false);
+        if (sa['address-type'] == 'static') {
+            const peer = conv.get_memo(`ike.peer.address.${sa['dst']}`);
+            if (peer) {
+                ike_peer(conv, conv.get_index('ike.peer'), peer, false);
+            }
+        } else if (sa['address-type'] == 'dynamic') {
+            (conv.get_memo('ike.peer.dynamic') || []).forEach(peer => {
+                ike_peer(conv, conv.get_index('ike.peer'), peer, false);
+            });
+        }
     },
 };
 
