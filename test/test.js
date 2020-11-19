@@ -1984,6 +1984,29 @@ describe('vrrp', () => {
             vrrp.vrouter.100.watch.route-up: 192.168.4.0/24
         `)
     });
+
+    it('preempt off', () => {
+        assertconv(`
+            vrrp lan0 add vrid 1 address 192.168.0.1/32 preempt off
+            ---
+            vrrp.vrouter.100.version: 2
+            vrrp.vrouter.100.address: 192.168.0.1
+            vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.vrid: 1
+            vrrp.vrouter.100.preempt: disable
+        `)
+    });
+
+    it('"preempt on" should be suppressed', () => {
+        assertconv(`
+            vrrp lan0 add vrid 1 address 192.168.0.1/32 preempt on
+            ---
+            vrrp.vrouter.100.version: 2
+            vrrp.vrouter.100.address: 192.168.0.1
+            vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.vrid: 1
+        `)
+    });
 });
 
 describe('vrrp3', () => {
@@ -2019,10 +2042,27 @@ describe('vrrp3', () => {
         `)
     });
 
-    it('deprecates "preempt off"', () => {
-        assert_conversions(`vrrp3 add FOO interface lan0 vrid 1 address fe80::112 preempt off`, convs => {
-            assert(convs[0].errors[0].type == 'deprecated');
-        });
+    it('preempt off', () => {
+        assertconv(`
+            vrrp3 add FOO interface lan0 vrid 1 address 192.168.0.1 preempt off
+            ---
+            vrrp.vrouter.100.version: 3
+            vrrp.vrouter.100.address: 192.168.0.1
+            vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.vrid: 1
+            vrrp.vrouter.100.preempt: disable
+        `)
+    });
+
+    it('"preempt on" should be suppressed', () => {
+        assertconv(`
+            vrrp3 add FOO interface lan0 vrid 1 address 192.168.0.1 preempt on
+            ---
+            vrrp.vrouter.100.version: 3
+            vrrp.vrouter.100.address: 192.168.0.1
+            vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.vrid: 1
+        `)
     });
 });
 

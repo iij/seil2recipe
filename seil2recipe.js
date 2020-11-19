@@ -529,6 +529,7 @@ const CompatibilityList = {
     'sshd password-authentication enable':             [    0,    1 ],
     'telnetd':                                         [    0,    1 ],
     'upnp.listen.[].interface':                        [    0,    1 ],
+    'vrrp add ... preempt off':                        [    0,    1 ],
     'vrrp add ... watch':                              [    0,    1 ],
 };
 
@@ -4522,10 +4523,16 @@ Converter.rules['vrrp'] = {
             conv.add(`${k1}.address`, params['address']);
         }
 
-        if (params['preempt'] == 'off') {
-            conv.deprecated('preempt off');
-        } else if (params['preempt'] && params['preempt'] != 'on') {
-            conv.syntaxerror(`preempt ${params['preempt']}`);
+        if (params['preempt']) {
+            if (params['preempt'] == 'off') {
+                if (conv.missing('vrrp add ... preempt off', true)) {
+                    conv.notsupported('preempt off');
+                } else {
+                    conv.add(`${k1}.preempt`, 'disable');
+                }
+            } else if (params['preempt'] != 'on') {
+                conv.syntaxerror(`preempt ${params['preempt']}`);
+            }
         }
 
         if (params['virtual-mac'] == null || params['virtual-mac'] == 'off') {
@@ -4588,10 +4595,16 @@ Converter.rules['vrrp3'] = {
             'delay': `${k1}.delay`,
         });
 
-        if (params['preempt'] == 'off') {
-            conv.deprecated('preempt off');
-        } else if (params['preempt'] && params['preempt'] != 'on') {
-            conv.syntaxerror(`preempt ${params['preempt']}`);
+        if (params['preempt']) {
+            if (params['preempt'] == 'off') {
+                if (conv.missing('vrrp add ... preempt off', true)) {
+                    conv.notsupported('preempt off');
+                } else {
+                    conv.add(`${k1}.preempt`, 'disable');
+                }
+            } else if (params['preempt'] != 'on') {
+                conv.syntaxerror(`preempt ${params['preempt']}`);
+            }
         }
 
         if (params['watch']) {
