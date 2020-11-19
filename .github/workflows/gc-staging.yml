@@ -1,0 +1,23 @@
+name: Remove outdated deployment
+on:
+  pull_request:
+    types: [closed]      
+jobs:
+  rmdir:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout pages
+      uses: actions/checkout@v2
+      with:
+        repository: iij/seil2recipe-stg
+        token: ${{ secrets.STG_PAT }}
+        path: pages
+    - name: Delete directory
+      run: |
+        cd pages
+        NUM=${{ github.event.pull_request.number }}
+        rm -rf $NUM
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git add -A .
+        git commit -m "remove pull-request/$NUM" && git push || true
