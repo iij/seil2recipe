@@ -22,6 +22,8 @@ jobs:
         mkdir $NUM
         cp ../code/{index.html,seil2recipe.js,style.css} $NUM
         cd $NUM
+        sed -e '/<header /s/$/[stg]/' -i '' index.html
+        echo 'textarea { background-color: yellow; }' >> style.css
         git config user.name github-actions
         git config user.email github-actions@github.com
         git add .
