@@ -2596,7 +2596,8 @@ if (false) {
                             params['address-type'] = 'static';
                             params['src'] = tokens[5];
                             params['dst'] = tokens[6];
-                            conv.add(`${k1}.local-address`, tokens[5]);
+                            const src = conv.ifmap(tokens[5]);
+                            conv.add(`${k1}.local-address`, src);
                             conv.add(`${k1}.remote-address`, tokens[6]);
                             idx += 2;
                             break;

@@ -1002,7 +1002,7 @@ describe('ipsec', () => {
             ike proposal add IKEP encryption 3des hash sha1 authentication preshared-key dh-group modp1024 lifetime-of-time 08h
             ike peer add TWO address 10.0.0.2 exchange-mode aggressive proposals IKEP my-identifier fqdn TWO
             ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm 3des lifetime-of-time 03h pfs-group modp1024
-            ipsec security-association add SA tunnel pppoe0 10.0.0.2 ike SAP esp enable
+            ipsec security-association add SA tunnel lan1 10.0.0.2 ike SAP esp enable
             ipsec security-policy add SP security-association SA src 172.16.0.1/32 dst 172.16.0.2/32
             ----
             ike.peer.100.address: 10.0.0.2
@@ -1017,7 +1017,7 @@ describe('ipsec', () => {
             ike.peer.100.proposal.hash.100.algorithm: sha1
             ike.peer.100.proposal.lifetime: 08h
             ipsec.security-association.sa0.address-type: static
-            ipsec.security-association.sa0.local-address: pppoe0
+            ipsec.security-association.sa0.local-address: ge0
             ipsec.security-association.sa0.remote-address: 10.0.0.2
             ipsec.security-policy.100.destination.address: 172.16.0.2/32
             ipsec.security-policy.100.ike.proposal.authentication.100.algorithm: hmac-sha1
