@@ -1,5 +1,6 @@
-const s2r = require('../seil2recipe');
 const assert = require('assert');
+const fs     = require('fs');
+const s2r    = require('../seil2recipe');
 
 
 const default_config_set = new Set(new s2r.Converter('', 'test').recipe_config.trim().split('\n'));
@@ -2094,5 +2095,21 @@ describe('seil6', () => {
         const c = new s2r.Converter('option statistics access on', 'w1');
         const e = c.conversions[0].errors[0]
         assert.strictEqual(e.type, 'notsupported');
+    });
+});
+
+describe('factory-config', () => {
+    it('should be converted without script error', () => {
+        const buf = fs.readFileSync('index.html');
+        const config = buf.toString().match(/(hostname.*\nvendor.*?\n)/s)[1];
+        const c = new s2r.Converter(config, 'x4');
+
+        const noterrors = [ 'deprecated', 'notsupported', 'warning' ];
+        c.conversions.forEach(conv => {
+            conv.errors.forEach(e => {
+                assert.ok(noterrors.includes(e.type),
+                    `${conv.lineno}: ${conv.seil_line}: ${e.message}`);
+            });
+        });
     });
 });
