@@ -1036,7 +1036,7 @@ describe('ipsec', () => {
             ike peer add TWO exchange-mode aggressive proposals IKEP address 10.0.0.2 check-level claim initial-contact enable my-identifier fqdn ONE peers-identifier user-fqdn two@example.jp nonce-size 32 dpd enable nat-traversal force responder-only on prefer-new-phase1 enable
             ipsec security-association proposal add SAP authentication-algorithm hmac-sha256,hmac-sha1 encryption-algorithm aes256,aes128,3des
             ipsec security-association add SA tunnel 10.0.0.1 10.0.0.2 ike SAP esp enable
-            ipsec security-policy add A security-association SA protocol udp src 172.16.0.1/32 srcport 1234 dst 172.16.0.2/32 dstport 4321
+            ipsec security-policy add A security-association SA protocol udp src lan1 srcport 1234 dst 172.16.0.2/32 dstport 4321
             ----
             ike.peer.100.address: 10.0.0.2
             ike.peer.100.check-level: claim
@@ -1068,7 +1068,7 @@ describe('ipsec', () => {
             ipsec.security-policy.100.ike.proposal.encryption.300.algorithm: 3des
             ipsec.security-policy.100.protocol: udp
             ipsec.security-policy.100.security-association: sa0
-            ipsec.security-policy.100.source.address: 172.16.0.1/32
+            ipsec.security-policy.100.source.address: ge0
             ipsec.security-policy.100.source.port: 1234
         `);
     });

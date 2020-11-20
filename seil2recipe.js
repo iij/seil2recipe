@@ -2769,7 +2769,8 @@ if (false) {
         //
         // ipsec.security-policy
         //
-        conv.param2recipe(params, 'src', `${k1}.source.address`);
+        conv.param2recipe(params, 'src', `${k1}.source.address`,
+            ifname => conv.ifmap(ifname));
         conv.param2recipe(params, 'dst', `${k1}.destination.address`);
         conv.param2recipe(params, 'srcport', `${k1}.source.port`);
         conv.param2recipe(params, 'dstport', `${k1}.destination.port`);
