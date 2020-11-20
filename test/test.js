@@ -1031,9 +1031,9 @@ describe('ipsec', () => {
 
     it('policy parameters', () => {
         assertconv(`
-            ike preshared-key add "10.0.0.2" "two"
+            ike preshared-key add "two@example.jp" "two"
             ike proposal add IKEP encryption 3des hash sha1 authentication preshared-key dh-group modp1024 lifetime-of-time 08h
-            ike peer add TWO exchange-mode aggressive proposals IKEP address 10.0.0.2 check-level claim initial-contact enable my-identifier fqdn ONE peers-identifier user-fqdn TWO nonce-size 32 dpd enable nat-traversal force responder-only on prefer-new-phase1 enable
+            ike peer add TWO exchange-mode aggressive proposals IKEP address 10.0.0.2 check-level claim initial-contact enable my-identifier fqdn ONE peers-identifier user-fqdn two@example.jp nonce-size 32 dpd enable nat-traversal force responder-only on prefer-new-phase1 enable
             ipsec security-association proposal add SAP authentication-algorithm hmac-sha256,hmac-sha1 encryption-algorithm aes256,aes128,3des
             ipsec security-association add SA tunnel 10.0.0.1 10.0.0.2 ike SAP esp enable
             ipsec security-policy add A security-association SA protocol udp src 172.16.0.1/32 srcport 1234 dst 172.16.0.2/32 dstport 4321
@@ -1048,7 +1048,7 @@ describe('ipsec', () => {
             ike.peer.100.nat-traversal: force
             ike.peer.100.nonce-size: 32
             ike.peer.100.peers-identifier.type: user-fqdn
-            ike.peer.100.peers-identifier.user-fqdn: TWO
+            ike.peer.100.peers-identifier.user-fqdn: two@example.jp
             ike.peer.100.preshared-key: two
             ike.peer.100.proposal.dh-group: modp1024
             ike.peer.100.proposal.encryption.100.algorithm: 3des
@@ -1074,21 +1074,33 @@ describe('ipsec', () => {
     });
 
     it('dynamic', () => {
-        assertconv([
-            'ipsec security-association proposal add SAP2 authentication-algorithm hmac-sha384 encryption-algorithm aes192',
-            'ipsec security-association add SA tunnel dynamic ike SAP2 ikefew esp enable',
-            'ipsec security-policy add A security-association SA protocol udp src 172.16.0.1/32 srcport 1234 dst 172.16.0.2/32 dstport 4321'
-        ], [
-            'ipsec.security-association.sa0.address-type: dynamic',
-            'ipsec.security-policy.100.destination.address: 172.16.0.2/32',
-            'ipsec.security-policy.100.destination.port: 4321',
-            'ipsec.security-policy.100.ike.proposal.authentication.100.algorithm: hmac-sha384',
-            'ipsec.security-policy.100.ike.proposal.encryption.100.algorithm: aes192',
-            'ipsec.security-policy.100.protocol: udp',
-            'ipsec.security-policy.100.security-association: sa0',
-            'ipsec.security-policy.100.source.address: 172.16.0.1/32',
-            'ipsec.security-policy.100.source.port: 1234',
-        ]);
+        assertconv(`
+            ike preshared-key add "three.example.jp" "opensesame"
+            ike proposal add IKEP3 encryption aes hash sha1 authentication preshared-key dh-group modp1024
+            ike peer add PEER3 address dynamic exchange-mode aggressive proposals IKEP3 peers-identifier fqdn "three.example.jp"
+            ipsec security-association proposal add SAP3 pfs-group modp1024 authentication-algorithm hmac-sha384 encryption-algorithm aes192
+            ipsec security-association add SA3 tunnel dynamic ike SAP3 esp enable
+            ipsec security-policy add A security-association SA3 src 172.16.1.0/24 dst 172.16.2.0/24
+            ----
+            ike.peer.100.preshared-key: opensesame
+            ike.peer.100.proposal.encryption.100.algorithm: aes
+            ike.peer.100.proposal.hash.100.algorithm: sha1
+            ike.peer.100.proposal.dh-group: modp1024
+            ike.peer.100.proposal.lifetime: 8h
+            ike.peer.100.address: dynamic
+            ike.peer.100.exchange-mode: aggressive
+            ike.peer.100.peers-identifier.type: fqdn
+            ike.peer.100.peers-identifier.fqdn: three.example.jp
+            ike.peer.100.check-level: strict
+            ike.peer.100.nat-traversal: disable
+            ipsec.security-policy.100.ike.proposal.pfs-group: modp1024
+            ipsec.security-policy.100.ike.proposal.authentication.100.algorithm: hmac-sha384
+            ipsec.security-policy.100.ike.proposal.encryption.100.algorithm: aes192
+            ipsec.security-association.sa0.address-type: dynamic
+            ipsec.security-policy.100.security-association: sa0
+            ipsec.security-policy.100.source.address: 172.16.1.0/24
+            ipsec.security-policy.100.destination.address: 172.16.2.0/24
+        `);
     });
 
     it('L2TPv3 over IPsec', () => {
