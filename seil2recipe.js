@@ -4594,7 +4594,7 @@ Converter.rules['vrrp'] = {
         }
 
         if (params['virtual-mac'] == null || params['virtual-mac'] == 'off') {
-            conv.deprecated('virtual-mac off');
+            conv.add(`${k1}.virtual-mac`, 'disable');
         }
 
         if (params['watch'] && conv.missing('vrrp add ... watch')) { return; }

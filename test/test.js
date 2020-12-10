@@ -2070,14 +2070,15 @@ describe('timezone', () => {
 
 describe('vrrp', () => {
     it('minimal', () => {
-        assertconv([
-            'vrrp lan0 add vrid 1 address 172.16.0.112/32',
-        ], [
-            'vrrp.vrouter.100.version: 2',
-            'vrrp.vrouter.100.interface: ge1',
-            'vrrp.vrouter.100.vrid: 1',
-            'vrrp.vrouter.100.address: 172.16.0.112',
-        ]);
+        assertconv(`
+            vrrp lan0 add vrid 1 address 172.16.0.112/32
+            ---
+            vrrp.vrouter.100.version: 2
+            vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.vrid: 1
+            vrrp.vrouter.100.virtual-mac: disable
+            vrrp.vrouter.100.address: 172.16.0.112
+        `);
     });
 
     it('all parameters', () => {
@@ -2107,6 +2108,7 @@ describe('vrrp', () => {
             vrrp.vrouter.100.version: 2
             vrrp.vrouter.100.address: 192.168.0.1
             vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.virtual-mac: disable
             vrrp.vrouter.100.vrid: 1
             vrrp.vrouter.100.preempt: disable
         `)
@@ -2119,6 +2121,7 @@ describe('vrrp', () => {
             vrrp.vrouter.100.version: 2
             vrrp.vrouter.100.address: 192.168.0.1
             vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.virtual-mac: disable
             vrrp.vrouter.100.vrid: 1
         `)
     });
