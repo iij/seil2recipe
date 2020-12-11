@@ -982,7 +982,15 @@ Converter.rules['cbq'] = {
 };
 
 Converter.rules['certificate'] = {
-    'my': 'notsupported'
+    // certificate my add <name> certificate "<string>" private-key "<string>"
+    'my': {
+        'add': (conv, tokens) => {
+            conv.read_params('certificate', tokens, 3, {
+                'certificate': true,
+                'private-key': true
+            });
+        }
+    }
 };
 
 function dhcp_get_interface(conv, iftoken) {
@@ -2019,6 +2027,37 @@ Converter.rules['interface'] = {
                 conv.param2recipe(protocol, 'mru', `${k1}.l2tp.mru`);
                 conv.param2recipe(protocol, 'tcp-mss-adjust', `${k1}.l2tp.tcp-mss-adjust`, on2enable);
                 conv.param2recipe(protocol, 'idle-timer', `${k1}.l2tp.idle-timer`);
+            } else if (protocol['protocol'] == 'sstp') {
+                const k1 = `interface.${ifname}`;
+                conv.add(`${k1}.sstp.service: enable`);
+
+                (protocol['authentication-method'] || "mschapv2").split(',').forEach(m => {
+                    if (m == 'eap-radius') { return; }
+                    const k2 = conv.get_index(`${k1}.sstp.authentication`);
+                    conv.add(`${k2}.method`, m);
+                });
+                if (protocol['accept-interface'] != 'any') {
+                    (protocol['accept-interface'] || "").split(',').forEach(name => {
+                        const k2 = conv.get_index(`${k1}.sstp.accept`);
+                        conv.add(`${k2}.interface`, conv.ifmap(name));
+                    });
+                }
+
+                const cert = conv.get_params('certificate')[protocol['certificate']];
+                conv.add(`${k1}.sstp.certificate`, cert['certificate']);
+                conv.add(`${k1}.sstp.private-key`, cert['private-key']);
+
+                if (protocol['idle-timer'] != 'none') {
+                    conv.param2recipe(protocol, 'idle-timer', `${k1}.sstp.idle-timer`);
+                }
+                if (protocol['lcp-keepalive'] != 'off') {
+                    conv.param2recipe(protocol, 'lcp-keepalive-interval', `${k1}.sstp.lcp.keepalive.interval`);
+                    conv.param2recipe(protocol, 'lcp-keepalive-retry-interval', `${k1}.sstp.lcp.keepalive.retry.interval`);
+                }
+                conv.param2recipe(protocol, 'mru', `${k1}.sstp.mru`);
+                conv.param2recipe(protocol, 'sstp-keepalive-interval', `${k1}.sstp.keepalive.interval`);
+                conv.param2recipe(protocol, 'sstp-keepalive-timeout', `${k1}.sstp.keepalive.timeout`);
+                conv.param2recipe(protocol, 'tcp-mss-adjust', `${k1}.sstp.tcp-mss-adjust`, on2enable);
             }
         },
 
@@ -3454,7 +3493,30 @@ Converter.rules['pppac'] = {
         },
         'pppoe': 'notsupported',
         'pptp': 'notsupported',
-        'sstp': 'notsupported',
+        'sstp': {
+            'add': (conv, tokens) => {
+                const params = conv.read_params('pppac.protocol', tokens, 4, {
+                    'accept-interface': true,
+                    'authentication-method': true,
+                    'authentication-timeout': 'notsupported',
+                    'certificate': true,
+                    'idle-timer': true,
+                    'lcp-keepalive': true,
+                    'lcp-keepalive-interval': true,
+                    'lcp-keepalive-max-retries': true,
+                    'lcp-keepalive-retry-interval': true,
+                    'mru': true,
+                    'sstp-keepalive-interval': true,
+                    'sstp-keepalive-timeout': true,
+                    'tcp-mss-adjust': true,
+                });
+                params['protocol'] = 'sstp';
+
+                if ((params['authentication-method'] || '').split(',').includes('eap-radius')) {
+                    conv.notsupported('authentication-method eap-radius');
+                }
+            },
+        }
     }
 };
 

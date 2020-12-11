@@ -233,13 +233,7 @@ describe('cbq', () => {
     });
 });
 
-describe('certificate', () => {
-    it('is not supported', () => {
-        assert_conversions('certificate my add FOO certificate ...', convs => {
-            assert(convs[0].errors[0].type == 'notsupported');
-        });
-    });
-});
+// describe('certificate', () => { });
 
 describe('dhcp', () => {
     it('server enable/disable', () => {
@@ -1537,6 +1531,40 @@ describe('pppac', () => {
             interface.pppac1.l2tp.ipsec.requirement: optional
             interface.pppac1.l2tp.service: enable
             `);
+    });
+
+    it('sstp server', () => {
+        assertconv(`
+            certificate my add CS certificate "CERT" private-key "KEY"
+            authentication realm add REALMS type local
+            authentication local REALMS user add USER_S password PASS_S
+            pppac pool add POOLS address 192.168.128.0/24
+            pppac ipcp-configuration add IPCPS pool POOLS
+            pppac protocol sstp add PROTOS accept-interface lan1 certificate CS authentication-method pap,chap sstp-keepalive-interval 61 sstp-keepalive-timeout 62 lcp-keepalive on lcp-keepalive-interval 63 lcp-keepalive-retry-interval 64 lcp-keepalive-max-retries 3 tcp-mss-adjust on mru 1400 idle-timer 10
+            interface pppac0 ipcp-configuration IPCPS
+            interface pppac0 bind-tunnel-protocol PROTOS
+            interface pppac0 bind-realm REALMS
+            interface pppac0 tunnel-end-address 192.168.127.1
+            ---
+            interface.pppac0.authentication.100.user.100.name: USER_S
+            interface.pppac0.authentication.100.user.100.password: PASS_S
+            interface.pppac0.ipcp.pool.100.address: 192.168.128.0
+            interface.pppac0.ipcp.pool.100.count: 256
+            interface.pppac0.ipv4.address: 192.168.127.1
+            interface.pppac0.sstp.accept.100.interface: ge0
+            interface.pppac0.sstp.authentication.100.method: pap
+            interface.pppac0.sstp.authentication.200.method: chap
+            interface.pppac0.sstp.certificate: CERT
+            interface.pppac0.sstp.idle-timer: 10
+            interface.pppac0.sstp.keepalive.interval: 61
+            interface.pppac0.sstp.keepalive.timeout: 62
+            interface.pppac0.sstp.lcp.keepalive.interval: 63
+            interface.pppac0.sstp.lcp.keepalive.retry.interval: 64
+            interface.pppac0.sstp.mru: 1400
+            interface.pppac0.sstp.private-key: KEY
+            interface.pppac0.sstp.service: enable
+            interface.pppac0.sstp.tcp-mss-adjust: enable
+        `);
     });
 });
 
