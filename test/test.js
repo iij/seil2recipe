@@ -45,8 +45,57 @@ function assert_conversions(seil_config, fun) {
 
 
 describe('application-gateway', () => {
-    it('is not supported.', () => {
-        assertconv('application-gateway input-interface add lan0', '');
+    it('all parameters', () => {
+        assertconv(`
+            application-gateway input-interface add lan0
+            application-gateway input-interface add ipsec1
+            application-gateway bridging-interface add vlan2
+            application-gateway bridging-interface add l2tp3
+            application-gateway http-proxy accept-interface lan1
+            application-gateway http-proxy enable
+            application-gateway http-proxy listen-port 8080
+            application-gateway service add HTTP mode http destination-port 8081 destination 192.168.80.0/24 idle-timer 300 handoff on handoff-address 192.168.1.2 handoff-port 8082 handoff-for abc source-selection self logging tcp-usage,http-usage url-filter on
+            application-gateway service add HTTPS mode ssl
+            application-gateway service add FTP mode ftp ftp-data-command pasv,port ftp-data-port any
+            application-gateway url-filter add URLF1 url-category 123 action browse-only source 10.0.0.0/8
+            application-gateway url-filter add URLF2 url-pattern badservice.com action block
+            application-gateway url-filter option block-ip-address-access on
+            application-gateway url-filter option redirect-url-on-block internal
+            application-gateway url-filter service site-umpire authentication-id tenletters
+            ---
+            application-gateway.input.ipv4.gateway.100.interface: ge1
+            application-gateway.input.ipv4.gateway.200.interface: ipsec1
+            application-gateway.input.ipv4.bridging.100.interface: vlan2
+            application-gateway.input.ipv4.bridging.200.interface: l2tp3
+            application-gateway.http-proxy.accept-interface.100.interface: ge0
+            application-gateway.http-proxy.listen-port: 8080
+            application-gateway.http-proxy.service: enable
+            application-gateway.service.100.mode: http
+            application-gateway.service.100.destination.ipv4.address: 192.168.80.0/24
+            application-gateway.service.100.destination.port: 8081
+            application-gateway.service.100.handoff.ipv4.address: 192.168.1.2
+            application-gateway.service.100.handoff.port: 8082
+            application-gateway.service.100.handoff.hostname.pattern: abc
+            application-gateway.service.100.idle-timer: 300
+            application-gateway.service.100.source-selection.ipv4: self
+            application-gateway.service.100.logging.100.event: tcp-usage
+            application-gateway.service.100.logging.200.event: http-usage
+            application-gateway.service.100.url-filter: enable
+            application-gateway.service.200.mode: ssl
+            application-gateway.service.300.ftp.data.100.command: pasv
+            application-gateway.service.300.ftp.data.200.command: port
+            application-gateway.service.300.ftp.data.port: any
+            application-gateway.service.300.mode: ftp
+            application-gateway.url-filter.block-ip-address-access: on
+            application-gateway.url-filter.redirect-url-on-block: internal
+            application-gateway.url-filter.service.100.name: site-umpire
+            application-gateway.url-filter.service.100.id: tenletters
+            application-gateway.url-filter.100.url.category: 123
+            application-gateway.url-filter.100.action: browse-only
+            application-gateway.url-filter.100.source.ipv4.address: 10.0.0.0/8
+            application-gateway.url-filter.200.url.pattern: badservice.com
+            application-gateway.url-filter.200.action: block
+        `);
     });
 });
 
