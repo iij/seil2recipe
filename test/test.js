@@ -98,6 +98,8 @@ describe('authentication+pppac', () => {
                 'interface.pppac0.ipv4.address: 192.168.127.1',
                 'interface.pppac0.l2tp.accept.100.interface: ge1',
                 'interface.pppac0.l2tp.accept.200.interface: vlan1',
+                'interface.pppac0.l2tp.authentication.100.method: mschapv2',
+                'interface.pppac0.l2tp.authentication.200.method: chap',
                 'interface.pppac0.l2tp.idle-timer: 123',
                 'interface.pppac0.l2tp.ipsec.preshared-key: SecretKey',
                 'interface.pppac0.l2tp.ipsec.requirement: required',
@@ -108,6 +110,8 @@ describe('authentication+pppac', () => {
                 'interface.pppac1.ipcp.pool.100.count: 256',
                 'interface.pppac1.l2tp.accept.100.interface: ge1',
                 'interface.pppac1.l2tp.accept.200.interface: vlan1',
+                'interface.pppac1.l2tp.authentication.100.method: mschapv2',
+                'interface.pppac1.l2tp.authentication.200.method: chap',
                 'interface.pppac1.l2tp.idle-timer: 123',
                 'interface.pppac1.l2tp.ipsec.preshared-key: SecretKey',
                 'interface.pppac1.l2tp.ipsec.requirement: required',
@@ -1435,6 +1439,61 @@ describe('pppac', () => {
     it('option', () => {
         assertconv('pppac option session-limit on',
             'option.pppac.session-limit: enable');
+    });
+
+    it('minimam l2tp/ipsec server', () => {
+        assertconv(`
+            authentication realm add REALM4 type local
+            authentication local REALM4 user add USER4 password PASS4
+            pppac pool add POOL4 address 192.168.0.0/24
+            pppac ipcp-configuration add IPCP4 pool POOL4
+            pppac protocol l2tp add PROTO4 accept-interface any
+            interface pppac0 ipcp-configuration IPCP4
+            interface pppac0 bind-tunnel-protocol PROTO4
+            interface pppac0 bind-realm REALM4
+            interface pppac0 tunnel-end-address 192.168.0.1
+            ipsec anonymous-l2tp-transport enable
+            ipsec anonymous-l2tp-transport preshared-key "foobar"
+            ----
+            interface.pppac0.authentication.100.user.100.name: USER4
+            interface.pppac0.authentication.100.user.100.password: PASS4
+            interface.pppac0.ipcp.pool.100.address: 192.168.0.0
+            interface.pppac0.ipcp.pool.100.count: 256
+            interface.pppac0.ipv4.address: 192.168.0.1
+            interface.pppac0.l2tp.authentication.100.method: mschapv2
+            interface.pppac0.l2tp.authentication.200.method: chap
+            interface.pppac0.l2tp.ipsec.preshared-key: foobar
+            interface.pppac0.l2tp.ipsec.requirement: required
+            interface.pppac0.l2tp.service: enable
+            `);
+    });
+
+    it('pppac parameters', () => {
+        assertconv(`
+            authentication realm add REALM5 type local
+            authentication local REALM5 user add USER5 password PASS5
+            pppac pool add POOL5 address 192.168.0.0/24
+            pppac ipcp-configuration add IPCP5 pool POOL5
+            pppac protocol l2tp add PROTO5 accept-interface any authentication-method pap,chap,mschapv2
+            interface pppac0 ipcp-configuration IPCP5
+            interface pppac0 bind-tunnel-protocol PROTO5
+            interface pppac0 bind-realm REALM5
+            interface pppac0 tunnel-end-address 192.168.0.1
+            ipsec anonymous-l2tp-transport enable
+            ipsec anonymous-l2tp-transport preshared-key "preshared5"
+            ----
+            interface.pppac0.authentication.100.user.100.name: USER5
+            interface.pppac0.authentication.100.user.100.password: PASS5
+            interface.pppac0.ipcp.pool.100.address: 192.168.0.0
+            interface.pppac0.ipcp.pool.100.count: 256
+            interface.pppac0.ipv4.address: 192.168.0.1
+            interface.pppac0.l2tp.authentication.100.method: pap
+            interface.pppac0.l2tp.authentication.200.method: chap
+            interface.pppac0.l2tp.authentication.300.method: mschapv2
+            interface.pppac0.l2tp.ipsec.preshared-key: preshared5
+            interface.pppac0.l2tp.ipsec.requirement: required
+            interface.pppac0.l2tp.service: enable
+            `);
     });
 });
 

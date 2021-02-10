@@ -1983,12 +1983,11 @@ Converter.rules['interface'] = {
             if (protocol['protocol'] == 'l2tp') {
                 conv.add(`interface.${ifname}.l2tp.service: enable`);
 
-                if (protocol['authentication-method']) {
-                    protocol['authentication-method'].split(',').forEach(m => {
-                        const k2 = conv.get_index(`interface.${ifname}.l2tp.authentication`);
-                        conv.add(`${k2}.method`, m);
-                    });
-                }
+                (protocol['authentication-method'] || 'mschapv2,chap').split(',').forEach(m => {
+                    const k2 = conv.get_index(`interface.${ifname}.l2tp.authentication`);
+                    conv.add(`${k2}.method`, m);
+                });
+
                 const k1 = `interface.${ifname}`;
                 if (protocol['accept-interface'] != 'any') {
                     (protocol['accept-interface'] || "").split(',').forEach(name => {
@@ -3415,8 +3414,6 @@ Converter.rules['pppac'] = {
                     'idle-timer': true,
                 });
                 params['protocol'] = 'l2tp';
-
-
             },
             // pppac protocol l2tp require-ipsec { on | off | system-default }
             'require-ipsec': (conv, tokens) => {
