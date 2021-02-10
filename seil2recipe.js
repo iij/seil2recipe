@@ -2336,7 +2336,9 @@ Converter.rules['interface'] = {
 
         'user-max-session': (conv, tokens) => {
             const ifname = conv.ifmap(tokens[1]);
-            conv.add(`interface.${ifname}.user-max-session`, tokens[3]);
+            if (tokens[3] != 'unlimit') {
+                conv.add(`interface.${ifname}.user-max-session`, tokens[3]);
+            }
         },
     },
 };

@@ -1479,6 +1479,12 @@ describe('pppac', () => {
             interface pppac0 bind-tunnel-protocol PROTO5
             interface pppac0 bind-realm REALM5
             interface pppac0 tunnel-end-address 192.168.0.1
+            interface pppac0 user-max-session 5
+            interface pppac1 ipcp-configuration IPCP5
+            interface pppac1 bind-tunnel-protocol PROTO5
+            interface pppac1 bind-realm REALM5
+            interface pppac1 tunnel-end-address 192.168.0.1
+            interface pppac1 user-max-session unlimit
             ipsec anonymous-l2tp-transport enable
             ipsec anonymous-l2tp-transport preshared-key "preshared5"
             ----
@@ -1493,6 +1499,18 @@ describe('pppac', () => {
             interface.pppac0.l2tp.ipsec.preshared-key: preshared5
             interface.pppac0.l2tp.ipsec.requirement: required
             interface.pppac0.l2tp.service: enable
+            interface.pppac0.user-max-session: 5
+            interface.pppac1.authentication.100.user.100.name: USER5
+            interface.pppac1.authentication.100.user.100.password: PASS5
+            interface.pppac1.ipcp.pool.100.address: 192.168.0.0
+            interface.pppac1.ipcp.pool.100.count: 256
+            interface.pppac1.ipv4.address: 192.168.0.1
+            interface.pppac1.l2tp.authentication.100.method: pap
+            interface.pppac1.l2tp.authentication.200.method: chap
+            interface.pppac1.l2tp.authentication.300.method: mschapv2
+            interface.pppac1.l2tp.ipsec.preshared-key: preshared5
+            interface.pppac1.l2tp.ipsec.requirement: required
+            interface.pppac1.l2tp.service: enable
             `);
     });
 });
