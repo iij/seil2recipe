@@ -102,7 +102,6 @@ describe('authentication+pppac', () => {
                 'interface.pppac0.l2tp.authentication.200.method: chap',
                 'interface.pppac0.l2tp.idle-timer: 123',
                 'interface.pppac0.l2tp.ipsec.preshared-key: SecretKey',
-                'interface.pppac0.l2tp.ipsec.requirement: required',
                 'interface.pppac0.l2tp.service: enable',
                 'interface.pppac1.authentication.100.account-list.interval: 123',
                 'interface.pppac1.authentication.100.account-list.url: http://example.jp/',
@@ -114,7 +113,6 @@ describe('authentication+pppac', () => {
                 'interface.pppac1.l2tp.authentication.200.method: chap',
                 'interface.pppac1.l2tp.idle-timer: 123',
                 'interface.pppac1.l2tp.ipsec.preshared-key: SecretKey',
-                'interface.pppac1.l2tp.ipsec.requirement: required',
                 'interface.pppac1.l2tp.service: enable',
             ]);
     });
@@ -1463,7 +1461,6 @@ describe('pppac', () => {
             interface.pppac0.l2tp.authentication.100.method: mschapv2
             interface.pppac0.l2tp.authentication.200.method: chap
             interface.pppac0.l2tp.ipsec.preshared-key: foobar
-            interface.pppac0.l2tp.ipsec.requirement: required
             interface.pppac0.l2tp.service: enable
             `);
     });
@@ -1485,8 +1482,6 @@ describe('pppac', () => {
             interface pppac1 bind-realm REALM5
             interface pppac1 tunnel-end-address 192.168.0.1
             interface pppac1 user-max-session unlimit
-            ipsec anonymous-l2tp-transport enable
-            ipsec anonymous-l2tp-transport preshared-key "preshared5"
             ----
             interface.pppac0.authentication.100.user.100.name: USER5
             interface.pppac0.authentication.100.user.100.password: PASS5
@@ -1496,8 +1491,7 @@ describe('pppac', () => {
             interface.pppac0.l2tp.authentication.100.method: pap
             interface.pppac0.l2tp.authentication.200.method: chap
             interface.pppac0.l2tp.authentication.300.method: mschapv2
-            interface.pppac0.l2tp.ipsec.preshared-key: preshared5
-            interface.pppac0.l2tp.ipsec.requirement: required
+            interface.pppac0.l2tp.ipsec.requirement: optional
             interface.pppac0.l2tp.service: enable
             interface.pppac0.user-max-session: 5
             interface.pppac1.authentication.100.user.100.name: USER5
@@ -1508,8 +1502,7 @@ describe('pppac', () => {
             interface.pppac1.l2tp.authentication.100.method: pap
             interface.pppac1.l2tp.authentication.200.method: chap
             interface.pppac1.l2tp.authentication.300.method: mschapv2
-            interface.pppac1.l2tp.ipsec.preshared-key: preshared5
-            interface.pppac1.l2tp.ipsec.requirement: required
+            interface.pppac1.l2tp.ipsec.requirement: optional
             interface.pppac1.l2tp.service: enable
             `);
     });

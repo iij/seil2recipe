@@ -151,6 +151,12 @@ class Note {
             'lan5': 'ge5',
             'lan*': 'ge*'
         };
+
+        this.anonymous_l2tp_transport = {
+            enable: null,
+            preshared_key: null,
+            ifnames: []
+        };
     }
 
     get_memo(key) {
@@ -1970,11 +1976,6 @@ Converter.rules['interface'] = {
         'bind-tunnel-protocol': (conv, tokens) => {
             // interface <pppac> bind-tunnel-protocol <protocol_config_name>,...
             const ifname = conv.ifmap(tokens[1]);
-            if (!conv.get_memo('ipsec.anonymous-l2tp-transport')) {
-                conv.set_memo('ipsec.anonymous-l2tp-transport', []);
-            }
-            conv.get_memo('ipsec.anonymous-l2tp-transport').push(ifname);
-
             const protocol = conv.get_params('pppac.protocol')[tokens[3]];
             if (protocol == null) {
                 // it may be unsupported protocol
@@ -2006,13 +2007,8 @@ Converter.rules['interface'] = {
                         return val;
                     }
                 });
-                if (conv.get_memo('pppac.protocol.l2tp.require-ipsec')) {
-                    conv.add(`${k1}.l2tp.ipsec.requirement`, 'required');
-                }
-                const preshared_key = conv.get_memo('ipsec.anonymous-l2tp-transport.preshared-key');
-                if (preshared_key) {
-                    conv.add(`${k1}.l2tp.ipsec.preshared-key`, preshared_key);
-                }
+                conv.note.anonymous_l2tp_transport.ifnames.push(ifname);
+
                 conv.param2recipe(protocol, 'mru', `${k1}.l2tp.mru`);
                 conv.param2recipe(protocol, 'tcp-mss-adjust', `${k1}.l2tp.tcp-mss-adjust`, on2enable);
                 conv.param2recipe(protocol, 'idle-timer', `${k1}.l2tp.idle-timer`);
@@ -2444,20 +2440,10 @@ Converter.rules['ipsec'] = {
     // https://www.seil.jp/doc/index.html#fn/ipsec/cmd/ipsec_anonymous-l2tp-transport.html
     'anonymous-l2tp-transport': {
         'enable': (conv, tokens) => {
-            const m = conv.get_memo('ipsec.anonymous-l2tp-transport');
-            if (m) {
-                m.forEach(ifname => {
-                    conv.add(`interface.${ifname}.l2tp.ipsec.requirement: required`);
-                });
-            };
+            conv.note.anonymous_l2tp_transport.enable = true;
         },
         'preshared-key': (conv, tokens) => {
-            const m = conv.get_memo('ipsec.anonymous-l2tp-transport');
-            if (m) {
-                m.forEach(ifname => {
-                    conv.add(`interface.${ifname}.l2tp.ipsec.preshared-key: ${tokens[3]}`);
-                });
-            };
+            conv.note.anonymous_l2tp_transport.preshared_key = tokens[3];
         },
     },
 
@@ -2792,6 +2778,19 @@ if (false) {
         }
     },
 };
+
+Converter.defer((conv) => {
+    const psk = conv.note.anonymous_l2tp_transport.preshared_key;
+    if (psk && conv.note.anonymous_l2tp_transport.enable) {
+        conv.note.anonymous_l2tp_transport.ifnames.forEach(ifname => {
+            conv.add(`interface.${ifname}.l2tp.ipsec.preshared-key`, psk);
+        });
+    } else {
+        conv.note.anonymous_l2tp_transport.ifnames.forEach(ifname => {
+            conv.add(`interface.${ifname}.l2tp.ipsec.requirement`, 'optional');
+        });
+    }
+});
 
 Converter.rules['l2tp'] = {
     'add': (conv, tokens) => {
