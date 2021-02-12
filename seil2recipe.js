@@ -152,10 +152,17 @@ class Note {
             'lan*': 'ge*'
         };
 
+        //
+        // Notes for tangled config parameters
+        //
         this.anonymous_l2tp_transport = {
             enable: null,
             preshared_key: null,
             ifnames: []
+        };
+        this.napt = {
+            global: null,
+            ifnames: new Set()
         };
     }
 
@@ -3047,20 +3054,31 @@ Converter.rules['nat'] = {
     'napt': {
         'add': {
             'global': (conv, tokens) => {
-                // nat napt add global <global_IPaddress> [interface <interface>]
-                //
-                // Note: "add" というキーワードを使っているため一見複数行書けるように見えるが、
-                // 実は "nat dyamic add global" はひとつしか設定できない(二つ目を add する
-                // と一つ目が消える!)ので、"interface" パラメタは無視して良い(というか完全には
-                // 変換できない)。
-                conv.add(`nat.ipv4.napt.global`, tokens[4]);
+                // nat napt add global <addr> [interface <ifname>]
+                conv.note.napt.global = {
+                    addr: tokens[4],
+                    conv: conv,
+                    ifname: conv.natifname(tokens[6])
+                };
+                conv.defer(conv => {
+                    const napt = conv.note.napt;
+                    if (napt.ifnames.has(napt.global.ifname)) {
+                        conv.add(`nat.ipv4.napt.global`, napt.global.addr);
+                        if (napt.ifnames.size > 1) {
+                            conv.warning(`${conv.devname} では global アドレスをインタフェースごとに設定することはできません。`);
+                        }
+                    }
+                });
             },
 
             'private': (conv, tokens) => {
-                // nat napt add private <private_IPaddress> [interface <interface>]
+                // nat napt add private <addrs> [interface <ifname>]
+                const ifname = conv.natifname(tokens[6]);
                 const k1 = conv.get_index('nat.ipv4.napt');
                 conv.add(`${k1}.private`, tokens[4]);
-                conv.add(`${k1}.interface`, conv.natifname(tokens[6]));
+                conv.add(`${k1}.interface`, ifname);
+
+                conv.note.napt.ifnames.add(ifname);
             },
         },
     },

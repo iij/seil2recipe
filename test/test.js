@@ -1250,15 +1250,48 @@ describe('nat', () => {
             ]);
     });
 
-    it('napt', () => {
-        assertconv([
-            'nat napt add global 10.0.0.1',
-            'nat napt add private 192.168.0.1-192.168.0.255 interface lan1',
-        ], [
-                'nat.ipv4.napt.global: 10.0.0.1',
-                'nat.ipv4.napt.100.interface: ge0',
-                'nat.ipv4.napt.100.private: 192.168.0.1-192.168.0.255'
-            ]);
+    it('napt without global', () => {
+        assertconv(`
+            nat napt add private 192.168.0.1-192.168.0.255 interface lan1
+            ----
+            nat.ipv4.napt.100.interface: ge0
+            nat.ipv4.napt.100.private: 192.168.0.1-192.168.0.255
+        `);
+    });
+
+    it('napt with global', () => {
+        assertconv(`
+            nat napt add global 10.0.0.1
+            nat napt add private 192.168.0.1-192.168.0.255 interface lan1
+            ----
+            nat.ipv4.napt.global: 10.0.0.1
+            nat.ipv4.napt.100.interface: ge0
+            nat.ipv4.napt.100.private: 192.168.0.1-192.168.0.255
+        `);
+    });
+
+    it('napt with global for different interface', () => {
+        assertconv(`
+            nat napt add global 10.0.0.1 interface pppoe0
+            nat napt add private 192.168.0.1-192.168.0.255 interface lan1
+            ----
+            nat.ipv4.napt.100.interface: ge0
+            nat.ipv4.napt.100.private: 192.168.0.1-192.168.0.255
+        `);
+    });
+
+    it('napt for multiple interfaces with global', () => {
+        assertconv(`
+            nat napt add global 10.0.0.1
+            nat napt add private 192.168.0.1-192.168.0.255 interface lan1
+            nat napt add private 192.168.1.1-192.168.1.255 interface pppoe0
+            ----
+            nat.ipv4.napt.global: 10.0.0.1
+            nat.ipv4.napt.100.interface: ge0
+            nat.ipv4.napt.100.private: 192.168.0.1-192.168.0.255
+            nat.ipv4.napt.200.interface: pppoe0
+            nat.ipv4.napt.200.private: 192.168.1.1-192.168.1.255
+        `);
     });
 
     it('reflect', () => {
