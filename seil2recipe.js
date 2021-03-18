@@ -544,7 +544,6 @@ const CompatibilityList = {
     'sshd password-authentication enable':             [    0,    1 ],
     'telnetd':                                         [    0,    1 ],
     'upnp.listen.[].interface':                        [    0,    1 ],
-    'vrrp add ... preempt off':                        [    0,    1 ],
     'vrrp add ... watch':                              [    0,    1 ],
 };
 
@@ -4740,11 +4739,7 @@ Converter.rules['vrrp'] = {
 
         if (params['preempt']) {
             if (params['preempt'] == 'off') {
-                if (conv.missing('vrrp add ... preempt off', true)) {
-                    conv.notsupported('preempt off');
-                } else {
-                    conv.add(`${k1}.preempt`, 'disable');
-                }
+                conv.add(`${k1}.preempt`, 'disable');
             } else if (params['preempt'] != 'on') {
                 conv.syntaxerror(`preempt ${params['preempt']}`);
             }
@@ -4812,11 +4807,7 @@ Converter.rules['vrrp3'] = {
 
         if (params['preempt']) {
             if (params['preempt'] == 'off') {
-                if (conv.missing('vrrp add ... preempt off', true)) {
-                    conv.notsupported('preempt off');
-                } else {
-                    conv.add(`${k1}.preempt`, 'disable');
-                }
+                conv.add(`${k1}.preempt`, 'disable');
             } else if (params['preempt'] != 'on') {
                 conv.syntaxerror(`preempt ${params['preempt']}`);
             }
