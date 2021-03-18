@@ -527,7 +527,6 @@ const CompatibilityList = {
     'ike peer add ... nat-traversal disable':          [    0,    1 ],
     'ike global-parameters':                           [    0,    1 ],
     'interface ... add dhcp6':                         [    0,    1 ],
-    'nat upnp timeout':                                [    0,    1 ],
     'nat6':                                            [    0,    1 ],
     'option ip fragment-requeueing off':               [    0,    1 ],
     'option ip monitor-linkstate off':                 [    0,    1 ],
@@ -3330,7 +3329,6 @@ Converter.rules['nat'] = {
         },
         'off': 'upnp.service: disable',
         'timeout': (conv, tokens) => {
-            if (conv.missing('nat upnp timeout')) { return; }
             if (tokens[3] == 'type') {
                 // nat upnp timeout type { normal | arp }
                 conv.add('upnp.timeout-type', tokens[4]);
