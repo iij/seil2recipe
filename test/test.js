@@ -1343,7 +1343,6 @@ describe('nat', () => {
                 'nat.ipv4.snapt.100.interface: vlan0',
                 'nat.ipv4.snapt.100.protocol: 41'
             ]);
-
     });
 
     it('static', () => {

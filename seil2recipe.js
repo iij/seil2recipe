@@ -3128,34 +3128,47 @@ Converter.rules['nat'] = {
         },
     },
 
+    // https://www.seil.jp/doc/index.html#fn/nat/cmd/nat_snapt.html
     'snapt': (conv, tokens) => {
-
-        // listen の有無によって forward のパラメタが1つか2つか判断できる。
-        // disable の snapt 設定は recipe では表現できないため変換しない。
-
-        const k1 = conv.get_index('nat.ipv4.snapt');
-        var idx;
-        if (tokens[5] == 'listen') {
-            // nat snapt add protocol {tcp|udp|tcpudp} listen <listen_port>
-            //    forward <IPv4address> <forward_port> { enable | disable } interface <interface>
-            if (tokens[10] == 'disable') {
-                return;
-            }
-            conv.add(`${k1}.protocol`, tokens[4]);
-            conv.add(`${k1}.listen.port`, tokens[6]);
-            conv.add(`${k1}.forward.address`, tokens[8]);
-            conv.add(`${k1}.forward.port`, tokens[9]);
-            conv.add(`${k1}.interface`, conv.natifname(tokens[12]));
-        } else {
-            // nat snapt add protocol <protocol>
-            //    forward <IPv4address> { enable | disable } interface <interface>
-            if (tokens[7] == 'disable') {
-                return;
-            }
-            conv.add(`${k1}.protocol`, tokens[4]);
-            conv.add(`${k1}.forward.address`, tokens[6]);
-            conv.add(`${k1}.interface`, conv.natifname(tokens[9]));
+        // nat snapt add
+        //     protocol {tcp|udp|tcpudp}
+        //     listen <listen_port>
+        //     forward <IPv4address> <forward_port>
+        //     [interface { <interface> | <interface*> }] [enable | disable]
+        // nat snapt add
+        //     protocol <protocol>
+        //     forward <IPv4address>
+        //     [interface { <interface> | <interface*> }] [enable | disable]
+        // nat snapt add
+        //     default <IPv4address>
+        //     [interface { <interface> | <interface*> }]
+        const fport_param = tokens.includes("listen") ? 2 : true;
+        const params = conv.read_params(null, tokens, 2, {
+            'protocol': true,
+            'listen': true,
+            'forward': fport_param,
+            'interface': true,
+            'default': true,
+            'enable': 0,
+            'disable': 0
+        });
+        if (params['disable']) {
+            return;
         }
+        if (params['default']) {
+            conv.notsupported('nat snapt add default');
+            return;
+        }
+        const k1 = conv.get_index('nat.ipv4.snapt');
+        conv.param2recipe(params, 'protocol', `${k1}.protocol`);
+        conv.param2recipe(params, 'listen', `${k1}.listen.port`);
+        if (fport_param == 2) {
+            conv.add(`${k1}.forward.address`, params['forward'][0]);
+            conv.add(`${k1}.forward.port`, params['forward'][1]);
+        } else {
+            conv.param2recipe(params, 'forward', `${k1}.forward.address`);
+        }
+        conv.add(`${k1}.interface`, conv.natifname(params['interface']));
     },
 
     // https://www.seil.jp/doc/index.html#fn/nat/cmd/nat_timeout.html
