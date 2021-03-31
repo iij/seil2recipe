@@ -45,8 +45,57 @@ function assert_conversions(seil_config, fun) {
 
 
 describe('application-gateway', () => {
-    it('is not supported.', () => {
-        assertconv('application-gateway input-interface add lan0', '');
+    it('all parameters', () => {
+        assertconv(`
+            application-gateway input-interface add lan0
+            application-gateway input-interface add ipsec1
+            application-gateway bridging-interface add vlan2
+            application-gateway bridging-interface add l2tp3
+            application-gateway http-proxy accept-interface lan1
+            application-gateway http-proxy enable
+            application-gateway http-proxy listen-port 8080
+            application-gateway service add HTTP mode http destination-port 8081 destination 192.168.80.0/24 idle-timer 300 handoff on handoff-address 192.168.1.2 handoff-port 8082 handoff-for abc source-selection self logging tcp-usage,http-usage url-filter on
+            application-gateway service add HTTPS mode ssl
+            application-gateway service add FTP mode ftp ftp-data-command pasv,port ftp-data-port any
+            application-gateway url-filter add URLF1 url-category 123 action browse-only source 10.0.0.0/8
+            application-gateway url-filter add URLF2 url-pattern badservice.com action block
+            application-gateway url-filter option block-ip-address-access on
+            application-gateway url-filter option redirect-url-on-block internal
+            application-gateway url-filter service site-umpire authentication-id tenletters
+            ---
+            application-gateway.input.ipv4.gateway.100.interface: ge1
+            application-gateway.input.ipv4.gateway.200.interface: ipsec1
+            application-gateway.input.ipv4.bridging.100.interface: vlan2
+            application-gateway.input.ipv4.bridging.200.interface: l2tp3
+            application-gateway.http-proxy.accept-interface.100.interface: ge0
+            application-gateway.http-proxy.listen-port: 8080
+            application-gateway.http-proxy.service: enable
+            application-gateway.service.100.mode: http
+            application-gateway.service.100.destination.ipv4.address: 192.168.80.0/24
+            application-gateway.service.100.destination.port: 8081
+            application-gateway.service.100.handoff.ipv4.address: 192.168.1.2
+            application-gateway.service.100.handoff.port: 8082
+            application-gateway.service.100.handoff.hostname.pattern: abc
+            application-gateway.service.100.idle-timer: 300
+            application-gateway.service.100.source-selection.ipv4: self
+            application-gateway.service.100.logging.100.event: tcp-usage
+            application-gateway.service.100.logging.200.event: http-usage
+            application-gateway.service.100.url-filter: enable
+            application-gateway.service.200.mode: ssl
+            application-gateway.service.300.ftp.data.100.command: pasv
+            application-gateway.service.300.ftp.data.200.command: port
+            application-gateway.service.300.ftp.data.port: any
+            application-gateway.service.300.mode: ftp
+            application-gateway.url-filter.block-ip-address-access: on
+            application-gateway.url-filter.redirect-url-on-block: internal
+            application-gateway.url-filter.service.100.name: site-umpire
+            application-gateway.url-filter.service.100.id: tenletters
+            application-gateway.url-filter.100.url.category: 123
+            application-gateway.url-filter.100.action: browse-only
+            application-gateway.url-filter.100.source.ipv4.address: 10.0.0.0/8
+            application-gateway.url-filter.200.url.pattern: badservice.com
+            application-gateway.url-filter.200.action: block
+        `);
     });
 });
 
@@ -233,13 +282,7 @@ describe('cbq', () => {
     });
 });
 
-describe('certificate', () => {
-    it('is not supported', () => {
-        assert_conversions('certificate my add FOO certificate ...', convs => {
-            assert(convs[0].errors[0].type == 'notsupported');
-        });
-    });
-});
+// describe('certificate', () => { });
 
 describe('dhcp', () => {
     it('server enable/disable', () => {
@@ -1538,6 +1581,40 @@ describe('pppac', () => {
             interface.pppac1.l2tp.service: enable
             `);
     });
+
+    it('sstp server', () => {
+        assertconv(`
+            certificate my add CS certificate "CERT" private-key "KEY"
+            authentication realm add REALMS type local
+            authentication local REALMS user add USER_S password PASS_S
+            pppac pool add POOLS address 192.168.128.0/24
+            pppac ipcp-configuration add IPCPS pool POOLS
+            pppac protocol sstp add PROTOS accept-interface lan1 certificate CS authentication-method pap,chap sstp-keepalive-interval 61 sstp-keepalive-timeout 62 lcp-keepalive on lcp-keepalive-interval 63 lcp-keepalive-retry-interval 64 lcp-keepalive-max-retries 3 tcp-mss-adjust on mru 1400 idle-timer 10
+            interface pppac0 ipcp-configuration IPCPS
+            interface pppac0 bind-tunnel-protocol PROTOS
+            interface pppac0 bind-realm REALMS
+            interface pppac0 tunnel-end-address 192.168.127.1
+            ---
+            interface.pppac0.authentication.100.user.100.name: USER_S
+            interface.pppac0.authentication.100.user.100.password: PASS_S
+            interface.pppac0.ipcp.pool.100.address: 192.168.128.0
+            interface.pppac0.ipcp.pool.100.count: 256
+            interface.pppac0.ipv4.address: 192.168.127.1
+            interface.pppac0.sstp.accept.100.interface: ge0
+            interface.pppac0.sstp.authentication.100.method: pap
+            interface.pppac0.sstp.authentication.200.method: chap
+            interface.pppac0.sstp.certificate: CERT
+            interface.pppac0.sstp.idle-timer: 10
+            interface.pppac0.sstp.keepalive.interval: 61
+            interface.pppac0.sstp.keepalive.timeout: 62
+            interface.pppac0.sstp.lcp.keepalive.interval: 63
+            interface.pppac0.sstp.lcp.keepalive.retry.interval: 64
+            interface.pppac0.sstp.mru: 1400
+            interface.pppac0.sstp.private-key: KEY
+            interface.pppac0.sstp.service: enable
+            interface.pppac0.sstp.tcp-mss-adjust: enable
+        `);
+    });
 });
 
 describe('proxyarp', () => {
@@ -2070,14 +2147,15 @@ describe('timezone', () => {
 
 describe('vrrp', () => {
     it('minimal', () => {
-        assertconv([
-            'vrrp lan0 add vrid 1 address 172.16.0.112/32',
-        ], [
-            'vrrp.vrouter.100.version: 2',
-            'vrrp.vrouter.100.interface: ge1',
-            'vrrp.vrouter.100.vrid: 1',
-            'vrrp.vrouter.100.address: 172.16.0.112',
-        ]);
+        assertconv(`
+            vrrp lan0 add vrid 1 address 172.16.0.112/32
+            ---
+            vrrp.vrouter.100.version: 2
+            vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.vrid: 1
+            vrrp.vrouter.100.virtual-mac: disable
+            vrrp.vrouter.100.address: 172.16.0.112
+        `);
     });
 
     it('all parameters', () => {
@@ -2107,6 +2185,7 @@ describe('vrrp', () => {
             vrrp.vrouter.100.version: 2
             vrrp.vrouter.100.address: 192.168.0.1
             vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.virtual-mac: disable
             vrrp.vrouter.100.vrid: 1
             vrrp.vrouter.100.preempt: disable
         `)
@@ -2119,6 +2198,7 @@ describe('vrrp', () => {
             vrrp.vrouter.100.version: 2
             vrrp.vrouter.100.address: 192.168.0.1
             vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.virtual-mac: disable
             vrrp.vrouter.100.vrid: 1
         `)
     });

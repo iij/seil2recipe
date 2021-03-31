@@ -513,6 +513,8 @@ class Device {
 
 const CompatibilityList = {
     // feature                                          seil6 seil8
+    'application-gateway http-proxy':                  [    0,    1 ],
+    'application-gateway mode ftp':                    [    1,    0 ],
     'authentication account-list':                     [    0,    1 ],
     'cbq':                                             [    0,    1 ],
     'dhcp6 relay':                                     [    0,    1 ],
@@ -631,6 +633,12 @@ function on2enable(onoff) {
     }
 }
 
+function commaEach(str, fun) {
+    if (str != null) {
+        str.split(',').forEach(fun);
+    }
+}
+
 String.prototype.is_ipv4_address = function() {
     return this.includes('.');
 }
@@ -642,46 +650,135 @@ String.prototype.is_ipv4_address = function() {
 Converter.rules = {};
 
 Converter.rules['application-gateway'] = {
-    '*': 'notsupported',
-    'todo': {
-        'bridging-interface': {
-            'add': (conv, tokens) => {
-                const k = conv.get_index('application-gateway.input.ipv4.bridging');
-                conv.add(`${k}.interface: ${conv.ifmap(tokens[3])}`);
-            },
-        },
-        // https://www.seil.jp/doc/index.html#fn/appgw/cmd/application-gateway_input-interface.html
-        'input-interface': {
-            'add': tokens => {
-                const k = newindex('application-gateway.input.ipv4.gateway');
-                return `${k}.interface: ${conv.ifmap(tokens[3])}`;
-            },
+    'bridging-interface': (conv, tokens) => {
+        // application-gateway bridging-interface add ...
+        const k1 = conv.get_index('application-gateway.input.ipv4.bridging');
+        conv.add(`${k1}.interface`, conv.ifmap(tokens[3]));
+    },
+    'http-proxy': {
+        'enable': (conv, tokens) => {
+            if (conv.missing('application-gateway http-proxy')) { return; }
+            conv.add('application-gateway.http-proxy.service', 'enable');
         },
 
+        // application-gateway http-proxy accept-interface { any | none | <interface>,...}
+        'accept-interface': (conv, tokens) => {
+            if (conv.missing('application-gateway http-proxy')) { return; }
+            commaEach(tokens[3], ifname => {
+                if (ifname.match(/^(ppp|pppoe|wwan)\d+$/)) {
+                    conv.notsupported(`accept-interface ${ifname}`);
+                    return;
+                }
+                const k1 = conv.get_index('application-gateway.http-proxy.accept-interface');
+                conv.add(`${k1}.interface`, conv.ifmap(ifname));
+            });
+        },
+
+        'handoff-on-dns-failure': 'notsupported',
+
+        // application-gateway http-proxy listen-port { none | <port> }
+        'listen-port': (conv, tokens) => {
+            if (conv.missing('application-gateway http-proxy')) { return; }
+            conv.add('application-gateway.http-proxy.listen-port', tokens[3]);
+        }
+    },
+    'input-interface': (conv, tokens) => {
+        // application-gateway input-interface add ...
+        const ifname = tokens[3];
+        if (! ifname.match(/^(ipsec|lan|pppac|tunnel|vlan)[0-9*]+$/)) {
+            conv.notsupported(`input-interface ${ifname}`);
+            return;
+        }
+        const k1 = conv.get_index('application-gateway.input.ipv4.gateway');
+        conv.add(`${k1}.interface`, conv.ifmap(tokens[3]));
+    },
+    'service': {
+        'add': (conv, tokens) => {
+            const k1 = conv.get_index('application-gateway.service');
+            const params = conv.read_params(`appgw.service`, tokens, 3, {
+                'mode': true,
+                'destination-port': `${k1}.destination.port`,
+                'destination': `${k1}.destination.ipv4.address`,
+                'idle-timer': true,
+                'handoff': true,
+                'handoff-address': true,
+                'handoff-port': true,
+                'handoff-for': true,
+                'http-allow-method': 'notsupported',
+                'http-referer-removal': 'notsupported',
+                'http-referer-removal-pattern': 'notsupported',
+                'http-hostname-verification': 'notsupported',
+                'ftp-data-command': true,
+                'ftp-data-port': true,
+                'source-selection': `${k1}.source-selection.ipv4`,
+                'logging': true,
+                'label': 'notsupported',
+                'url-filter': true,
+            });
+
+            if (params['mode'] == 'ftp' && conv.missing('application-gateway mode ftp', true)) {
+                conv.notsupported('mode ftp');
+            } else {
+                conv.param2recipe(params, 'mode', `${k1}.mode`);
+            }
+
+            if (params['idle-timer'] == 'none') {
+                conv.notsupported('idle-timer none');
+            } else {
+                conv.param2recipe(params, 'idle-timer', `${k1}.idle-timer`);
+            }
+
+            if (params['handoff'] == 'on') {
+                conv.param2recipe(params, 'handoff-address', `${k1}.handoff.ipv4.address`);
+                conv.param2recipe(params, 'handoff-port', `${k1}.handoff.port`);
+                conv.param2recipe(params, 'handoff-for', `${k1}.handoff.hostname.pattern`);
+            }
+
+            commaEach(params['ftp-data-command'], c => {
+                const k2 = conv.get_index(`${k1}.ftp.data`);
+                conv.add(`${k2}.command`, c);
+            });
+            conv.param2recipe(params, 'ftp-data-port', `${k1}.ftp.data.port`);
+
+            commaEach(params['logging'], l => {
+                const k2 = conv.get_index(`${k1}.logging`);
+                conv.add(`${k2}.event`, l);
+            });
+
+            conv.param2recipe(params, 'url-filter', `${k1}.url-filter`, on2enable);
+        }
+    },
+    'url-filter': {
+        'add': (conv, tokens) => {
+            const k1 = conv.get_index('application-gateway.url-filter');
+            const params = conv.read_params(null, tokens, 3, {
+                'url-category': true,
+                'url-pattern': true,
+                'action': true,
+                'source': true,
+            });
+
+            conv.param2recipe(params, 'action', `${k1}.action`);
+            conv.param2recipe(params, 'source', `${k1}.source.ipv4.address`);
+            conv.param2recipe(params, 'url-category', `${k1}.url.category`);
+            conv.param2recipe(params, 'url-pattern', `${k1}.url.pattern`);
+        },
+        'external': 'notsupported',
+        'option': {
+            'block-ip-address-access': (conv, tokens) => {
+                conv.add('application-gateway.url-filter.block-ip-address-access', tokens[4]);
+            },
+            'redirect-url-on-block': (conv, tokens) => {
+                conv.add('application-gateway.url-filter.redirect-url-on-block', tokens[4]);
+            },
+        },
         'service': {
-            'add': {
-                '*': {
-                    'mode': {
-                        'http': tokens => {
-                            const lines = [];
-                            const k = newindex('application-gateway.service');
-                            let i = 5;
-
-                            lines.push('${k}.mode: http');
-                            i += 1;
-
-                            if (tokens[i] == 'destination-port') {
-                                lines.push(`${k}.destination.port: ${tokens[i + 1]}`);
-                                i += 2;
-                            }
-                            if (tokens[i] == 'destination') {
-                                if (tokens[i + 1] != 'any') {
-                                    lines.push(`${k}.destination.address: ${tokens[i + 1]}`);
-                                }
-                                i += 2;
-                            }
-                        }
-                    }
+            // application-gateway url-filter service
+            //   { site-umpire authentication-id <authentication_id> | none }
+            'site-umpire': {
+                'authentication-id': (conv, tokens) => {
+                    conv.add('application-gateway.url-filter.service.100.name', 'site-umpire');
+                    conv.add('application-gateway.url-filter.service.100.id', tokens[5]);
                 }
             }
         }
@@ -982,7 +1079,15 @@ Converter.rules['cbq'] = {
 };
 
 Converter.rules['certificate'] = {
-    'my': 'notsupported'
+    // certificate my add <name> certificate "<string>" private-key "<string>"
+    'my': {
+        'add': (conv, tokens) => {
+            conv.read_params('certificate', tokens, 3, {
+                'certificate': true,
+                'private-key': true
+            });
+        }
+    }
 };
 
 function dhcp_get_interface(conv, iftoken) {
@@ -2019,6 +2124,37 @@ Converter.rules['interface'] = {
                 conv.param2recipe(protocol, 'mru', `${k1}.l2tp.mru`);
                 conv.param2recipe(protocol, 'tcp-mss-adjust', `${k1}.l2tp.tcp-mss-adjust`, on2enable);
                 conv.param2recipe(protocol, 'idle-timer', `${k1}.l2tp.idle-timer`);
+            } else if (protocol['protocol'] == 'sstp') {
+                const k1 = `interface.${ifname}`;
+                conv.add(`${k1}.sstp.service: enable`);
+
+                (protocol['authentication-method'] || "mschapv2").split(',').forEach(m => {
+                    if (m == 'eap-radius') { return; }
+                    const k2 = conv.get_index(`${k1}.sstp.authentication`);
+                    conv.add(`${k2}.method`, m);
+                });
+                if (protocol['accept-interface'] != 'any') {
+                    (protocol['accept-interface'] || "").split(',').forEach(name => {
+                        const k2 = conv.get_index(`${k1}.sstp.accept`);
+                        conv.add(`${k2}.interface`, conv.ifmap(name));
+                    });
+                }
+
+                const cert = conv.get_params('certificate')[protocol['certificate']];
+                conv.add(`${k1}.sstp.certificate`, cert['certificate']);
+                conv.add(`${k1}.sstp.private-key`, cert['private-key']);
+
+                if (protocol['idle-timer'] != 'none') {
+                    conv.param2recipe(protocol, 'idle-timer', `${k1}.sstp.idle-timer`);
+                }
+                if (protocol['lcp-keepalive'] != 'off') {
+                    conv.param2recipe(protocol, 'lcp-keepalive-interval', `${k1}.sstp.lcp.keepalive.interval`);
+                    conv.param2recipe(protocol, 'lcp-keepalive-retry-interval', `${k1}.sstp.lcp.keepalive.retry.interval`);
+                }
+                conv.param2recipe(protocol, 'mru', `${k1}.sstp.mru`);
+                conv.param2recipe(protocol, 'sstp-keepalive-interval', `${k1}.sstp.keepalive.interval`);
+                conv.param2recipe(protocol, 'sstp-keepalive-timeout', `${k1}.sstp.keepalive.timeout`);
+                conv.param2recipe(protocol, 'tcp-mss-adjust', `${k1}.sstp.tcp-mss-adjust`, on2enable);
             }
         },
 
@@ -3454,7 +3590,30 @@ Converter.rules['pppac'] = {
         },
         'pppoe': 'notsupported',
         'pptp': 'notsupported',
-        'sstp': 'notsupported',
+        'sstp': {
+            'add': (conv, tokens) => {
+                const params = conv.read_params('pppac.protocol', tokens, 4, {
+                    'accept-interface': true,
+                    'authentication-method': true,
+                    'authentication-timeout': 'notsupported',
+                    'certificate': true,
+                    'idle-timer': true,
+                    'lcp-keepalive': true,
+                    'lcp-keepalive-interval': true,
+                    'lcp-keepalive-max-retries': true,
+                    'lcp-keepalive-retry-interval': true,
+                    'mru': true,
+                    'sstp-keepalive-interval': true,
+                    'sstp-keepalive-timeout': true,
+                    'tcp-mss-adjust': true,
+                });
+                params['protocol'] = 'sstp';
+
+                if ((params['authentication-method'] || '').split(',').includes('eap-radius')) {
+                    conv.notsupported('authentication-method eap-radius');
+                }
+            },
+        }
     }
 };
 
@@ -4594,7 +4753,7 @@ Converter.rules['vrrp'] = {
         }
 
         if (params['virtual-mac'] == null || params['virtual-mac'] == 'off') {
-            conv.deprecated('virtual-mac off');
+            conv.add(`${k1}.virtual-mac`, 'disable');
         }
 
         if (params['watch'] && conv.missing('vrrp add ... watch')) { return; }
