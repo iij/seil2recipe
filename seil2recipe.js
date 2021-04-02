@@ -2672,30 +2672,6 @@ Converter.rules['ipsec'] = {
                         conv.add(`interface.${ifname}.ike.proposal.phase2.proxy-id.ipv6.remote`, proxy_id_remote);
                     }
                 }
-
-                // ike proposal -> ike.phase1
-if (false) {
-                const peer = conv.get_memo(`ike.peer.address.${dst}`);
-                conv.param2recipe(peer, 'initial-contact', `interface.${ifname}.ike.initial-contact`);
-
-                const ikep_name = peer['proposals'];
-                const ikep = conv.get_params('ike.proposal')[ikep_name];
-                if (ikep) {
-                    const k2 = `interface.${ifname}.ike.proposal.phase1`;
-                    (ikep['encryption'] || '').split(',').forEach(alg => {
-                        const ke = conv.get_index(`${k2}.encryption`);
-                        conv.add(`${ke}.algorithm`, alg);
-                    });
-                    (ikep['hash'] || '').split(',').forEach(alg => {
-                        const ke = conv.get_index(`${k2}.hash`);
-                        conv.add(`${ke}.algorithm`, alg);
-                    });
-                    conv.param2recipe(ikep, 'dh-group', `${k2}.dh-group`);
-
-                    // IKE phase1 lifetime のデフォルト値は 28800 → 86400 に変更されている。
-                    conv.add(`${k2}.lifetime`, ikep['lifetime-of-time'] || '8h') ;
-                }
-}
             } else {
                 // ipsec security-association add <name> { tunnel | transport }
                 //     { <start_IPaddress> <end_IPaddress> |
