@@ -140,6 +140,7 @@ class Note {
         this.memo.set('ike.peer.dynamic', []);
         this.memo.set('ike.preshared-key', {});
         this.memo.set('interface.l2tp.tunnel', {});
+        this.memo.set('interface.router-advertisements', []);
         this.memo.set('qos.class', { 'default': 'root' });
 
         this.if_mappings = {
@@ -529,6 +530,7 @@ const CompatibilityList = {
     'ike global-parameters':                           [    0,    1 ],
     'ipsec security-association add ... ipv6':         [    0,    1 ],
     'interface ... add dhcp6':                         [    0,    1 ],
+    'interface ... add router-advertisement(s)':       [    0,    1 ],
     'nat6':                                            [    0,    1 ],
     'option ip fragment-requeueing off':               [    0,    1 ],
     'option ip monitor-linkstate off':                 [    0,    1 ],
@@ -2021,6 +2023,14 @@ Converter.rules['interface'] = {
                     val = 'dhcp6';
                     break;
                 case 'router-advertisement':
+                    const ralist = conv.get_memo('interface.router-advertisements');
+                    ralist.push(ifname);
+                    if (conv.missing('interface ... add router-advertisement(s)', true)) {
+                        if (ralist.length > 1) {
+                            conv.warning(`${conv.devname} では router-advertisement は 1 つのインタフェースにしか設定できません。`);
+                            return;
+                        }
+                    }
                     af = 'ipv6';
                     val = 'router-advertisement';
                     break;
@@ -4122,14 +4132,23 @@ Converter.rules['route6'] = {
         // route6 add default router-advertisement interface <lan>
         //     [distance { <distance> | system-default }]
         const k1 = conv.get_index('route.ipv6');
-        conv.add(`${k1}.destination`, tokens[2]);
-        conv.add(`${k1}.gateway`, tokens[3]);
         if (tokens[3] == 'router-advertisement') {
-            conv.add(`${k1}.router-advertisement-interface`, conv.ifmap(tokens[5]));
+            const raif = conv.ifmap(tokens[5]);
+            if (conv.missing('interface ... add router-advertisement(s)', true)) {
+                const ralist = conv.get_memo('interface.router-advertisements');
+                if (raif != ralist[0]) {
+                    conv.warning(`${conv.devname} では router-advertisement で IPv6 アドレスを設定したインタフェースしか指定できません。`);
+                    return;
+                }
+            } else {
+                conv.add(`${k1}.router-advertisement-interface`, raif);
+            }
             idx = 5;
         } else {
             idx = 3;
         }
+        conv.add(`${k1}.destination`, tokens[2]);
+        conv.add(`${k1}.gateway`, tokens[3]);
         const params = conv.read_params(null, tokens, idx, {
             'distance': `${k1}.distance`,
             'keepalive': {
