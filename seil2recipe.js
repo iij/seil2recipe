@@ -527,6 +527,7 @@ const CompatibilityList = {
     'ike peer add ... nat-traversal disable':          [    0,    1 ],
     'ike peer add ... responder-only':                 [    0,    1 ],
     'ike global-parameters':                           [    0,    1 ],
+    'ipsec security-association add ... ipv6':         [    0,    1 ],
     'interface ... add dhcp6':                         [    0,    1 ],
     'nat6':                                            [    0,    1 ],
     'option ip fragment-requeueing off':               [    0,    1 ],
@@ -2621,11 +2622,18 @@ Converter.rules['ipsec'] = {
                     'proxy-id-protocol': `interface.${ifname}.ike.proposal.phase2.proxy-id.protocol`,
                 });
 
-                // ipv6 は seil3 ではデフォルト pass、seil8 ではデフォルト block。
-                if (params['ipv6'] == null || params['ipv6'] == 'pass') {
-                    conv.add(`interface.${ifname}.ipv6.forward`, 'pass');
+                if (conv.missing('ipsec security-association add ... ipv6', true)) {
+                    if (params['ipv6'] == null) {
+                        conv.warning(`${conv.devname} では常に "ipv6 block" 相当の動作になります。`);
+                    } else if (params['ipv6'] == 'pass') {
+                        conv.notsupported('ipv6 pass');
+                    } // 'block' は seil6 のデフォルト動作なので何も出さない。
                 } else {
-                    conv.add(`interface.${ifname}.ipv6.forward`, 'block');
+                    if (params['ipv6'] == 'block') {
+                        conv.add(`interface.${ifname}.ipv6.forward`, 'block');
+                    } else {
+                        conv.add(`interface.${ifname}.ipv6.forward`, 'pass');
+                    }
                 }
 
                 // ipsec security-association proposal ...
