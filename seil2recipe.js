@@ -525,6 +525,7 @@ const CompatibilityList = {
     'ike peer add ... check-level':                    [    0,    1 ],
     'ike peer add ... initial-contact disable':        [    0,    1 ],
     'ike peer add ... nat-traversal disable':          [    0,    1 ],
+    'ike peer add ... responder-only on':              [    0,    1 ],
     'ike global-parameters':                           [    0,    1 ],
     'interface ... add dhcp6':                         [    0,    1 ],
     'nat6':                                            [    0,    1 ],
@@ -1956,6 +1957,11 @@ Converter.rules['ike'] = {
                 'responder-only': true,
                 'prefer-new-phase1': true,
             });
+            if (params['responder-only'] == 'on' &&
+                conv.missing("ike peer add ... responder-only on")) {
+                delete params['responder-only'];
+            }
+
             conv.set_memo(`ike.peer.address.${params['address']}`, params);
 
             if (params['address'] == 'dynamic') {
