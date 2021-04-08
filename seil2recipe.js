@@ -1890,7 +1890,11 @@ Converter.rules['floatlink'] = {
         'add': (conv, tokens) => {
             // floatlink name-service は add で書くが、最大で一つしか設定
             // できないため上書きされる心配はしなくて良い。
-            conv.deps.add_floatlink_name_service(conv, tokens[3]);
+
+            // seil3 系専用サーバの URL が書いてある場合は、汎用サーバの
+            // URL に置き換える。
+            let url = tokens[3].replace('floatlink-seil.', 'floatlink.');
+            conv.deps.add_floatlink_name_service(conv, url);
         }
     },
     'route': 'notsupported',
