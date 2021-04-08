@@ -134,6 +134,7 @@ class Note {
         this.params  = new Map();
         this.ifindex = new Map();  // (prefix) -> (interface) -> (index)
         this.memo    = new Map();
+        this.deps    = new DependencySet(),
         this.dst     = new Device(dst);
 
         this.memo.set('floatlink.interfaces', []);
@@ -282,6 +283,10 @@ class Conversion {
     //
     // Proxy methods
     //
+    get deps() {
+        return this.note.deps;
+    }
+
     get_index(prefix, zero_origin) {
         var idx = this.note.indices.get(prefix);
         if (!zero_origin) {
@@ -557,6 +562,31 @@ class Error {
         this.type    = type;
         this.message = message;
         this.error   = error;
+    }
+}
+
+class DependencySet {
+    constructor() {
+        this.floatlink = { url: null, iflist: [] };
+    }
+
+    add_floatlink_name_service(conv, url) {
+        this.floatlink.url = { conv: conv, value: url };
+        this.emit();
+    }
+
+    add_floatlink_iface(conv, ifname) {
+        this.floatlink.iflist.push({ conv: conv, value: ifname})
+        this.emit();
+    }
+
+    emit() {
+        if (this.floatlink.url) {
+            this.floatlink.iflist.forEach(iface => {
+                iface.conv.add(`interface.${iface.value}.floatlink.name-service`, this.floatlink.url.value);
+            });
+            this.floatlink.iflist = [];
+        }
     }
 }
 
@@ -1858,11 +1888,9 @@ Converter.rules['floatlink'] = {
         // floatlink name-service add <url>
         // -> interface.ipsec[0-63].floatlink.name-service: <url>
         'add': (conv, tokens) => {
-            // floatlink name-service は add で書くが、最大で一つしか設定できないため、
-            // 上書きされる心配はしなくて良い。
-            conv.get_memo('floatlink.interfaces').forEach(ifname => {
-                conv.add(`interface.${ifname}.floatlink.name-service`, tokens[3]);
-            });
+            // floatlink name-service は add で書くが、最大で一つしか設定
+            // できないため上書きされる心配はしなくて良い。
+            conv.deps.add_floatlink_name_service(conv, tokens[3]);
         }
     },
     'route': 'notsupported',
@@ -2219,9 +2247,8 @@ Converter.rules['interface'] = {
                 const ifname = conv.ifmap(tokens[1]);
                 conv.add(`interface.${ifname}.floatlink.my-node-id`, tokens[4]);
 
-                // 後で interface.${ifname}.floatlink.name-service を書き出すためにメモに入れておく。
                 // my-node-id は必須キーなので、このタイミングで書く。
-                conv.get_memo('floatlink.interfaces').push(ifname);
+                conv.deps.add_floatlink_iface(conv, ifname);
             },
             'nat-traversal': (conv, tokens) => {
                 const ifname = conv.ifmap(tokens[1]);

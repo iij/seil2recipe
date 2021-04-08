@@ -2295,3 +2295,25 @@ describe('factory-config', () => {
         });
     });
 });
+
+describe('order issues', () => {
+    it('interface ipsec -> floatlink name-service', () => {
+        assertconv(`
+            interface ipsec1 floatlink my-node-id MYNODE0
+            floatlink name-service add https://example.com/
+            ---
+            interface.ipsec1.floatlink.my-node-id: MYNODE0
+            interface.ipsec1.floatlink.name-service: https://example.com/
+        `);
+    });
+
+    it('floatlink name-service -> interface ipsec', () => {
+        assertconv(`
+            floatlink name-service add https://example.com/
+            interface ipsec1 floatlink my-node-id MYNODE0
+            ---
+            interface.ipsec1.floatlink.my-node-id: MYNODE0
+            interface.ipsec1.floatlink.name-service: https://example.com/
+        `);
+    });
+});
