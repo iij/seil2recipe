@@ -774,6 +774,17 @@ describe('filter6', () => {
             filter.ipv6.100.protocol: tcpudp
         `);
     });
+
+    it('"enable" must be ignored', () => {
+        assertconv(`
+            filter6 add A enable interface lan1 direction in action pass
+            ---
+            filter.ipv6.100.label: A
+            filter.ipv6.100.action: pass
+            filter.ipv6.100.direction: in
+            filter.ipv6.100.interface: ge0
+        `);
+    });
 });
 
 describe('floatlink', () => {

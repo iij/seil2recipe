@@ -1686,8 +1686,8 @@ Converter.rules['filter'] = {
             'keepalive': true,
             'logging': true,
             'label': true,
-            'enable': false,  // ignored
-            'disable': false,
+            'enable': 0,
+            'disable': 0,
         });
         if (params['disable']) {
             return;
@@ -1770,8 +1770,8 @@ Converter.rules['filter6'] = {
             'state-ttl': true,
             'logging': true,
             'label': true,
-            'enable': false,  // ignored
-            'disable': false,
+            'enable': 0,
+            'disable': 0,
         });
         if (params['disable']) {
             return;
@@ -2824,7 +2824,7 @@ Converter.rules['ipsec'] = {
             'srcport': true,
             'dstport': true,
             'protocol': true,
-            'enable': false,
+            'enable': 0,
             'disable': 'notsupported'
         });
         const sa_name = params['security-association'];
