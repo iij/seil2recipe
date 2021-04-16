@@ -1399,6 +1399,36 @@ describe('nat', () => {
             ]);
     });
 
+    it('snapt add default', () => {
+        assertconv(`
+            nat snapt add default 192.168.0.1 interface lan1
+            ---
+            nat.ipv4.snapt.100.protocol: tcpudp
+            nat.ipv4.snapt.100.listen.port: 1-65535
+            nat.ipv4.snapt.100.forward.address: 192.168.0.1
+            nat.ipv4.snapt.100.forward.port: 1-65535
+            nat.ipv4.snapt.100.interface: ge0
+        `);
+    });
+
+    it('"snapt add default" must be the last entry', () => {
+        assertconv(`
+            nat snapt add default 192.168.0.1
+            nat snapt add protocol tcp listen 80 forward 192.168.0.1 81
+            ---
+            nat.ipv4.snapt.100.protocol: tcp
+            nat.ipv4.snapt.100.listen.port: 80
+            nat.ipv4.snapt.100.forward.address: 192.168.0.1
+            nat.ipv4.snapt.100.forward.port: 81
+            nat.ipv4.snapt.100.interface: ge0
+            nat.ipv4.snapt.200.protocol: tcpudp
+            nat.ipv4.snapt.200.listen.port: 1-65535
+            nat.ipv4.snapt.200.forward.address: 192.168.0.1
+            nat.ipv4.snapt.200.forward.port: 1-65535
+            nat.ipv4.snapt.200.interface: ge0
+        `);
+    });
+
     it('static', () => {
         assertconv([
             'nat static add 192.168.0.1 198.51.100.1 interface vlan0',

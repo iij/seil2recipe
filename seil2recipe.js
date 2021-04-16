@@ -3324,7 +3324,18 @@ Converter.rules['nat'] = {
             return;
         }
         if (params['default']) {
-            conv.notsupported('nat snapt add default');
+            // nat snapt add default は TCP/UDP のすべてのポートを指定した
+            // 内部ホストに転送する snapt の最後のエントリに変換する。
+            const ifname = params['interface'] || 'lan1';
+            conv.defer(conv => {
+                const k1 = conv.get_index('nat.ipv4.snapt');
+                conv.add(`${k1}.protocol`, 'tcpudp');
+                conv.add(`${k1}.listen.port`, '1-65535');
+                conv.add(`${k1}.forward.address`,tokens[4]);
+                conv.add(`${k1}.forward.port`, '1-65535');
+                conv.add(`${k1}.interface`, conv.natifname(ifname));
+            });
+            conv.note.napt.ifnames.add(ifname);
             return;
         }
         const k1 = conv.get_index('nat.ipv4.snapt');
