@@ -1134,6 +1134,7 @@ function dhcp_get_interface(conv, iftoken) {
     }
 };
 
+// https://www.seil.jp/doc/index.html#fn/dhcp/cmd/dhcp_server.html
 Converter.rules['dhcp'] = {
     'disable': (conv, tokens) => {
         conv.set_memo('dhcp', 'disable');
@@ -1162,8 +1163,9 @@ Converter.rules['dhcp'] = {
             },
 
             'domain': (conv, tokens) => {
+                // dhcp interface <i/f> domain <name>
                 const k = dhcp_get_interface(conv, tokens[2]);
-                if (k) {
+                if (k && tokens[4] != "") {
                     conv.add(`${k}.domain`, tokens[4]);
                 }
             },
