@@ -547,10 +547,9 @@ class Conversion {
 class Device {
     constructor(shortname) {
         this.shortname = shortname;
-        this.gen = ['w1', 'w2', 'w2l'].includes(shortname) ? 'seil6' : 'seil8';
+        this.gen = ['w2', 'w2l'].includes(shortname) ? 'seil6' : 'seil8';
 
         this.name = {
-            'w1':    'SA-W1',
             'w2':    'SA-W2',
             'w2l':   'SA-W2L',
             'x4':    'SEIL/X4',
