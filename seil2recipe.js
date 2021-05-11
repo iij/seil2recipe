@@ -2126,6 +2126,9 @@ Converter.rules['interface'] = {
                 const realm = conv.get_params('authentication.realm')[realm_name];
                 const kauth = conv.get_index(`interface.${ifname}.authentication`);
 
+                if (realm['type'] != 'local') {
+                    conv.add(`${kauth}.type: ${realm['type']}`);
+                }
                 if (realm['username-suffix']) {
                     conv.add(`${kauth}.realm.suffix: ${realm['username-suffix']}`);
                 }

@@ -152,6 +152,7 @@ describe('authentication+pppac', () => {
                 'interface.pppac0.l2tp.idle-timer: 123',
                 'interface.pppac0.l2tp.ipsec.preshared-key: SecretKey',
                 'interface.pppac0.l2tp.service: enable',
+                'interface.pppac1.authentication.100.type: account-list',
                 'interface.pppac1.authentication.100.account-list.interval: 123',
                 'interface.pppac1.authentication.100.account-list.url: http://example.jp/',
                 'interface.pppac1.ipcp.pool.100.address: 192.168.128.0',
@@ -1651,41 +1652,47 @@ describe('pppac', () => {
 
     it('pppac parameters', () => {
         assertconv(`
-            authentication realm add REALM5 type local
-            authentication local REALM5 user add USER5 password PASS5
-            pppac pool add POOL5 address 192.168.0.0/24
-            pppac ipcp-configuration add IPCP5 pool POOL5
-            pppac protocol l2tp add PROTO5 accept-interface any authentication-method pap,chap,mschapv2
-            interface pppac0 ipcp-configuration IPCP5
-            interface pppac0 bind-tunnel-protocol PROTO5
-            interface pppac0 bind-realm REALM5
+            authentication realm add REALM5L type local
+            authentication realm add REALM5A type account-list
+            authentication local REALM5L user add USER5 password PASS5
+            authentication account-list REALM5A url http://a.example.jp/ interval 10m
+            pppac pool add POOL5L address 192.168.1.0/24
+            pppac pool add POOL5A address 192.168.2.0/24
+            pppac ipcp-configuration add IPCP5L pool POOL5L
+            pppac ipcp-configuration add IPCP5A pool POOL5A
+            pppac protocol l2tp add PROTO5L accept-interface vlan0 authentication-method pap,chap,mschapv2
+            pppac protocol l2tp add PROTO5A accept-interface vlan1 authentication-method mschapv2
+            interface pppac0 ipcp-configuration IPCP5L
+            interface pppac0 bind-tunnel-protocol PROTO5L
+            interface pppac0 bind-realm REALM5L
             interface pppac0 tunnel-end-address 192.168.0.1
             interface pppac0 user-max-session 5
-            interface pppac1 ipcp-configuration IPCP5
-            interface pppac1 bind-tunnel-protocol PROTO5
-            interface pppac1 bind-realm REALM5
+            interface pppac1 ipcp-configuration IPCP5A
+            interface pppac1 bind-tunnel-protocol PROTO5A
+            interface pppac1 bind-realm REALM5A
             interface pppac1 tunnel-end-address 192.168.0.1
             interface pppac1 user-max-session unlimit
             ----
             interface.pppac0.authentication.100.user.100.name: USER5
             interface.pppac0.authentication.100.user.100.password: PASS5
-            interface.pppac0.ipcp.pool.100.address: 192.168.0.0
+            interface.pppac0.ipcp.pool.100.address: 192.168.1.0
             interface.pppac0.ipcp.pool.100.count: 256
             interface.pppac0.ipv4.address: 192.168.0.1
+            interface.pppac0.l2tp.accept.100.interface: vlan0
             interface.pppac0.l2tp.authentication.100.method: pap
             interface.pppac0.l2tp.authentication.200.method: chap
             interface.pppac0.l2tp.authentication.300.method: mschapv2
             interface.pppac0.l2tp.ipsec.requirement: optional
             interface.pppac0.l2tp.service: enable
             interface.pppac0.user-max-session: 5
-            interface.pppac1.authentication.100.user.100.name: USER5
-            interface.pppac1.authentication.100.user.100.password: PASS5
-            interface.pppac1.ipcp.pool.100.address: 192.168.0.0
+            interface.pppac1.authentication.100.type: account-list
+            interface.pppac1.authentication.100.account-list.url: http://a.example.jp/
+            interface.pppac1.authentication.100.account-list.interval: 10m
+            interface.pppac1.ipcp.pool.100.address: 192.168.2.0
             interface.pppac1.ipcp.pool.100.count: 256
             interface.pppac1.ipv4.address: 192.168.0.1
-            interface.pppac1.l2tp.authentication.100.method: pap
-            interface.pppac1.l2tp.authentication.200.method: chap
-            interface.pppac1.l2tp.authentication.300.method: mschapv2
+            interface.pppac1.l2tp.accept.100.interface: vlan1
+            interface.pppac1.l2tp.authentication.100.method: mschapv2
             interface.pppac1.l2tp.ipsec.requirement: optional
             interface.pppac1.l2tp.service: enable
             `);
