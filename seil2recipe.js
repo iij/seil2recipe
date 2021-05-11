@@ -563,7 +563,6 @@ const CompatibilityList = {
     // feature                                          seil6 seil8
     'application-gateway http-proxy':                  [    0,    1 ],
     'application-gateway mode ftp':                    [    1,    0 ],
-    'authentication account-list':                     [    0,    1 ],
     'cbq':                                             [    0,    1 ],
     'dhcp6 relay':                                     [    0,    1 ],
     'dhcp6 server':                                    [    0,    1 ],
@@ -886,7 +885,6 @@ Converter.rules['authentication'] = {
                     'interval': (conv, tokens) => {
                         // https://www.seil.jp/doc/index.html#fn/pppac/cmd/authentication_account-list.html
                         // https://www.seil.jp/sx4/doc/sa/pppac/config/interface.pppac.html
-                        if (conv.missing('authentication account-list')) { return; }
                         conv.set_memo(`authentication.realm.${tokens[2]}.url`, tokens[4]);
                         conv.set_memo(`authentication.realm.${tokens[2]}.interval`, tokens[6]);
                     }
