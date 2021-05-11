@@ -204,9 +204,7 @@ describe('bridge', () => {
             ]);
     });
 
-    it('filter is not supported.', () => {
-        assertconv('bridge filter on', '');
-    });
+    // see filter tests for "bridge filter on"
 
     it('vman-tpid is not supported.', () => {
         assertconv('bridge vman-tpid 0x1234', '');
@@ -713,6 +711,76 @@ describe('filter', () => {
             filter.ipv4.100.direction: in
             filter.ipv4.100.source.port: 1
             filter.ipv4.100.protocol: tcpudp
+        `);
+    });
+
+    it('bridge filter, member & designated', () => {
+        assertconv(`
+            bridge enable
+            bridge filter on
+            filter add FOO interface lan0 direction in action pass
+            ---
+            interface.bridge0.member.100.interface: ge1
+            interface.bridge0.member.200.interface: ge0
+            filter.bridge.ipv4.100.label: FOO
+            filter.bridge.ipv4.100.action: pass
+            filter.bridge.ipv4.100.interface: ge1
+            filter.bridge.ipv4.100.direction: in
+            filter.ipv4.100.label: FOO
+            filter.ipv4.100.action: pass
+            filter.ipv4.100.interface: bridge0
+            filter.ipv4.100.direction: in
+        `);
+    });
+
+    it('bridge filter, member but not designated', () => {
+        assertconv(`
+            bridge enable
+            bridge filter on
+            filter add FOO interface lan1 direction in action pass
+            ---
+            interface.bridge0.member.100.interface: ge1
+            interface.bridge0.member.200.interface: ge0
+            filter.bridge.ipv4.100.label: FOO
+            filter.bridge.ipv4.100.action: pass
+            filter.bridge.ipv4.100.interface: ge0
+            filter.bridge.ipv4.100.direction: in
+        `);
+    });
+
+    it('bridge filter, not member', () => {
+        assertconv(`
+            bridge enable
+            bridge filter on
+            filter add FOO interface tunnel0 direction in action pass
+            ---
+            interface.bridge0.member.100.interface: ge1
+            interface.bridge0.member.200.interface: ge0
+            filter.ipv4.100.label: FOO
+            filter.ipv4.100.action: pass
+            filter.ipv4.100.interface: tunnel0
+            filter.ipv4.100.direction: in
+        `);
+    });
+
+    it('bridge filter, group mode, member, and designated', () => {
+        assertconv(`
+            bridge filter on
+            bridge group add BG1
+            bridge interface lan2 group BG1
+            bridge interface lan1 group BG1
+            filter add FOO interface lan1 direction in action pass
+            ---
+            interface.bridge0.member.100.interface: ge2
+            interface.bridge0.member.200.interface: ge0
+            filter.bridge.ipv4.100.label: FOO
+            filter.bridge.ipv4.100.action: pass
+            filter.bridge.ipv4.100.interface: ge0
+            filter.bridge.ipv4.100.direction: in
+            filter.ipv4.100.label: FOO
+            filter.ipv4.100.action: pass
+            filter.ipv4.100.interface: bridge0
+            filter.ipv4.100.direction: in
         `);
     });
 });
