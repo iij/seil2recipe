@@ -134,9 +134,10 @@ class Note {
         this.params  = new Map();
         this.ifindex = new Map();  // (prefix) -> (interface) -> (index)
         this.memo    = new Map();
-        this.deps    = new DependencySet(),
+        this.deps    = new DependencySet();
         this.dst     = new Device(dst);
 
+        this.memo.set('bridge.group', new Map());
         this.memo.set('floatlink.interfaces', []);
         this.memo.set('ike.peer.dynamic', []);
         this.memo.set('ike.preshared-key', {});
@@ -363,6 +364,47 @@ class Conversion {
         });
     }
 
+    is_bridge_member(ifname) {
+        var found = false;
+        this.get_memo('bridge.group').forEach(params => {
+            if (params['members'].includes(ifname)) {
+                found = true;
+                return;
+            }
+        });
+        return found;
+    }
+
+    // returns bridge interface name or null
+    is_bridge_representive(ifname) {
+        function bridge_repr_cmp(a, b) {
+            const ma = a.match(/^(\w+?)(\d+)$/);
+            const mb = b.match(/^(\w+?)(\d+)$/);
+            if (ma[1] == mb[1]) {
+                return Number(ma[2]) - Number(mb[2]);
+            } else {
+                const order = ['lan', 'vlan', 'l2tp'];
+                return order.indexOf(ma[1]) - order.indexOf(mb[1]);
+            }
+        }
+        var bridge_if = null;
+        this.get_memo('bridge.group').forEach(params => {
+            if (params['members'].includes(ifname)) {
+                var repr = ifname;
+                params['members'].forEach(mif => {
+                    if (bridge_repr_cmp(mif, repr) < 0) {
+                        repr = mif;
+                    }
+                });
+                if (repr == ifname) {
+                    bridge_if = params.bridge_if;
+                }
+                return;
+            }
+        });
+        return bridge_if;
+    }
+
     read_params(prefix, tokens, idx, defs) {
         const name = tokens[idx];
         const params = { '*NAME*': name };
@@ -505,10 +547,9 @@ class Conversion {
 class Device {
     constructor(shortname) {
         this.shortname = shortname;
-        this.gen = ['w1', 'w2', 'w2l'].includes(shortname) ? 'seil6' : 'seil8';
+        this.gen = ['w2', 'w2l'].includes(shortname) ? 'seil6' : 'seil8';
 
         this.name = {
-            'w1':    'SA-W1',
             'w2':    'SA-W2',
             'w2l':   'SA-W2L',
             'x4':    'SEIL/X4',
@@ -521,7 +562,6 @@ const CompatibilityList = {
     // feature                                          seil6 seil8
     'application-gateway http-proxy':                  [    0,    1 ],
     'application-gateway mode ftp':                    [    1,    0 ],
-    'authentication account-list':                     [    0,    1 ],
     'cbq':                                             [    0,    1 ],
     'dhcp6 relay':                                     [    0,    1 ],
     'dhcp6 server':                                    [    0,    1 ],
@@ -844,7 +884,6 @@ Converter.rules['authentication'] = {
                     'interval': (conv, tokens) => {
                         // https://www.seil.jp/doc/index.html#fn/pppac/cmd/authentication_account-list.html
                         // https://www.seil.jp/sx4/doc/sa/pppac/config/interface.pppac.html
-                        if (conv.missing('authentication account-list')) { return; }
                         conv.set_memo(`authentication.realm.${tokens[2]}.url`, tokens[4]);
                         conv.set_memo(`authentication.realm.${tokens[2]}.interval`, tokens[6]);
                     }
@@ -885,9 +924,14 @@ Converter.rules['bridge'] = {
     // https://www.seil.jp/doc/index.html#fn/bridge/cmd/bridge.html#enable
     'disable': [],
     'enable': (conv, tokens) => {
+        const bridge_if = conv.get_named_index('bridge');
         conv.set_memo('bridge.enable', true);
-        conv.add('interface.bridge0.member.100.interface', conv.ifmap('lan0'));
-        conv.add('interface.bridge0.member.200.interface', conv.ifmap('lan1'));
+        conv.add(`interface.${bridge_if}.member.100.interface`, conv.ifmap('lan0'));
+        conv.add(`interface.${bridge_if}.member.200.interface`, conv.ifmap('lan1'));
+        conv.get_memo('bridge.group').set('*LEGACY*', {
+            bridge_if: bridge_if,
+            members: ['lan0', 'lan1']
+        });
     },
     'ip-bridging': (conv, tokens) => {
         if (conv.get_memo('bridge.enable')) {
@@ -910,7 +954,11 @@ Converter.rules['bridge'] = {
         }
     },
 
-    'filter': 'notsupported',
+    // bridge filter { on | off }
+    'filter': (conv, tokens) => {
+        conv.set_memo('bridge.filter', tokens[2] == 'on');
+    },
+
     'vman-tpid': 'notsupported',
 
     // https://www.seil.jp/doc/index.html#fn/bridge/cmd/bridge_group.html#add
@@ -927,6 +975,10 @@ Converter.rules['bridge'] = {
                 'stp': true,
             });
             conv.set_param('bridge.group', tokens[3], '*ifname*', bridge_if);
+            conv.get_memo('bridge.group').set(tokens[3], {
+                bridge_if: bridge_if,
+                members: []
+            });
 
             if (params['stp'] == 'on') {
                 conv.notsupported('stp on');
@@ -965,8 +1017,9 @@ Converter.rules['bridge'] = {
                 }
                 const bridge_if = params['*ifname*'];
                 const k = conv.get_index(`interface.${bridge_if}.member`);
-
                 conv.add(`${k}.interface`, conv.ifmap(member_if));
+
+                conv.get_memo('bridge.group').get(group_name).members.push(member_if);
             }
         }
     }
@@ -1658,61 +1711,47 @@ Converter.rules['environment'] = {
     'terminal': 'deprecated',
 };
 
-Converter.rules['filter'] = {
-    'add': (conv, tokens) => {
-        // https://www.seil.jp/doc/index.html#fn/filter/cmd/filter.html#add
-        // https://www.seil.jp/sx4/doc/sa/filter/config/filter.ipv4.html
-
-        const params = conv.read_params('filter.ipv4', tokens, 2, {
-            'interface': value => conv.ifmap(value),
-            'direction': true,
-            'action': value => {
-                if (value == 'forward') {
-                    return 2;
-                } else {
-                    return value;
-                }
-            },
-            'protocol': true,
-            'icmp-type': true,
-            'application': value => {
-                conv.deprecated('application');
-            },
-            'src': true,
-            'srcport': true,
-            'dst': true,
-            'dstport': true,
-            'ipopts': true,
-            'state': true,
-            'state-ttl': true,
-            'keepalive': true,
-            'logging': true,
-            'label': true,
-            'enable': 0,
-            'disable': 0,
-        });
-        if (params['disable']) {
+function convert_filter46(conv, tokens, ipver) {
+    const params = conv.read_params(null, tokens, 2, {
+        'interface': true,
+        'direction': true,
+        'action': value => {
+            if (value == 'forward') {
+                return 2;
+            } else {
+                return value;
+            }
+        },
+        'protocol': true,
+        'icmp-type': true,
+        'application': value => {
+            conv.deprecated('application');
+        },
+        'src': true,
+        'srcport': true,
+        'dst': true,
+        'dstport': true,
+        'ipopts': true,
+        'exthdr': true,
+        'state': true,
+        'state-ttl': true,
+        'keepalive': true,
+        'logging': true,
+        'label': true,
+        'enable': 0,
+        'disable': 0,
+    });
+    if (params['disable']) {
+        return;
+    }
+    if (ipver == 6 && params['action'][0] == 'forward') {
+        if (conv.missing('filter6 add ... action forward')) {
             return;
         }
+    }
 
-        var k;
-        if (params['action'] == 'pass' || params['action'] == 'block') {
-            k = conv.get_index('filter.ipv4');
-            conv.param2recipe(params, 'action', `${k}.action`);
-        } else {
-            k = conv.get_index('filter.forward.ipv4');
-            const gateway = params['action'][1];
-            if (gateway == 'discard') {
-                conv.notsupported('filter ... action forward discard');
-                return;
-            }
-            if (params['direction'] == 'out') {
-                conv.add(`${k}.interface`, 'any');
-            }
-            conv.add(`${k}.gateway`, gateway);
-        }
-
-        conv.param2recipe(params, 'interface', `${k}.interface`);
+    function generate_filter(conv, params, k) {
+        conv.param2recipe(params, 'interface', `${k}.interface`, val => conv.ifmap(val));
         conv.param2recipe(params, 'direction', `${k}.direction`, val => {
             if (val == 'in/out') {
                 return 'inout';
@@ -1720,6 +1759,10 @@ Converter.rules['filter'] = {
                 return val;
             }
         });
+        if (params['action'] == 'pass' || params['action'] == 'block') {
+            conv.param2recipe(params, 'action', `${k}.action`);
+        }
+
         if (params['protocol']) {
             conv.param2recipe(params, 'protocol', `${k}.protocol`);
         } else {
@@ -1733,6 +1776,7 @@ Converter.rules['filter'] = {
         conv.param2recipe(params, 'dst', `${k}.destination.address`);
         conv.param2recipe(params, 'dstport', `${k}.destination.port`);
         conv.param2recipe(params, 'ipopts', `${k}.ipopts`);
+        conv.param2recipe(params, 'exthdr', `${k}.exthdr`);
         conv.param2recipe(params, 'state', `${k}.state`);
         conv.param2recipe(params, 'state-ttl', `${k}.state.ttl`);
         conv.param2recipe(params, 'keepalive', `${k}.keepalive`);
@@ -1744,6 +1788,47 @@ Converter.rules['filter'] = {
         }
         conv.param2recipe(params, 'label', `${k}.label`);
     }
+
+    const ipv46 = (ipver == 4) ? 'ipv4' : 'ipv6';
+    var k;
+    var layer3_filter = true;
+    if (conv.get_memo('bridge.filter') && conv.is_bridge_member(params['interface'])) {
+        k = conv.get_index(`filter.bridge.${ipv46}`);
+        generate_filter(conv, params, k);
+
+        const repr = conv.is_bridge_representive(params['interface']);
+        if (repr) {
+            params['interface'] = repr;
+        } else {
+            layer3_filter = false;
+        }
+    }
+
+    if (layer3_filter) {
+        if (params['action'] == 'pass' || params['action'] == 'block') {
+            k = conv.get_index(`filter.${ipv46}`);
+        } else { // action forward
+            k = conv.get_index(`filter.forward.${ipv46}`);
+            const gateway = params['action'][1];
+            if (gateway == 'discard') {
+                conv.notsupported('filter ... action forward discard');
+                return;
+            }
+            if (ipver == 4 && params['direction'] == 'out') {
+                conv.add(`${k}.interface`, 'any');
+            }
+            conv.add(`${k}.gateway`, gateway);
+        }
+        generate_filter(conv, params, k);
+    }
+}
+
+Converter.rules['filter'] = {
+    'add': (conv, tokens) => {
+        // https://www.seil.jp/doc/index.html#fn/filter/cmd/filter.html#add
+        // https://www.seil.jp/sx4/doc/sa/filter/config/filter.ipv4.html
+        return convert_filter46(conv, tokens, 4);
+    }
 };
 
 Converter.rules['filter6'] = {
@@ -1751,81 +1836,7 @@ Converter.rules['filter6'] = {
         // https://www.seil.jp/doc/index.html#fn/filter/cmd/filter6.html#add
         // https://www.seil.jp/sx4/doc/sa/filter/config/filter.ipv6.html
 
-        const params = conv.read_params('filter.ipv6', tokens, 2, {
-            'interface': value => conv.ifmap(value),
-            'direction': true,
-            'action': value => {
-                if (value == 'forward') {
-                    return 2;
-                } else {
-                    return value;
-                }
-            },
-            'protocol': true,
-            'icmp-type': true,
-            'src': true,
-            'srcport': true,
-            'dst': true,
-            'dstport': true,
-            'exthdr': true,
-            'state': true,
-            'state-ttl': true,
-            'logging': true,
-            'label': true,
-            'enable': 0,
-            'disable': 0,
-        });
-        if (params['disable']) {
-            return;
-        }
-
-        var k;
-        if (params['action'] == 'pass' || params['action'] == 'block') {
-            k = conv.get_index('filter.ipv6');
-            conv.param2recipe(params, 'action', `${k}.action`);
-        } else {
-            if (conv.missing('filter6 add ... action forward')) {
-                return;
-            }
-            k = conv.get_index('filter.forward.ipv6');
-            const gateway = params['action'][1];
-            if (gateway == 'discard') {
-                conv.notsupported('filter6 ... action forward discard');
-                return;
-            }
-            conv.add(`${k}.gateway`, gateway);
-        }
-
-        conv.param2recipe(params, 'interface', `${k}.interface`, val => val);
-        conv.param2recipe(params, 'direction', `${k}.direction`, val => {
-            if (val == 'in/out') {
-                return 'inout';
-            } else {
-                return val;
-            }
-        });
-        if (params['protocol']) {
-            conv.param2recipe(params, 'protocol', `${k}.protocol`);
-        } else {
-            if (params['srcport'] || params['dstport']) {
-                conv.add(`${k}.protocol`, 'tcpudp');
-            }
-        }
-        conv.param2recipe(params, 'icmp-type', `${k}.icmp-type`);
-        conv.param2recipe(params, 'src', `${k}.source.address`);
-        conv.param2recipe(params, 'srcport', `${k}.source.port`);
-        conv.param2recipe(params, 'dst', `${k}.destination.address`);
-        conv.param2recipe(params, 'dstport', `${k}.destination.port`);
-        conv.param2recipe(params, 'exthdr', `${k}.exthdr`);
-        conv.param2recipe(params, 'state', `${k}.state`);
-        conv.param2recipe(params, 'state-ttl', `${k}.state.ttl`);
-        conv.param2recipe(params, 'logging', `${k}.logging`);
-
-        // filter のコメントを見よ。
-        if (params['label'] == null) {
-            params['label'] = params['*NAME*'];
-        }
-        conv.param2recipe(params, 'label', `${k}.label`);
+        return convert_filter46(conv, tokens, 6);
     }
 };
 
@@ -2112,6 +2123,9 @@ Converter.rules['interface'] = {
                 const realm = conv.get_params('authentication.realm')[realm_name];
                 const kauth = conv.get_index(`interface.${ifname}.authentication`);
 
+                if (realm['type'] != 'local') {
+                    conv.add(`${kauth}.type: ${realm['type']}`);
+                }
                 if (realm['username-suffix']) {
                     conv.add(`${kauth}.realm.suffix: ${realm['username-suffix']}`);
                 }
