@@ -784,6 +784,23 @@ describe('filter', () => {
             filter.ipv4.100.direction: in
         `);
     });
+
+    it('bridge filter, ip-bridging off', () => {
+        assertconv(`
+            bridge filter on
+            bridge enable
+            bridge ip-bridging off
+            filter add FOO interface lan1 direction in action pass
+            ---
+            interface.bridge0.forward.ipv4: disable
+            interface.bridge0.member.100.interface: ge1
+            interface.bridge0.member.200.interface: ge0
+            filter.ipv4.100.label: FOO
+            filter.ipv4.100.action: pass
+            filter.ipv4.100.interface: ge0
+            filter.ipv4.100.direction: in
+        `);
+    });
 });
 
 describe('filter6', () => {
@@ -852,6 +869,23 @@ describe('filter6', () => {
             filter.ipv6.100.action: pass
             filter.ipv6.100.direction: in
             filter.ipv6.100.interface: ge0
+        `);
+    });
+
+    it('bridge filter, ipv6-bridging off', () => {
+        assertconv(`
+            bridge filter on
+            bridge enable
+            bridge ipv6-bridging off
+            filter6 add FOO interface lan1 direction in action pass
+            ---
+            interface.bridge0.forward.ipv6: disable
+            interface.bridge0.member.100.interface: ge1
+            interface.bridge0.member.200.interface: ge0
+            filter.ipv6.100.label: FOO
+            filter.ipv6.100.action: pass
+            filter.ipv6.100.interface: ge0
+            filter.ipv6.100.direction: in
         `);
     });
 });

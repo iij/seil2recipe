@@ -934,11 +934,13 @@ Converter.rules['bridge'] = {
         });
     },
     'ip-bridging': (conv, tokens) => {
+        conv.set_memo('bridge.ip-bridging.off', tokens[2] == 'off');
         if (conv.get_memo('bridge.enable')) {
             conv.add('interface.bridge0.forward.ipv4', on2enable(tokens[2]));
         }
     },
     'ipv6-bridging': (conv, tokens) => {
+        conv.set_memo('bridge.ipv6-bridging.off', tokens[2] == 'off');
         if (conv.get_memo('bridge.enable')) {
             conv.add('interface.bridge0.forward.ipv6', on2enable(tokens[2]));
         }
@@ -1792,15 +1794,20 @@ function convert_filter46(conv, tokens, ipver) {
     const ipv46 = (ipver == 4) ? 'ipv4' : 'ipv6';
     var k;
     var layer3_filter = true;
-    if (conv.get_memo('bridge.filter') && conv.is_bridge_member(params['interface'])) {
-        k = conv.get_index(`filter.bridge.${ipv46}`);
-        generate_filter(conv, params, k);
+    if (conv.get_memo('bridge.filter')) {
+        if (ipver == 4 && !conv.get_memo('bridge.ip-bridging.off') ||
+            ipver == 6 && !conv.get_memo('bridge.ipv6-bridging.off')) {
+            if (conv.is_bridge_member(params['interface'])) {
+                k = conv.get_index(`filter.bridge.${ipv46}`);
+                generate_filter(conv, params, k);
 
-        const repr = conv.is_bridge_representive(params['interface']);
-        if (repr) {
-            params['interface'] = repr;
-        } else {
-            layer3_filter = false;
+                const repr = conv.is_bridge_representive(params['interface']);
+                if (repr) {
+                    params['interface'] = repr;
+                } else {
+                    layer3_filter = false;
+                }
+            }
         }
     }
 
