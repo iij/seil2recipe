@@ -1628,6 +1628,7 @@ describe('option', () => {
             option ipv6 fragment-requeueing on
             option ipv6 monitor-linkstate on
             option ipv6 redirects off
+            option ipv6 router-advertisement fast-switch on
             ---
             option.ipv4.directed-broadcast.service: enable
             option.ipv4.fragment-requeueing.service: enable
@@ -1636,6 +1637,15 @@ describe('option', () => {
             option.ipv6.fragment-requeueing.service: enable
             option.ipv6.monitor-linkstate.service: enable
             option.ipv6.send-icmp-redirect.service: disable
+            option.ipv6.router-advertisement.fast-switch.service: enable
+        `);
+    });
+
+    it('is a default value of a boolean option', () => {
+        assertconv(`
+            option ipv6 router-advertisement fast-switch off
+            ---
+            option.ipv6.router-advertisement.fast-switch.service: disable
         `);
     });
 
