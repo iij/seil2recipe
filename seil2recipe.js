@@ -905,7 +905,39 @@ Converter.rules['authentication'] = {
             }
         }
     },
-    'radius': 'notsupported',
+    'radius': {
+        // authentication radius <realm> ...
+        '*': {
+            // authentication radius <realm_name> accounting-server
+            //     add <IPv4address> secret <secret>
+            //     [port { <port> | system-default }]
+            'accounting-server': (conv, tokens) => {
+                conv.read_params(`authentication.realm.${tokens[2]}.accounting-server`, tokens, 5, {
+                    'port': true,
+                    'secret': true
+                });
+            },
+            // authentication radius <realm_name> authentication-server
+            //     add <IPv4address> secret <secret>
+            //     [port { <port> | system-default }]
+            'authentication-server': (conv, tokens) => {
+                conv.read_params(`authentication.realm.${tokens[2]}.authentication-server`, tokens, 5, {
+                    'port': true,
+                    'secret': true
+                });
+            },
+            'request-timeout': (conv, tokens) => {
+                const realm = tokens[2];
+                const num = tokens[4];
+                conv.set_memo(`authentication.realm.${realm}.request-timeout`, num);
+            },
+            'max-tries': (conv, tokens) => {
+                const realm = tokens[2];
+                const num = tokens[4];
+                conv.set_memo(`authentication.realm.${realm}.max-tries`, num);
+            }
+        }
+    },
     'realm': {
         'add': {
             '*': {
@@ -2154,6 +2186,31 @@ Converter.rules['interface'] = {
                 if (url) {
                     conv.add(`${kauth}.account-list.url: ${url}`);
                     conv.add(`${kauth}.account-list.interval: ${interval}`);
+                }
+
+                Object.entries(conv.get_params(`authentication.realm.${realm_name}.accounting-server`)).forEach(e => {
+                    const addr = e[0]
+                    const params = e[1];
+                    const k2 = conv.get_index(`${kauth}.radius.accounting-server`);
+                    conv.add(`${k2}.address`, addr);
+                    conv.param2recipe(params, 'port', `${k2}.port`);
+                    conv.param2recipe(params, 'secret', `${k2}.shared-secret`);
+                });
+                Object.entries(conv.get_params(`authentication.realm.${realm_name}.authentication-server`)).forEach(e => {
+                    const addr = e[0]
+                    const params = e[1];
+                    const k2 = conv.get_index(`${kauth}.radius.authentication-server`);
+                    conv.add(`${k2}.address`, addr);
+                    conv.param2recipe(params, 'port', `${k2}.port`);
+                    conv.param2recipe(params, 'secret', `${k2}.shared-secret`);
+                });
+                const timo = conv.get_memo(`authentication.realm.${realm_name}.request-timeout`);
+                if (timo) {
+                    conv.add(`${kauth}.radius.request.timeout: ${timo}`);
+                }
+                const retry = conv.get_memo(`authentication.realm.${realm_name}.max-tries`);
+                if (retry) {
+                    conv.add(`${kauth}.radius.request.retry: ${retry}`);
                 }
             });
         },
