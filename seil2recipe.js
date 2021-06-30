@@ -3526,6 +3526,9 @@ Converter.rules['option'] = {
             conv.set_memo('option.ipv6.send-icmp-redirect.service',
                 [conv, on2enable(tokens[3])]);
         },
+        'router-advertisement': {
+            'fast-switch': tokens => `option.ipv6.router-advertisement.fast-switch.service: ${on2enable(tokens[4])}`
+        },
         'unicast-rpf': (conv, tokens) => {
             if (tokens[3] != 'none') {
                 conv.notsupported();
