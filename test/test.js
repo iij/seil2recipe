@@ -241,6 +241,19 @@ describe('bridge', () => {
             ]);
     });
 
+    it('bridge group parameters', () => {
+        assertconv(`
+            bridge group add BG ip-bridging off ipv6-bridging off pppoe-bridging off default-bridging off
+            bridge interface lan1 group BG
+            ---
+            interface.bridge0.member.100.interface: ge0
+            interface.bridge0.forward.ipv4: disable
+            interface.bridge0.forward.ipv6: disable
+            interface.bridge0.forward.pppoe: disable
+            interface.bridge0.forward.other: disable
+        `);
+    });
+
     // see filter tests for "bridge filter on"
 
     it('vman-tpid is not supported.', () => {

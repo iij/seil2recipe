@@ -1026,10 +1026,14 @@ Converter.rules['bridge'] = {
             const bridge_if = conv.get_named_index('bridge');
             const params = conv.read_params('bridge.group', tokens, 3, {
                 'aging-time': 'notsupported',
+                'default-bridging': true,
                 'forward-delay': true,
                 'hello-time': true,
                 'loop-detection': 'notsupported',
+                'ip-bridging': true,
+                'ipv6-bridging': true,
                 'max-age': true,
+                'pppoe-bridging': true,
                 'priority': true,
                 'stp': true,
             });
@@ -1053,6 +1057,20 @@ Converter.rules['bridge'] = {
                 if (params['priority']) {
                     conv.notsupported('priority');
                 }
+            }
+
+            const k = `interface.${bridge_if}.forward`;
+            if (params['ip-bridging'] == 'off') {
+                conv.add(`${k}.ipv4`, 'disable');
+            }
+            if (params['ipv6-bridging'] == 'off') {
+                conv.add(`${k}.ipv6`, 'disable');
+            }
+            if (params['pppoe-bridging'] == 'off') {
+                conv.add(`${k}.pppoe`, 'disable');
+            }
+            if (params['default-bridging'] == 'off') {
+                conv.add(`${k}.other`, 'disable');
             }
         }
     },
