@@ -1470,7 +1470,7 @@ describe('nat', () => {
             nat napt add private 192.168.0.1-192.168.0.255 interface lan1
             nat napt add private 192.168.1.1-192.168.1.255 interface pppoe0
             ----
-            nat.ipv4.napt.global: 10.0.0.1
+            nat.ipv4.napt.100.global: 10.0.0.1
             nat.ipv4.napt.100.interface: ge0
             nat.ipv4.napt.100.private: 192.168.0.1-192.168.0.255
             nat.ipv4.napt.200.interface: pppoe0
@@ -1556,6 +1556,26 @@ describe('nat', () => {
             nat.ipv4.snapt.200.forward.address: 192.168.0.1
             nat.ipv4.snapt.200.forward.port: 1-65535
             nat.ipv4.snapt.200.interface: ge0
+        `);
+    });
+
+    it('snapt global address', () => {
+        assertconv(`
+            nat napt add global 10.0.0.1 interface lan1
+            nat snapt add default 192.168.0.1 interface lan1
+            nat snapt add default 192.168.0.2 interface vlan0
+            ---
+            nat.ipv4.snapt.100.protocol: tcpudp
+            nat.ipv4.snapt.100.listen.address: 10.0.0.1
+            nat.ipv4.snapt.100.listen.port: 1-65535
+            nat.ipv4.snapt.100.forward.address: 192.168.0.1
+            nat.ipv4.snapt.100.forward.port: 1-65535
+            nat.ipv4.snapt.100.interface: ge0
+            nat.ipv4.snapt.200.protocol: tcpudp
+            nat.ipv4.snapt.200.listen.port: 1-65535
+            nat.ipv4.snapt.200.forward.address: 192.168.0.2
+            nat.ipv4.snapt.200.forward.port: 1-65535
+            nat.ipv4.snapt.200.interface: vlan0
         `);
     });
 

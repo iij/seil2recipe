@@ -112,6 +112,11 @@ class Converter {
                 fun(conv);
             });
         });
+        this.conversions.forEach((conv) => {
+            conv.defers2.forEach((fun) => {
+                fun(conv);
+            });
+        });
 
         const deferconv = new Conversion("", 0, this.note);
         Converter.defers.forEach((fun) => {
@@ -163,9 +168,17 @@ class Note {
             preshared_key: null,
             ifnames: []
         };
-        this.napt = {
+        this.napt = {  // napt and snapt entries
             global: null,
-            ifnames: new Set()
+            ifnames: new Map(),  // (ifname) -> [ [key-prefix, conv], ... ]
+            add: (ifname, prefix, conv) => {
+                var a = this.napt.ifnames.get(ifname);
+                if (a == undefined) {
+                    a = [];
+                    conv.note.napt.ifnames.set(ifname, a);
+                }
+                a.push([prefix, conv]);
+            }
         };
     }
 
@@ -209,6 +222,7 @@ class Conversion {
         this.errors = [];
         this.prefix = '';
         this.defers = [];
+        this.defers2 = [];
     }
 
     get devname() {
@@ -234,6 +248,9 @@ class Conversion {
 
     defer(fun) {
         this.defers.push(fun);
+    }
+    defer2(fun) {
+        this.defers2.push(fun);
     }
 
     //
@@ -576,6 +593,7 @@ const CompatibilityList = {
     'ipsec security-association add ... ipv6':         [    0,    1 ],
     'interface ... add dhcp6':                         [    0,    1 ],
     'interface ... add router-advertisement(s)':       [    0,    1 ],
+    'nat.ipv4.napt.[].global':                         [    0,    1 ],
     'nat6':                                            [    0,    1 ],
     'option ip fragment-requeueing off':               [    0,    1 ],
     'option ip monitor-linkstate off':                 [    0,    1 ],
@@ -3308,13 +3326,24 @@ Converter.rules['nat'] = {
                     conv: conv,
                     ifname: conv.natifname(tokens[6])
                 };
-                conv.defer(conv => {
+                conv.defer2(conv => {
                     const napt = conv.note.napt;
-                    if (napt.ifnames.has(napt.global.ifname)) {
+                    const napts = napt.ifnames.get(napt.global.ifname);
+                    if (napts == undefined) {
+                        return;
+                    } else if (napt.ifnames.size == 1) {
                         conv.add(`nat.ipv4.napt.global`, napt.global.addr);
-                        if (napt.ifnames.size > 1) {
-                            conv.warning(`${conv.devname} では global アドレスをインタフェースごとに設定することはできません。`);
-                        }
+                    } else if (conv.missing("nat.ipv4.napt.[].global", true)) {
+                        conv.warning(`${conv.devname} では global アドレスをインタフェースごとに設定することはできません。`);
+                    } else {
+                        napts.forEach(pair => {
+                            const [prefix, conv] = pair;
+                            if (prefix.startsWith('nat.ipv4.napt')) {
+                                conv.add(`${prefix}.global`, napt.global.addr);
+                            } else {
+                                conv.add(`${prefix}.listen.address`, napt.global.addr);
+                            }
+                        });
                     }
                 });
             },
@@ -3326,7 +3355,7 @@ Converter.rules['nat'] = {
                 conv.add(`${k1}.private`, tokens[4]);
                 conv.add(`${k1}.interface`, ifname);
 
-                conv.note.napt.ifnames.add(ifname);
+                conv.note.napt.add(ifname, k1, conv);
             },
         },
     },
@@ -3403,19 +3432,21 @@ Converter.rules['nat'] = {
         if (params['disable']) {
             return;
         }
+
+        const ifname = conv.natifname(params['interface']);
         if (params['default']) {
             // nat snapt add default は TCP/UDP のすべてのポートを指定した
             // 内部ホストに転送する snapt の最後のエントリに変換する。
-            const ifname = params['interface'] || 'lan1';
             conv.defer(conv => {
                 const k1 = conv.get_index('nat.ipv4.snapt');
                 conv.add(`${k1}.protocol`, 'tcpudp');
                 conv.add(`${k1}.listen.port`, '1-65535');
                 conv.add(`${k1}.forward.address`,tokens[4]);
                 conv.add(`${k1}.forward.port`, '1-65535');
-                conv.add(`${k1}.interface`, conv.natifname(ifname));
+                conv.add(`${k1}.interface`, ifname);
+
+                conv.note.napt.add(ifname, k1, conv);
             });
-            conv.note.napt.ifnames.add(ifname);
             return;
         }
         const k1 = conv.get_index('nat.ipv4.snapt');
@@ -3427,7 +3458,8 @@ Converter.rules['nat'] = {
         } else {
             conv.param2recipe(params, 'forward', `${k1}.forward.address`);
         }
-        conv.add(`${k1}.interface`, conv.natifname(params['interface']));
+        conv.add(`${k1}.interface`, ifname);
+        conv.note.napt.add(ifname, k1, conv);
     },
 
     // https://www.seil.jp/doc/index.html#fn/nat/cmd/nat_timeout.html
