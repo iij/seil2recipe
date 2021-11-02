@@ -119,52 +119,79 @@ describe('arp', () => {
 
 describe('authentication+pppac', () => {
     it('realm', () => {
-        assertconv([
-            'authentication realm add REALM1 type local username-suffix @example.jp',
-            'authentication realm add REALM3 type account-list',
-            'authentication local REALM1 user add user_a password PASSWORD framed-ip-address 172.16.0.1 framed-ip-netmask 255.255.255.255',
-            'authentication account-list REALM3 url http://example.jp/ interval 123',
-            'pppac pool add POOL1 address 192.168.128.0/24',
-            'pppac ipcp-configuration add IPCP1 pool POOL1',
-            'pppac protocol l2tp add PROTO1 accept-interface lan0,vlan1 idle-timer 123',
-            'interface pppac0 ipcp-configuration IPCP1',
-            'interface pppac0 bind-tunnel-protocol PROTO1',
-            'interface pppac0 bind-realm REALM1',
-            'interface pppac0 tunnel-end-address 192.168.127.1',
-            'interface pppac1 ipcp-configuration IPCP1',
-            'interface pppac1 bind-tunnel-protocol PROTO1',
-            'interface pppac1 bind-realm REALM3',
-            'ipsec anonymous-l2tp-transport enable',
-            'ipsec anonymous-l2tp-transport preshared-key SecretKey',
-         ], [
-                'interface.pppac0.authentication.100.realm.suffix: @example.jp',
-                'interface.pppac0.authentication.100.user.100.framed-ip-address: 172.16.0.1',
-                'interface.pppac0.authentication.100.user.100.framed-ip-netmask: 255.255.255.255',
-                'interface.pppac0.authentication.100.user.100.name: user_a',
-                'interface.pppac0.authentication.100.user.100.password: PASSWORD',
-                'interface.pppac0.ipcp.pool.100.address: 192.168.128.0',
-                'interface.pppac0.ipcp.pool.100.count: 256',
-                'interface.pppac0.ipv4.address: 192.168.127.1',
-                'interface.pppac0.l2tp.accept.100.interface: ge1',
-                'interface.pppac0.l2tp.accept.200.interface: vlan1',
-                'interface.pppac0.l2tp.authentication.100.method: mschapv2',
-                'interface.pppac0.l2tp.authentication.200.method: chap',
-                'interface.pppac0.l2tp.idle-timer: 123',
-                'interface.pppac0.l2tp.ipsec.preshared-key: SecretKey',
-                'interface.pppac0.l2tp.service: enable',
-                'interface.pppac1.authentication.100.type: account-list',
-                'interface.pppac1.authentication.100.account-list.interval: 123',
-                'interface.pppac1.authentication.100.account-list.url: http://example.jp/',
-                'interface.pppac1.ipcp.pool.100.address: 192.168.128.0',
-                'interface.pppac1.ipcp.pool.100.count: 256',
-                'interface.pppac1.l2tp.accept.100.interface: ge1',
-                'interface.pppac1.l2tp.accept.200.interface: vlan1',
-                'interface.pppac1.l2tp.authentication.100.method: mschapv2',
-                'interface.pppac1.l2tp.authentication.200.method: chap',
-                'interface.pppac1.l2tp.idle-timer: 123',
-                'interface.pppac1.l2tp.ipsec.preshared-key: SecretKey',
-                'interface.pppac1.l2tp.service: enable',
-            ]);
+        assertconv(`
+            authentication realm add REALM1 type local username-suffix @example.jp
+            authentication realm add REALM2 type radius
+            authentication realm add REALM3 type account-list
+            authentication local REALM1 user add user_a password PASSWORD framed-ip-address 172.16.0.1 framed-ip-netmask 255.255.255.255
+            authentication radius REALM2 authentication-server add 172.17.0.1 secret RADAUTH port 1814
+            authentication radius REALM2 accounting-server add 172.17.0.2 secret RADACC port 1815
+            authentication radius REALM2 request-timeout 123
+            authentication radius REALM2 max-tries 4
+            authentication account-list REALM3 url http://example.jp/ interval 123
+            pppac pool add POOL1 address 192.168.128.0/24
+            pppac ipcp-configuration add IPCP1 pool POOL1
+            pppac protocol l2tp add PROTO1 accept-interface lan0 idle-timer 123
+            interface pppac0 ipcp-configuration IPCP1
+            interface pppac0 bind-tunnel-protocol PROTO1
+            interface pppac0 bind-realm REALM1
+            interface pppac0 tunnel-end-address 192.168.127.1
+            interface pppac1 ipcp-configuration IPCP1
+            interface pppac1 bind-tunnel-protocol PROTO1
+            interface pppac1 bind-realm REALM2
+            interface pppac1 tunnel-end-address 192.168.127.2
+            interface pppac2 ipcp-configuration IPCP1
+            interface pppac2 bind-tunnel-protocol PROTO1
+            interface pppac2 bind-realm REALM3
+            interface pppac2 tunnel-end-address 192.168.127.3
+            ipsec anonymous-l2tp-transport enable
+            ipsec anonymous-l2tp-transport preshared-key SecretKey
+	        ---
+            interface.pppac0.authentication.100.realm.suffix: @example.jp
+            interface.pppac0.authentication.100.user.100.framed-ip-address: 172.16.0.1
+            interface.pppac0.authentication.100.user.100.framed-ip-netmask: 255.255.255.255
+            interface.pppac0.authentication.100.user.100.name: user_a
+            interface.pppac0.authentication.100.user.100.password: PASSWORD
+            interface.pppac0.ipcp.pool.100.address: 192.168.128.0
+            interface.pppac0.ipcp.pool.100.count: 256
+            interface.pppac0.ipv4.address: 192.168.127.1
+            interface.pppac0.l2tp.accept.100.interface: ge1
+            interface.pppac0.l2tp.authentication.100.method: mschapv2
+            interface.pppac0.l2tp.authentication.200.method: chap
+            interface.pppac0.l2tp.idle-timer: 123
+            interface.pppac0.l2tp.ipsec.preshared-key: SecretKey
+            interface.pppac0.l2tp.service: enable
+            interface.pppac1.authentication.100.type: radius
+            interface.pppac1.authentication.100.radius.authentication-server.100.address: 172.17.0.1
+            interface.pppac1.authentication.100.radius.authentication-server.100.port: 1814
+            interface.pppac1.authentication.100.radius.authentication-server.100.shared-secret: RADAUTH
+            interface.pppac1.authentication.100.radius.accounting-server.100.address: 172.17.0.2
+            interface.pppac1.authentication.100.radius.accounting-server.100.port: 1815
+            interface.pppac1.authentication.100.radius.accounting-server.100.shared-secret: RADACC
+            interface.pppac1.authentication.100.radius.request.timeout: 123
+            interface.pppac1.authentication.100.radius.request.retry: 4
+            interface.pppac1.ipcp.pool.100.address: 192.168.128.0
+            interface.pppac1.ipcp.pool.100.count: 256
+            interface.pppac1.ipv4.address: 192.168.127.2
+            interface.pppac1.l2tp.accept.100.interface: ge1
+            interface.pppac1.l2tp.authentication.100.method: mschapv2
+            interface.pppac1.l2tp.authentication.200.method: chap
+            interface.pppac1.l2tp.idle-timer: 123
+            interface.pppac1.l2tp.ipsec.preshared-key: SecretKey
+            interface.pppac1.l2tp.service: enable
+            interface.pppac2.authentication.100.type: account-list
+            interface.pppac2.authentication.100.account-list.interval: 123
+            interface.pppac2.authentication.100.account-list.url: http://example.jp/
+            interface.pppac2.ipcp.pool.100.address: 192.168.128.0
+            interface.pppac2.ipcp.pool.100.count: 256
+            interface.pppac2.ipv4.address: 192.168.127.3
+            interface.pppac2.l2tp.accept.100.interface: ge1
+            interface.pppac2.l2tp.authentication.100.method: mschapv2
+            interface.pppac2.l2tp.authentication.200.method: chap
+            interface.pppac2.l2tp.idle-timer: 123
+            interface.pppac2.l2tp.ipsec.preshared-key: SecretKey
+            interface.pppac2.l2tp.service: enable
+            `);
     });
 });
 
@@ -1443,7 +1470,7 @@ describe('nat', () => {
             nat napt add private 192.168.0.1-192.168.0.255 interface lan1
             nat napt add private 192.168.1.1-192.168.1.255 interface pppoe0
             ----
-            nat.ipv4.napt.global: 10.0.0.1
+            nat.ipv4.napt.100.global: 10.0.0.1
             nat.ipv4.napt.100.interface: ge0
             nat.ipv4.napt.100.private: 192.168.0.1-192.168.0.255
             nat.ipv4.napt.200.interface: pppoe0
@@ -1529,6 +1556,26 @@ describe('nat', () => {
             nat.ipv4.snapt.200.forward.address: 192.168.0.1
             nat.ipv4.snapt.200.forward.port: 1-65535
             nat.ipv4.snapt.200.interface: ge0
+        `);
+    });
+
+    it('snapt global address', () => {
+        assertconv(`
+            nat napt add global 10.0.0.1 interface lan1
+            nat snapt add default 192.168.0.1 interface lan1
+            nat snapt add default 192.168.0.2 interface vlan0
+            ---
+            nat.ipv4.snapt.100.protocol: tcpudp
+            nat.ipv4.snapt.100.listen.address: 10.0.0.1
+            nat.ipv4.snapt.100.listen.port: 1-65535
+            nat.ipv4.snapt.100.forward.address: 192.168.0.1
+            nat.ipv4.snapt.100.forward.port: 1-65535
+            nat.ipv4.snapt.100.interface: ge0
+            nat.ipv4.snapt.200.protocol: tcpudp
+            nat.ipv4.snapt.200.listen.port: 1-65535
+            nat.ipv4.snapt.200.forward.address: 192.168.0.2
+            nat.ipv4.snapt.200.forward.port: 1-65535
+            nat.ipv4.snapt.200.interface: vlan0
         `);
     });
 
