@@ -2412,19 +2412,36 @@ Converter.rules['interface'] = {
         // interface <lan> media {<media>|auto}
         'media': (conv, tokens) => {
             const ifname = conv.ifmap(tokens[1]);
-            switch (ifname) {
-                case 'ge0':
-                    return `interface.ge0p0.media: ${tokens[3]}`
-                case 'ge1':
-                    return `interface.ge1p0.media: ${tokens[3]}`;
-                case 'ge2':
-                    return `interface.ge2.media: ${tokens[3]}`;
-                default:
-                    if (tokens[3] == 'auto') {
-                        return [];
-                    } else {
-                        return 'notsupported';
-                    }
+            let media = tokens[3];
+            if (conv.devname != 'SEIL/x86 Ayame') {
+                switch (ifname) {
+                    case 'ge0':
+                        conv.add('interface.ge0p0.media', media);
+                        break;
+                    case 'ge1':
+                        conv.add('interface.ge1p0.media', media);
+                        conv.add('interface.ge1p1.media', media);
+                        conv.add('interface.ge1p2.media', media);
+                        conv.add('interface.ge1p3.media', media);
+                        break;
+                    case 'ge2':
+                        if (conv.devname.startsWith('SA-')) {
+                            // ignore it
+                            break;
+                        }
+                        // devname must be 'SEIL/X4' here.
+                        if (media == '10baseT' || media == '100baseTX') {
+                            conv.notsupported(`ge2 media ${media}`);
+                            media = 'auto';
+                        }
+                        conv.add('interface.ge2.media', media);
+                        break;
+                }
+            } else {  // Ayame
+                if (media != 'auto') {
+                    conv.notsupported(`media ${media}`);
+                }
+                conv.add(`interface.${ifname}.media`, 'auto');
             }
         },
 

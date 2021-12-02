@@ -6,6 +6,15 @@ const s2r    = require('../seil2recipe');
 const default_config_set = new Set(new s2r.Converter('', 'test').recipe_config.trim().split('\n'));
 
 function assertconv(seil_config, recipe_config) {
+    let target = 'test';
+
+    if (typeof recipe_config == 'string') {
+        if (recipe_config.startsWith('S')) {
+            target = recipe_config;
+            recipe_config = null;
+        }
+    }
+
     if (recipe_config == null) {
         [ seil_config, recipe_config ] = seil_config.split("---\n");
         if (recipe_config == null) {
@@ -16,7 +25,7 @@ function assertconv(seil_config, recipe_config) {
     if (seil_config instanceof Array) {
         seil_config = seil_config.join('\n');
     }
-    const c = new s2r.Converter(seil_config + '\n', 'test');
+    const c = new s2r.Converter(seil_config + '\n', target);
 
     var actual = c.recipe_config.trim().split('\n').filter(line => {
         return !default_config_set.has(line);
@@ -1023,6 +1032,21 @@ describe('interface', () => {
          'interface.ge0.description: "IIJmio Hikari"');
     });
 
+    it('media', () => {
+        assertconv(`
+            interface lan0 media 1000baseT-FDX
+            interface lan1 media 100baseTX
+            interface lan2 media 10baseT
+            ---
+            interface.ge0p0.media: 100baseTX
+            interface.ge1p0.media: 1000baseT-FDX
+            interface.ge1p1.media: 1000baseT-FDX
+            interface.ge1p2.media: 1000baseT-FDX
+            interface.ge1p3.media: 1000baseT-FDX
+        `, 'SEIL/X4');
+        // ge2 は Half Duplex をサポートしていないので lan2 は変換されずに消える。
+    });
+
     it('can change tcp-mss / tcp-mss6', () => {
         assertconv(`
             interface ge0 tcp-mss 1400
@@ -1032,7 +1056,6 @@ describe('interface', () => {
             interface.ge0.ipv6.tcp-mss: 1380
         `);
     });
-
 
     // ルーティングベース IPsec 全体のテストは 'ipsec' の方に書く。
     it('ipsec0 unnumbered', () => {
