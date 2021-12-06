@@ -593,7 +593,6 @@ const CompatibilityList = {
     'ipsec security-association add ... ipv6':         [    0,    1 ],
     'interface ... add dhcp6':                         [    0,    1 ],
     'interface ... add router-advertisement(s)':       [    0,    1 ],
-    'nat.ipv4.napt.[].global':                         [    0,    1 ],
     'nat6':                                            [    0,    1 ],
     'option ip fragment-requeueing off':               [    0,    1 ],
     'option ip monitor-linkstate off':                 [    0,    1 ],
@@ -3354,8 +3353,6 @@ Converter.rules['nat'] = {
                         return;
                     } else if (napt.ifnames.size == 1) {
                         conv.add(`nat.ipv4.napt.global`, napt.global.addr);
-                    } else if (conv.missing("nat.ipv4.napt.[].global", true)) {
-                        conv.warning(`${conv.devname} では global アドレスをインタフェースごとに設定することはできません。`);
                     } else {
                         napts.forEach(pair => {
                             const [prefix, conv] = pair;
