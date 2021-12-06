@@ -1774,7 +1774,7 @@ describe('pppac', () => {
             pppac pool add POOL5A address 192.168.2.0/24
             pppac ipcp-configuration add IPCP5L pool POOL5L
             pppac ipcp-configuration add IPCP5A pool POOL5A
-            pppac protocol l2tp add PROTO5L accept-interface vlan0 authentication-method pap,chap,mschapv2
+            pppac protocol l2tp add PROTO5L accept-interface vlan0 authentication-method pap,chap,mschapv2 accept-dialin on
             pppac protocol l2tp add PROTO5A accept-interface vlan1 authentication-method mschapv2
             interface pppac0 ipcp-configuration IPCP5L
             interface pppac0 bind-tunnel-protocol PROTO5L
@@ -1793,6 +1793,7 @@ describe('pppac', () => {
             interface.pppac0.ipcp.pool.100.count: 256
             interface.pppac0.ipv4.address: 192.168.0.1
             interface.pppac0.l2tp.accept.100.interface: vlan0
+            interface.pppac0.l2tp.accept-dialin: enable
             interface.pppac0.l2tp.authentication.100.method: pap
             interface.pppac0.l2tp.authentication.200.method: chap
             interface.pppac0.l2tp.authentication.300.method: mschapv2
