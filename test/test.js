@@ -928,38 +928,54 @@ describe('filter6', () => {
 
 describe('floatlink', () => {
     it('ike proposal', () => {
-        assertconv('floatlink ike proposal dh-group modp2048',
-            'floatlink.ike.proposal.phase1.dh-group: modp2048');
-        assertconv('floatlink ike proposal encryption aes128,3des',
-            [
-                'floatlink.ike.proposal.phase1.encryption.100.algorithm: aes128',
-                'floatlink.ike.proposal.phase1.encryption.200.algorithm: 3des'
-            ]);
-        assertconv('floatlink ike proposal hash sha256,sha1',
-            [
-                'floatlink.ike.proposal.phase1.hash.100.algorithm: sha256',
-                'floatlink.ike.proposal.phase1.hash.200.algorithm: sha1'
-            ]);
-        assertconv('floatlink ike proposal lifetime-of-time 12345',
-            'floatlink.ike.proposal.phase1.lifetime: 12345');
-
+        assertconv(`
+            floatlink ike proposal dh-group modp2048
+            ---
+            floatlink.ike.proposal.phase1.dh-group: modp2048
+        `);
+        assertconv(`
+            floatlink ike proposal encryption aes128,aes,3des
+            ---
+            floatlink.ike.proposal.phase1.encryption.100.algorithm: aes128
+            floatlink.ike.proposal.phase1.encryption.200.algorithm: 3des
+        `);
+        assertconv(`
+            floatlink ike proposal hash sha256,sha1
+            ---
+            floatlink.ike.proposal.phase1.hash.100.algorithm: sha256
+            floatlink.ike.proposal.phase1.hash.200.algorithm: sha1
+        `);
+        assertconv(`
+            floatlink ike proposal lifetime-of-time 12345
+            ---
+            floatlink.ike.proposal.phase1.lifetime: 12345
+        `);
     });
 
     it('ipsec proposal', () => {
-        assertconv('floatlink ipsec proposal authentication-algorithm hmac-sha256,hmac-sha1',
-            [
-                'floatlink.ike.proposal.phase2.authentication.100.algorithm: hmac-sha256',
-                'floatlink.ike.proposal.phase2.authentication.200.algorithm: hmac-sha1'
-            ]);
-        assertconv('floatlink ipsec proposal encryption-algorithm aes192,des',
-            [
-                'floatlink.ike.proposal.phase2.encryption.100.algorithm: aes192',
-                'floatlink.ike.proposal.phase2.encryption.200.algorithm: des'
-            ]);
-        assertconv('floatlink ipsec proposal lifetime-of-time 23456',
-            'floatlink.ike.proposal.phase2.lifetime-of-time: 23456');
-        assertconv('floatlink ipsec proposal pfs-group modp3072',
-            'floatlink.ike.proposal.phase2.pfs-group: modp3072');
+        assertconv(`
+            floatlink ipsec proposal authentication-algorithm hmac-sha256,hmac-sha1
+            ---
+            floatlink.ike.proposal.phase2.authentication.100.algorithm: hmac-sha256
+            floatlink.ike.proposal.phase2.authentication.200.algorithm: hmac-sha1
+        `);
+        assertconv(`
+            floatlink ipsec proposal encryption-algorithm aes192,3des,aes
+            ---
+            floatlink.ike.proposal.phase2.encryption.100.algorithm: aes192
+            floatlink.ike.proposal.phase2.encryption.200.algorithm: 3des
+            floatlink.ike.proposal.phase2.encryption.300.algorithm: aes128
+        `);
+        assertconv(`
+            floatlink ipsec proposal lifetime-of-time 23456
+            ---
+            floatlink.ike.proposal.phase2.lifetime-of-time: 23456
+        `);
+        assertconv(`
+            floatlink ipsec proposal pfs-group modp3072
+            ---
+            floatlink.ike.proposal.phase2.pfs-group: modp3072
+        `);
     });
 });
 
@@ -1180,16 +1196,16 @@ describe('ipsec', () => {
     it('more routing-based ipsec', () => {
         assertconv(`
             interface ipsec0 tunnel 10.0.0.1 10.0.0.2
-            ike preshared-key add "10.0.0.2" "two"
-            ike proposal add IKEP encryption aes128,3des hash sha256,md5 authentication preshared-key dh-group modp1536 lifetime-of-time 24h
+            ike preshared-key add "10.0.0.2" "twotwotwotwo"
+            ike proposal add IKEP encryption aes,3des hash sha256,md5 authentication preshared-key dh-group modp1536 lifetime-of-time 24h
             ike peer add TWO address 10.0.0.2 exchange-mode main proposals IKEP my-identifier address peers-identifier address initial-contact enable tunnel-interface enable
-            ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes256 lifetime-of-time 8h
+            ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes256,aes lifetime-of-time 8h
             ipsec security-association add SA tunnel-interface ipsec0 ike SAP esp enable
             ----
             interface.ipsec0.ipv4.source: 10.0.0.1
             interface.ipsec0.ipv4.destination: 10.0.0.2
             interface.ipsec0.ipv6.forward: pass
-            interface.ipsec0.preshared-key: two
+            interface.ipsec0.preshared-key: twotwotwotwo
             interface.ipsec0.ike.initial-contact: enable
             interface.ipsec0.ike.proposal.phase1.dh-group: modp1536
             interface.ipsec0.ike.check-level: strict
@@ -1202,6 +1218,7 @@ describe('ipsec', () => {
             interface.ipsec0.ike.proposal.phase1.lifetime: 24h
             interface.ipsec0.ike.proposal.phase2.authentication.100.algorithm: hmac-sha1
             interface.ipsec0.ike.proposal.phase2.encryption.100.algorithm: aes256
+            interface.ipsec0.ike.proposal.phase2.encryption.200.algorithm: aes128
             interface.ipsec0.ike.proposal.phase2.lifetime-of-time: 8h
         `);
     });
@@ -1242,9 +1259,9 @@ describe('ipsec', () => {
     it('policy parameters', () => {
         assertconv(`
             ike preshared-key add "two@example.jp" "two"
-            ike proposal add IKEP encryption 3des hash sha1 authentication preshared-key dh-group modp1024 lifetime-of-time 08h
+            ike proposal add IKEP encryption 3des,aes hash sha1 authentication preshared-key dh-group modp1024 lifetime-of-time 08h
             ike peer add TWO exchange-mode aggressive proposals IKEP address 10.0.0.2 check-level claim initial-contact enable my-identifier fqdn ONE peers-identifier user-fqdn two@example.jp nonce-size 32 dpd enable nat-traversal force responder-only on prefer-new-phase1 enable
-            ipsec security-association proposal add SAP authentication-algorithm hmac-sha256,hmac-sha1 encryption-algorithm aes256,aes128,3des
+            ipsec security-association proposal add SAP authentication-algorithm hmac-sha256,hmac-sha1 encryption-algorithm aes256,aes,3des
             ipsec security-association add SA tunnel 10.0.0.1 10.0.0.2 ike SAP esp enable
             ipsec security-policy add A security-association SA protocol udp src lan1 srcport 1234 dst 172.16.0.2/32 dstport 4321
             ----
@@ -1262,6 +1279,7 @@ describe('ipsec', () => {
             ike.peer.100.preshared-key: two
             ike.peer.100.proposal.dh-group: modp1024
             ike.peer.100.proposal.encryption.100.algorithm: 3des
+            ike.peer.100.proposal.encryption.200.algorithm: aes128
             ike.peer.100.proposal.hash.100.algorithm: sha1
             ike.peer.100.proposal.lifetime: 08h
             ike.peer.100.responder-only: enable
@@ -1286,14 +1304,14 @@ describe('ipsec', () => {
     it('dynamic', () => {
         assertconv(`
             ike preshared-key add "three.example.jp" "opensesame"
-            ike proposal add IKEP3 encryption aes hash sha1 authentication preshared-key dh-group modp1024
+            ike proposal add IKEP3 encryption aes256 hash sha1 authentication preshared-key dh-group modp1024
             ike peer add PEER3 address dynamic exchange-mode aggressive proposals IKEP3 peers-identifier fqdn "three.example.jp"
             ipsec security-association proposal add SAP3 pfs-group modp1024 authentication-algorithm hmac-sha384 encryption-algorithm aes192
             ipsec security-association add SA3 tunnel dynamic ike SAP3 esp enable
             ipsec security-policy add A security-association SA3 src 172.16.1.0/24 dst 172.16.2.0/24
             ----
             ike.peer.100.preshared-key: opensesame
-            ike.peer.100.proposal.encryption.100.algorithm: aes
+            ike.peer.100.proposal.encryption.100.algorithm: aes256
             ike.peer.100.proposal.hash.100.algorithm: sha1
             ike.peer.100.proposal.dh-group: modp1024
             ike.peer.100.proposal.lifetime: 8h
@@ -1321,10 +1339,10 @@ describe('ipsec', () => {
             'interface l2tp0 tunnel 10.0.0.1 10.0.0.2',
             'interface l2tp0 l2tp B remote-end-id foo',
             'ike preshared-key add 10.0.0.2 foo',
-            'ike proposal add IKEP encryption aes128 hash sha1 dh-group modp1536 auth preshared-key lifetime-of-time 8h',
+            'ike proposal add IKEP encryption aes hash sha1 dh-group modp1536 auth preshared-key lifetime-of-time 8h',
             'ike peer add B address 10.0.0.2 exchange-mode main proposals IKEP',
             'ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 '
-            + 'encryption-algorithm aes128 lifetime-of-time 8h pfs-group modp1536',
+            + 'encryption-algorithm aes lifetime-of-time 8h pfs-group modp1536',
             'ipsec security-association add SA transport 10.0.0.1 10.0.0.2 ike SAP esp enable',
             'ipsec security-policy add SP security-association SA protocol 115 src 10.0.0.1/32 dst 10.0.0.2/32',
         ], [

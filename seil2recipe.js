@@ -730,9 +730,17 @@ function commaEach(str, fun) {
     }
 }
 
+Array.prototype.conv_aes = function() {
+    return this.map(alg => (alg == "aes") ? "aes128" : alg).dedup();
+};
+
+Array.prototype.dedup = function() {
+    return Array.from(new Set(this));
+};
+
 String.prototype.is_ipv4_address = function() {
     return this.includes('.');
-}
+};
 
 //
 // Conversion Rules
@@ -1907,10 +1915,7 @@ Converter.rules['floatlink'] = {
             },
             // floatlink ike proposal encryption <alg1>[,<alg2>,...]
             'encryption': (conv, tokens) => {
-                tokens[4].split(",").forEach(alg => {
-                    if (alg == 'aes') {
-                        alg = 'aes128';
-                    }
+                tokens[4].split(",").conv_aes().forEach(alg => {
                     const k1 = conv.get_index('floatlink.ike.proposal.phase1.encryption');
                     conv.add(`${k1}.algorithm`, alg);
                 });
@@ -1937,10 +1942,7 @@ Converter.rules['floatlink'] = {
                 });
             },
             'encryption-algorithm': (conv, tokens) => {
-                tokens[4].split(",").forEach(alg => {
-                    if (alg == 'aes') {
-                        alg = 'aes128';
-                    }
+                tokens[4].split(",").conv_aes().forEach(alg => {
                     const k1 = conv.get_index('floatlink.ike.proposal.phase2.encryption');
                     conv.add(`${k1}.algorithm`, alg);
                 });
@@ -2698,7 +2700,7 @@ function ike_peer(conv, prefix, peer, if_prefix) {
     const ikep = conv.get_params('ike.proposal')[ikep_name];
     if (ikep) {
         const k1 = `${prefix}.proposal`;
-        (ikep['encryption'] || '').split(',').forEach(alg => {
+        (ikep['encryption'] || '').split(',').conv_aes().forEach(alg => {
             const ke = conv.get_index(`${prefix_proposal}.encryption`);
             conv.add(`${ke}.algorithm`, alg);
         });
@@ -2802,8 +2804,8 @@ Converter.rules['ipsec'] = {
                     const ka = conv.get_index(`${kphase2}.authentication`);
                     conv.add(`${ka}.algorithm`, alg);
                 });
-                sap['encryption-algorithm'].split(',').forEach(alg => {
-                    if (alg == 'blowfish' || alg == 'cast128' || alg == 'aes' || alg == 'null') {
+                sap['encryption-algorithm'].split(',').conv_aes().forEach(alg => {
+                    if (alg == 'blowfish' || alg == 'cast128' || alg == 'null') {
                         conv.notsupported(`ipsec proposal encryption-algorithm ${alg}`);
                     }
                     const ka = conv.get_index(`${kphase2}.encryption`);
@@ -2971,7 +2973,7 @@ Converter.rules['ipsec'] = {
                 // phase1 parameters
                 const ikepeer = conv.get_memo(`ike.peer.address.${dstaddr}`);
                 const ikep = conv.get_params('ike.proposal')[ikepeer['proposals']];
-                ikep['encryption'].split(',').forEach(name => {
+                ikep['encryption'].split(',').conv_aes().forEach(name => {
                     const ka = conv.get_index(`${k2}.phase1.encryption`);
                     conv.add(`${ka}.algorithm`, name);
                 });
@@ -2987,7 +2989,7 @@ Converter.rules['ipsec'] = {
                     const ka = conv.get_index(`${k2}.phase2.authentication`);
                     conv.add(`${ka}.algorithm`, name);
                 });
-                sap['encryption-algorithm'].split(',').forEach(name => {
+                sap['encryption-algorithm'].split(',').conv_aes().forEach(name => {
                     const ka = conv.get_index(`${k2}.phase2.encryption`);
                     conv.add(`${ka}.algorithm`, name);
                 });
@@ -3027,8 +3029,8 @@ Converter.rules['ipsec'] = {
             const ka = conv.get_index(`${kprop}.authentication`);
             conv.add(`${ka}.algorithm`, alg);
         });
-        sap['encryption-algorithm'].split(',').forEach(alg => {
-            if (alg == 'blowfish' || alg == 'cast128' || alg == 'aes' || alg == 'null') {
+        sap['encryption-algorithm'].split(',').conv_aes().forEach(alg => {
+            if (alg == 'blowfish' || alg == 'cast128' || alg == 'null') {
                 conv.notsupported(`ipsec proposal encryption-algorithm ${alg}`);
             }
             const ka = conv.get_index(`${kprop}.encryption`);
