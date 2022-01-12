@@ -601,7 +601,6 @@ const CompatibilityList = {
     'option ipv6 fragment-requeueing off':             [    0,    1 ],
     'option ipv6 monitor-linkstate off':               [    0,    1 ],
     'option ipv6 redirects on':                        [    0,    1 ],
-    'pppac l2tp accept-dialin':                        [    1,    0 ],
     'pppac option session-limit off':                  [    0,    1 ],
     'route dynamic rip':                               [    0,    1 ],
     'route6 dynamic ospf':                             [    0,    1 ],
@@ -2252,9 +2251,7 @@ Converter.rules['interface'] = {
                 });
 
                 const k1 = `interface.${ifname}`;
-                if (!conv.missing('pppac l2tp accept-dialin')) {
-                    conv.param2recipe(protocol, 'accept-dialin', `${k1}.l2tp.accept-dialin`, on2enable);
-                }
+                conv.param2recipe(protocol, 'accept-dialin', `${k1}.l2tp.accept-dialin`, on2enable);
                 if (protocol['accept-interface'] != 'any') {
                     (protocol['accept-interface'] || "").split(',').forEach(name => {
                         const k2 = conv.get_index(`${k1}.l2tp.accept`);
