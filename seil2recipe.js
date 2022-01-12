@@ -609,6 +609,7 @@ const CompatibilityList = {
     'sshd hostkey':                                    [    0,    1 ],
     'sshd password-authentication enable':             [    0,    1 ],
     'syslog memory-block':                             [    0,    1 ],
+    'syslog remote ipv6':                              [    0,    1 ],
     'telnetd':                                         [    0,    1 ],
     'upnp.listen.[].interface':                        [    0,    1 ],
     'vrrp add ... watch':                              [    0,    1 ],
@@ -4752,7 +4753,14 @@ Converter.rules['syslog'] = {
     'add': (conv, tokens) => {
         // syslog add <IPaddress>
         const k1 = conv.get_index('syslog.remote.server', true);
-        conv.add(`${k1}.ipv4.address`, tokens[2]);
+        const addr = tokens[2];
+        if (addr.is_ipv4_address()) {
+            conv.add(`${k1}.ipv4.address`, addr);
+        } else if (!conv.missing('syslog remote ipv6', true)) {
+            conv.add(`${k1}.ipv6.address`, addr);
+        } else {
+            conv.notsupported(addr);
+        }
         if (conv.get_memo('syslog.facility')) {
             conv.add(`${k1}.facility`, conv.get_memo('syslog.facility'));
         }
@@ -4830,8 +4838,8 @@ Converter.rules['syslog'] = {
             return;
         }
         const k1 = conv.get_index('syslog.remote.server', true);
-        conv.read_params(null, tokens, 3, {
-            'address': `${k1}.ipv4.address`,
+        const params = conv.read_params(null, tokens, 3, {
+            'address': true,
             'port': `${k1}.port`,
             'hostname': `${k1}.hostname`,
             'facility': `${k1}.facility`,
@@ -4844,8 +4852,28 @@ Converter.rules['syslog'] = {
                 fun: on2enable
             },
             'log-level': `${k1}.log-level`,
-            'src': `${k1}.source.ipv4.address`,
+            'src': true
         });
+
+        const addr = params['address'];
+        if (addr.is_ipv4_address()) {
+            conv.add(`${k1}.ipv4.address`, addr);
+        } else if (!conv.missing('syslog remote ipv6', true)) {
+            conv.add(`${k1}.ipv6.address`, addr);
+        } else {
+            conv.notsupported(addr);
+        }
+
+        const src = params['src'];
+        if (src) {
+            if (src.is_ipv4_address()) {
+                conv.add(`${k1}.source.ipv4.address`, src);
+            } else if (!conv.missing('syslog remote ipv6', true)) {
+                conv.add(`${k1}.source.ipv6.address`, src);
+            } else {
+                conv.notsupported(addr);
+            }
+        }
     },
 
     'sequence-number': (conv, tokens) => {
