@@ -2458,6 +2458,19 @@ describe('vrrp', () => {
             vrrp.vrouter.100.vrid: 1
         `)
     });
+
+    it('converts "route-up default" to "route-up: 0.0.0.0/0"', () => {
+        assertconv(`
+            vrrp watch-group add WG route-up default
+            vrrp lan0 add vrid 1 address 192.168.0.1/32 watch WG virtual-mac on
+            ---
+            vrrp.vrouter.100.version: 2
+            vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.vrid: 1
+            vrrp.vrouter.100.address: 192.168.0.1
+            vrrp.vrouter.100.watch.route-up: 0.0.0.0/0
+        `)
+    });
 });
 
 describe('vrrp3', () => {
@@ -2490,6 +2503,25 @@ describe('vrrp3', () => {
             vrrp.vrouter.100.watch.alive-detect: 2
             vrrp.vrouter.100.watch.dead-detect: 3
             vrrp.vrouter.100.watch.route-up: 2001:db8::/64
+        `)
+    });
+
+    it('converts "route-up default" to "route-up: 0.0.0.0/0 or ::/0"', () => {
+        assertconv(`
+            vrrp3 watch-group add WG2 route-up default
+            vrrp3 add A interface lan1 vrid 4 address 172.16.4.112 watch WG2
+            vrrp3 add B interface lan1 vrid 6 address fe80::6:112 watch WG2
+            ---
+            vrrp.vrouter.100.version: 3
+            vrrp.vrouter.100.interface: ge0
+            vrrp.vrouter.100.vrid: 4
+            vrrp.vrouter.100.address: 172.16.4.112
+            vrrp.vrouter.100.watch.route-up: 0.0.0.0/0
+            vrrp.vrouter.200.version: 3
+            vrrp.vrouter.200.interface: ge0
+            vrrp.vrouter.200.vrid: 6
+            vrrp.vrouter.200.address: fe80::6:112
+            vrrp.vrouter.200.watch.route-up: ::/0
         `)
     });
 

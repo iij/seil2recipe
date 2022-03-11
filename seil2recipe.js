@@ -4917,6 +4917,18 @@ Converter.rules['unicast-rpf'] = (conv, tokens) => {
 
 Converter.rules['vendor'] = [];
 
+function vrrp_route_up(params, watch) {
+    if (watch['route-up'] == 'default') {
+        if (params['address'].is_ipv4_address()) {
+            return '0.0.0.0/0';
+        } else {
+            return '::/0';
+        }
+    } else {
+        return watch['route-up'];
+    }
+}
+
 Converter.rules['vrrp'] = {
     '*': (conv, tokens) => {
         // vrrp {<lan>|<vlan>} add vrid <vrid> address <IPv4address>/<prefixlen>
@@ -4974,7 +4986,7 @@ Converter.rules['vrrp'] = {
                 conv.add(`${k1}.watch.keepalive`, watch['keepalive']);
             }
             if (watch['route-up']) {
-                conv.add(`${k1}.watch.route-up`, watch['route-up']);
+                conv.add(`${k1}.watch.route-up`, vrrp_route_up(params, watch));
             }
         }
         conv.param2recipe(params, 'dead-detect', `${k1}.watch.dead-detect`);
@@ -5043,7 +5055,7 @@ Converter.rules['vrrp3'] = {
                 conv.add(`${k1}.watch.dead-detect`, watch['dead-detect']);
             }
             if (watch['route-up']) {
-                conv.add(`${k1}.watch.route-up`, watch['route-up']);
+                conv.add(`${k1}.watch.route-up`, vrrp_route_up(params, watch));
             }
         }
     },
