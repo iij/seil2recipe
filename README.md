@@ -1,7 +1,7 @@
 # SEIL Legacy Config to Recipe Config Converter
 ![](https://github.com/iij/seil2recipe/workflows/test/badge.svg)
 
-[SEILコンフィグ自動変換ツール](https://iij.github.io/seil2recipe/) は SEIL/X1, X2, B1, BPV4, x86 Fuji の設定(旧コンフィグ)を SEIL/X4, SEIL/x86 Ayame, SA-W2, SA-W2L の設定(レシピコンフィグ)に変換するツールです。
+[SEILコンフィグ自動変換ツール](https://iij.github.io/seil2recipe/) は SEIL/X1, X2, B1, BPV4, x86 Fuji の設定(旧コンフィグ)を SEIL/X4, SEIL/x86 Ayame, SA-W2, SA-W2L, SA-W2S の設定(レシピコンフィグ)に変換するツールです。
 
 
 ## 使い方
