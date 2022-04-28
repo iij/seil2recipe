@@ -25,10 +25,10 @@
  */
 
 class Converter {
-    constructor(seilconfig, dst) {
+    constructor(seilconfig, dst, baseindex=1000) {
         this.seilconfig  = seilconfig;
         this.conversions = [];
-        this.note        = new Note(dst);
+        this.note        = new Note(dst, baseindex);
 
         this.convert();
     }
@@ -134,13 +134,14 @@ Converter.defers = [];
 
 
 class Note {
-    constructor(dst) {
+    constructor(dst, idxbase) {
         this.indices = new Map();  // (prefix) -> (last index number)
         this.params  = new Map();
         this.ifindex = new Map();  // (prefix) -> (interface) -> (index)
         this.memo    = new Map();
         this.deps    = new DependencySet();
         this.dst     = new Device(dst);
+        this.idxbase = idxbase;
 
         this.memo.set('bridge.group', new Map());
         this.memo.set('floatlink.interfaces', []);
@@ -310,7 +311,7 @@ class Conversion {
         if (!zero_origin) {
             // 前後にコンフィグを追加しやすいように 100, 200, 300, ... とする。
             if (idx == null) {
-                idx = 100;
+                idx = this.note.idxbase;
             } else {
                 idx += 100;
             }
@@ -689,7 +690,7 @@ function beautify(recipe_lines) {
                     return 1;
                 }
             } else if (!b[j]) {
-                retrun -1;
+                return -1;
             }
 
             const ma = a.substring(i).match(/^\d+/g);

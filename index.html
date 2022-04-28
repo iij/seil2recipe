@@ -43,6 +43,14 @@
         <textarea id="recipeconfig" class="config-text" v-model="text" rows="20" cols="64" spellcheck="false"
           placeholder="Converted recipe config will be shown here." readonly></textarea>
         </div>
+      </div>
+    </div>
+
+    <div style="text-align: center; font-family: sans-serif;">
+      Advanced Options:
+      <span id="baseindex">
+        先頭のインデックス番号: <input v-model="num" placeholder="100" size="8">
+      </span>
     </div>
 
     <ul id="status" style="list-style-type: none; margin: 10px 50px;">
@@ -78,6 +86,13 @@
       el: '#model-dst',
       data: {
         selected: 'x4'
+      }
+    })
+
+    var baseindex = new Vue({
+      el: '#baseindex',
+      data: {
+        num: 100
       }
     })
 
@@ -163,7 +178,8 @@ vendor OEM
       },
       computed: {
         s2r: function () {
-          return new Converter(seilconfig.text, dst.selected);
+          idxbase = Number.parseInt(baseindex.num, 10);
+          return new Converter(seilconfig.text, dst.selected, idxbase);
         }
       }
     })
