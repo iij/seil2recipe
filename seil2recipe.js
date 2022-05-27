@@ -3628,6 +3628,11 @@ Converter.rules['option'] = {
             conv.set_memo('option.ipv4.send-icmp-redirect.service',
                 [ conv, on2enable(tokens[3]) ]);
         },
+        'recursive-lookup': (conv, tokens) => {
+            if (tokens[3] != 'off') {
+                conv.notsupported();
+            }
+        },
         'unicast-rpf': (conv, tokens) => {
             if (tokens[3] != 'none') {
                 conv.notsupported();
