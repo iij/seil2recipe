@@ -814,10 +814,13 @@ Converter.rules['application-gateway'] = {
                 'url-filter': true,
             });
 
-            if (params['mode'] == 'ftp' && conv.missing('application-gateway mode ftp', true)) {
-                conv.notsupported('mode ftp');
-            } else {
+            if (params['mode'] == 'http' ||
+                params['mode'] == 'ssl' ||
+                params['mode'] == 'ftp' && !conv.missing('application-gateway mode ftp', true)) {
                 conv.param2recipe(params, 'mode', `${k1}.mode`);
+            } else {
+                conv.notsupported(`mode ${params['mode']}`);
+                return;
             }
 
             if (params['idle-timer'] == 'none') {
