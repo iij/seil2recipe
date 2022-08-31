@@ -607,7 +607,6 @@ const CompatibilityList = {
     'sshd authorized-key admin':                       [    0,    1 ],
     'sshd hostkey':                                    [    0,    1 ],
     'sshd password-authentication enable':             [    0,    1 ],
-    'syslog memory-block':                             [    0,    1 ],
     'syslog remote ipv6':                              [    0,    1 ],
     'telnetd':                                         [    0,    1 ],
     'upnp.listen.[].interface':                        [    0,    1 ],
@@ -4819,7 +4818,6 @@ Converter.rules['syslog'] = {
 
     'memory-block': (conv, tokens) => {
         // syslog memory-block <function> { <blocks> | system-default }
-        if (conv.missing('syslog memory-block')) { return; }
         const oldfun = tokens[2] || '???';
         var newfun = oldfun;
         switch (oldfun) {
