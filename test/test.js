@@ -1763,6 +1763,23 @@ describe('option', () => {
     });
 });
 
+describe('ppp', () => {
+    it('ppp interface, authentication-method none', () => {
+        assertconv(`
+            ppp add PPP ipcp enable authentication-method none
+            dialup-device access-point add AP cid 2
+            dialup-device foma0 connect-to AP
+            interface ppp0 over foma0
+            interface ppp0 ppp-configuration PPP
+            ---
+            interface.ppp0.dialup-device: foma0
+            interface.ppp0.cid: 2
+            interface.ppp0.ipcp: enable
+            interface.ppp0.auth-method: none
+        `);
+    });
+});
+
 describe('pppac', () => {
     it('option', () => {
         assertconv('pppac option session-limit on',

@@ -600,6 +600,7 @@ const CompatibilityList = {
     'option ipv6 fragment-requeueing off':             [    0,    1 ],
     'option ipv6 monitor-linkstate off':               [    0,    1 ],
     'option ipv6 redirects on':                        [    0,    1 ],
+    'ppp authentication-method none':                  [    1,    0 ],
     'pppac option session-limit off':                  [    0,    1 ],
     'route dynamic rip':                               [    0,    1 ],
     'route6 dynamic ospf':                             [    0,    1 ],
@@ -2554,6 +2555,19 @@ Converter.rules['interface'] = {
             conv.param2recipe(params, 'tcp-mss6', `${k1}.ipv6.tcp-mss`);
             conv.param2recipe(params, 'keepalive', `${k1}.keepalive`);
 
+            // authentication-method
+            const am = params['authentication-method'];
+            if (am) {
+                if (am == 'auto') {
+                    // it's default.
+                } else if (am == 'none' && ifname.match(/^ppp\d+$/) &&
+                    !conv.missing('ppp authentication-method none', true)) {
+                    conv.param2recipe(params, 'authentication-method', `${k1}.auth-method`);
+                } else {
+                    conv.notsupported(`ppp authentication-method ${params['authentication-method']}`);
+                }
+            }
+
             // auto-connect
             if (ifname.match(/^ppp\d+$/)) {
                 if (params['auto-connect'] == 'vrrp') {
@@ -3715,9 +3729,6 @@ Converter.rules['ppp'] = {
             'idle-timer': true,
             'mppe': 'notsupported'
         });
-        if (['chap', 'none', 'pap'].includes(params['authentication-method'])) {
-            conv.notsupported(`ppp authentication-method ${params['authentication-method']}`);
-        }
     },
 };
 
