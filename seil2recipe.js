@@ -149,6 +149,7 @@ class Note {
         this.memo.set('interface.l2tp.tunnel', {});
         this.memo.set('interface.router-advertisements', []);
         this.memo.set('qos.class', { 'default': 'root' });
+        this.memo.set('resolver.address', []);
 
         this.if_mappings = {
             'lan0': 'ge1',
@@ -602,13 +603,13 @@ const CompatibilityList = {
     'option ipv6 redirects on':                        [    0,    1 ],
     'ppp authentication-method none':                  [    1,    0 ],
     'pppac option session-limit off':                  [    0,    1 ],
+    'resolver server-priority':                        [    1,    0 ],
     'route dynamic rip':                               [    0,    1 ],
     'route6 dynamic ospf':                             [    0,    1 ],
     'route6 dynamic ripng':                            [    0,    1 ],
     'sshd authorized-key admin':                       [    0,    1 ],
     'sshd hostkey':                                    [    0,    1 ],
     'sshd password-authentication enable':             [    0,    1 ],
-    'syslog memory-block':                             [    0,    1 ],
     'syslog remote ipv6':                              [    0,    1 ],
     'telnetd':                                         [    0,    1 ],
     'upnp.listen.[].interface':                        [    0,    1 ],
@@ -3851,12 +3852,34 @@ Converter.rules['proxyarp'] = {
 Converter.rules['resolver'] = {
     // resolver address add { <IPaddress> | ipcp | ipcp-auto | dhcp | dhcp6 }
     'address': (conv, tokens) => {
-        const k1 = conv.get_index('resolver');
+        if (conv.get_memo('resolver.address').length == 0) {
+            conv.defer(conv => {
+                let addrs = conv.get_memo('resolver.address');
+                if (conv.missing('resolver server-priority', true)) {
+                    // on seil8
+                    if (conv.get_memo('resolver.server-priority') != 'config-order') {
+                        let i = addrs.findIndex(a => ['dhcp', 'dhcp6', 'ipcp', 'ipcp-auto'].includes(a));
+                        if (i != -1) {
+                            addrs.push(addrs[i]);
+                            addrs.splice(i, 1);
+                        }
+                    }
+                } else {
+                    // on seil6
+                    if (conv.get_memo('resolver.server-priority') == 'config-order') {
+                        conv.add('resolver.server-priority', 'config-order');
+                    }
+                }
+                addrs.forEach(addr => {
+                    const k = conv.get_index('resolver');
+                    conv.add(`${k}.address`, addr);
+                });
+            })
+        }
         if (tokens[3] == 'ipcp-auto') {
-            conv.warning('"ipcp-auto" はサポートされていないため、"ipcp" に変換します。')
-            conv.add(`${k1}.address`, 'ipcp');
+            conv.get_memo('resolver.address').push('ipcp');
         } else {
-            conv.add(`${k1}.address`, tokens[3]);
+            conv.get_memo('resolver.address').push(tokens[3]);
         }
     },
     'disable': 'resolver.service: disable',
@@ -3872,7 +3895,12 @@ Converter.rules['resolver'] = {
         });
     },
 
-    'order': 'notsupported'
+    'order': 'notsupported',
+
+    // resolver server-priority { config-order | prefer-static | system-default }
+    'server-priority': (conv, tokens) => {
+        conv.set_memo('resolver.server-priority', tokens[2]);
+    },
 };
 
 function route_filter_common(conv, prefix, name, af) {
@@ -4830,7 +4858,6 @@ Converter.rules['syslog'] = {
 
     'memory-block': (conv, tokens) => {
         // syslog memory-block <function> { <blocks> | system-default }
-        if (conv.missing('syslog memory-block')) { return; }
         const oldfun = tokens[2] || '???';
         var newfun = oldfun;
         switch (oldfun) {

@@ -1939,6 +1939,60 @@ describe('resolver', () => {
             'resolver.service: enable',
         ]);
     });
+
+    // resolver 機能で複数のサーバを指定した場合に実際に DNS 問い合わせが送信される順番は
+    // seil3/seil6/seil8 で仕様が少しづつ異なる。
+    // - seil3: resolver server-priority (7.08以降)によって挙動が変わる。
+    //   - "prefer-static" か無指定なら、IP アドレスのエントリが優先される。
+    //   - "config-order" なら、コンフィグに書いてある順番に問い合わせが送信される。
+    //   - なお dhcp/ipcp/dhcp6/ipcp-auto は排他で一つしか書けないことに注意。
+    // - seil6: resolver.server-priority (5.30以降)によって挙動が変わる。
+    //   - "prefer-static" か無設定なら、IPアドレス>dhcp>ipcp>dhcp6 の順になる。
+    //   - "config-order" なら、インデックス番号の小さい方が優先される。
+    // - seil8: インデックス番号の小さい方が優先される。
+
+    it('server-priority: (any), seil3 -> seil6', () => {
+        // seil3 から seil6 への変換では、server-priority が prefer-static と
+        // config-order のどちらであっても、そのまま変換すれば互換性が保たれる。
+        assertconv(`
+            resolver address add dhcp
+            resolver address add 192.168.0.1
+            resolver server-priority config-order
+            ---
+            resolver.100.address: dhcp
+            resolver.200.address: 192.168.0.1
+            resolver.server-priority: config-order
+        `);
+    });
+
+    it('server-priority prefer-static -> seil8', () => {
+        // seil3 で server-priority が prefer-static の場合(デフォルト)、
+        // seil8 でも IP アドレスのエントリを優先させるために順番を入れ替える。
+        assertconv(`
+            resolver address add 192.168.0.1
+            resolver address add dhcp
+            resolver address add 192.168.0.2
+            ---
+            resolver.100.address: 192.168.0.1
+            resolver.200.address: 192.168.0.2
+            resolver.300.address: dhcp
+        `, 'SEIL/X4');
+    });
+
+    it('config-order -> seil8', () => {
+        // seil3 で server-priority が config-order の場合は、
+        // seil8 と同じ挙動になるためそのままの順序で変換すれば良い。
+        assertconv(`
+            resolver address add 192.168.0.1
+            resolver address add ipcp
+            resolver address add 192.168.0.2
+            resolver server-priority config-order
+            ---
+            resolver.100.address: 192.168.0.1
+            resolver.200.address: ipcp
+            resolver.300.address: 192.168.0.2
+        `, 'SEIL/X4');
+    });
 });
 
 describe('route', () => {
