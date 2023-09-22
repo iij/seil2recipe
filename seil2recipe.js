@@ -25,10 +25,10 @@
  */
 
 class Converter {
-    constructor(seilconfig, dst) {
+    constructor(seilconfig, target_device) {
         this.seilconfig  = seilconfig;
         this.conversions = [];
-        this.note        = new Note(dst);
+        this.note        = new Note(target_device);
 
         this.convert();
     }
@@ -134,13 +134,13 @@ Converter.defers = [];
 
 
 class Note {
-    constructor(dst) {
+    constructor(target_device) {
         this.indices = new Map();  // (prefix) -> (last index number)
         this.params  = new Map();
         this.ifindex = new Map();  // (prefix) -> (interface) -> (index)
         this.memo    = new Map();
         this.deps    = new DependencySet();
-        this.dst     = new Device(dst);
+        this.dst     = new Device(target_device);
 
         this.memo.set('bridge.group', new Map());
         this.memo.set('floatlink.interfaces', []);
@@ -257,8 +257,8 @@ class Conversion {
     //
     // Conversion Utility
     //
-    ifmap(new_name) {
-        return this.note.if_mappings[new_name] || new_name;
+    ifmap(old_name) {
+        return this.note.if_mappings[old_name] || old_name;
     }
 
     set_ifmap(old_name, new_name) {
