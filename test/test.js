@@ -9,7 +9,10 @@ function assertconv(seil_config, recipe_config) {
     let target = 'test';
 
     if (typeof recipe_config == 'string') {
-        if (recipe_config.startsWith('S')) {
+        if (recipe_config == 'SEIL/X4') {
+            recipe_config = 'x4';
+        }
+        if (['x4', 'ayame', 'ca10', 'w2'].includes(recipe_config)) {
             target = recipe_config;
             recipe_config = null;
         }
@@ -1062,18 +1065,12 @@ describe('interface', () => {
     });
 
     it('media', () => {
+        // media の仕様は機種によってバラバラなのでここでは単純なケースだけテストする。
         assertconv(`
-            interface lan0 media 1000baseT-FDX
             interface lan1 media 100baseTX
-            interface lan2 media 10baseT
             ---
             interface.ge0p0.media: 100baseTX
-            interface.ge1p0.media: 1000baseT-FDX
-            interface.ge1p1.media: 1000baseT-FDX
-            interface.ge1p2.media: 1000baseT-FDX
-            interface.ge1p3.media: 1000baseT-FDX
         `, 'SEIL/X4');
-        // ge2 は Half Duplex をサポートしていないので lan2 は変換されずに消える。
     });
 
     it('can change tcp-mss / tcp-mss6', () => {
@@ -2639,7 +2636,7 @@ describe('vendor', () => {
     });
 });
 
-describe('seil6', () => {
+describe('w2', () => {
     it('can be a target device', () => {
         const c = new s2r.Converter('hostname foo\n', 'w2');
         assert.strictEqual(c.recipe_config, 'hostname: foo\n');
@@ -2648,6 +2645,56 @@ describe('seil6', () => {
     it('does not support "option statistics access"', () => {
         const c = new s2r.Converter('option statistics access on', 'w2');
         const e = c.conversions[0].errors[0]
+        assert.strictEqual(e.type, 'notsupported');
+    });
+
+    it('Ethernet media conversion', () => {
+        assertconv(`
+            interface lan0 media 10baseT
+            interface lan1 media 100baseT
+            ---
+            interface.ge0p0.media: 100baseT
+            interface.ge1p0.media: 10baseT
+            interface.ge1p1.media: 10baseT
+            interface.ge1p2.media: 10baseT
+            interface.ge1p3.media: 10baseT
+        `, 'w2');
+    });
+});
+
+describe('x4', () => {
+    it('Ethernet media conversion', () => {
+        assertconv(`
+            interface lan0 media 10baseT
+            interface lan1 media 100baseT
+            interface lan2 media 1000baseT-FDX
+            ---
+            interface.ge0p0.media: 100baseT
+            interface.ge1p0.media: 10baseT
+            interface.ge1p1.media: 10baseT
+            interface.ge1p2.media: 10baseT
+            interface.ge1p3.media: 10baseT
+            interface.ge2.media: 1000baseT-FDX
+        `, 'x4');
+    });
+
+    it('ge2 does not support half-duplex', () => {
+        const c = new s2r.Converter('interface lan2 media 10baseT\n', 'x4');
+        const e = c.conversions[0].errors[0]
+        assert.strictEqual(e.type, 'notsupported');
+    });
+});
+
+describe('ayame', () => {
+    it('ge media can be "auto" only', () => {
+        assertconv(`
+            interface lan0 media auto
+            ---
+            interface.ge1.media: auto
+        `, 'ayame');
+
+        const c2 = new s2r.Converter('interface lan1 media 10baseT\n', 'ayame');
+        const e = c2.conversions[0].errors[0]
         assert.strictEqual(e.type, 'notsupported');
     });
 });
@@ -2667,6 +2714,28 @@ describe('ca10', () => {
         assert.match(c.recipe_config, /^interface.ge4.ipv4.address: dhcp$/m);
         assert.match(c.recipe_config, /^interface.ge5.ipv4.address: 192.168.0.1\/24$/m);
         assert.match(c.recipe_config, /^interface.ge0.ipv6.address: 2001:db8::2\/64$/m);
+    });
+
+    it('Ethernet media conversion', () => {
+        assertconv(`
+            interface lan0 media auto
+            interface lan1 media 1000baseT-FDX
+            interface lan2 media 100baseTX
+            ---
+            interface.ge5.media: auto
+            interface.ge4.media: 1000baseT-FDX
+            interface.ge0.media: 100baseTX
+        `, 'ca10');
+    });
+
+    it('ge[45] does not supports 10/100', () => {
+        const c1 = new s2r.Converter('interface lan1 media 10baseT\n', 'ca10');
+        const e1 = c1.conversions[0].errors[0]
+        assert.strictEqual(e1.type, 'notsupported');
+
+        const c2 = new s2r.Converter('interface lan1 media 10baseT\n', 'ca10');
+        const e2 = c2.conversions[0].errors[0]
+        assert.strictEqual(e2.type, 'notsupported');
     });
 });
 
