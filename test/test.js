@@ -5,27 +5,13 @@ const s2r    = require('../seil2recipe');
 
 const default_config_set = new Set(new s2r.Converter('', 'test').recipe_config.trim().split('\n'));
 
-function assertconv(seil_config, recipe_config) {
-    let target = 'test';
-
-    if (typeof recipe_config == 'string') {
-        if (['x4', 'ayame', 'ca10', 'w2'].includes(recipe_config)) {
-            target = recipe_config;
-            recipe_config = null;
-        }
-    }
-
+function assertconv(convspec, target = 'test') {
+    const [ seil_config, recipe_config ] = convspec.split("---\n");
     if (recipe_config == null) {
-        [ seil_config, recipe_config ] = seil_config.split("---\n");
-        if (recipe_config == null) {
-            assert.fail('no separator found!');
-        }
+        assert.fail('no separator found!');
     }
 
-    if (seil_config instanceof Array) {
-        seil_config = seil_config.join('\n');
-    }
-    const c = new s2r.Converter(seil_config + '\n', target);
+    const c = new s2r.Converter(seil_config, target);
 
     var actual = c.recipe_config.trim().split('\n').filter(line => {
         return !default_config_set.has(line);
@@ -110,11 +96,13 @@ describe('application-gateway', () => {
 
 describe('arp', () => {
     it('add ...', () => {
-        assertconv('arp add 192.168.0.1 2:4:6:8:a:c proxy on', [
-            'arp.100.ipv4-address: 192.168.0.1',
-            'arp.100.mac-address: 2:4:6:8:a:c',
-            'arp.100.proxy: enable'
-        ])
+        assertconv(`
+            arp add 192.168.0.1 2:4:6:8:a:c proxy on
+            ---
+            arp.100.ipv4-address: 192.168.0.1
+            arp.100.mac-address: 2:4:6:8:a:c
+            arp.100.proxy: enable
+        `);
     });
 
     it('reply-nat on', () => {
@@ -206,39 +194,40 @@ describe('authentication+pppac', () => {
 
 describe('bridge', () => {
     it('legacy bridge => interface.bridge0...', () => {
-        assertconv([
-            'bridge enable',
-            'bridge ip-bridging on',
-            'bridge ipv6-bridging on',
-            'bridge pppoe-bridging on',
-            'bridge default-bridging on',
-        ], [
-            'interface.bridge0.forward.ipv4: enable',
-            'interface.bridge0.forward.ipv6: enable',
-            'interface.bridge0.forward.other: enable',
-            'interface.bridge0.forward.pppoe: enable',
-            'interface.bridge0.member.100.interface: ge1',
-            'interface.bridge0.member.200.interface: ge0',
-        ]);
+        assertconv(`
+            bridge enable
+            bridge ip-bridging on
+            bridge ipv6-bridging on
+            bridge pppoe-bridging on
+            bridge default-bridging on
+            ---
+            interface.bridge0.forward.ipv4: enable
+            interface.bridge0.forward.ipv6: enable
+            interface.bridge0.forward.other: enable
+            interface.bridge0.forward.pppoe: enable
+            interface.bridge0.member.100.interface: ge1
+            interface.bridge0.member.200.interface: ge0
+        `);
     });
 
     it('legacy bridge config in factory-config', () => {
-        assertconv([
-            'bridge disable',
-            'bridge ip-bridging on',
-            'bridge ipv6-bridging on',
-        ], []);
+        assertconv(`
+            bridge disable
+            bridge ip-bridging on
+            bridge ipv6-bridging on
+            ---
+        `);
     });
 
     it('bridge group => interface.bridge0...', () => {
-        assertconv([
-            'bridge group add BG stp off',
-            'bridge interface lan1 group BG stp off',
-            'bridge interface vlan2 group BG stp off',
-        ], [
-                'interface.bridge0.member.100.interface: ge0',
-                'interface.bridge0.member.200.interface: vlan2',
-            ]);
+        assertconv(`
+            bridge group add BG stp off
+            bridge interface lan1 group BG stp off
+            bridge interface vlan2 group BG stp off
+            ---
+            interface.bridge0.member.100.interface: ge0
+            interface.bridge0.member.200.interface: vlan2
+        `);
     });
 
     it('bridge group parameters', () => {
@@ -257,7 +246,10 @@ describe('bridge', () => {
     // see filter tests for "bridge filter on"
 
     it('vman-tpid is not supported.', () => {
-        assertconv('bridge vman-tpid 0x1234', '');
+        assertconv(`
+            bridge vman-tpid 0x1234
+            ---
+        `);
     });
 });
 
@@ -326,7 +318,10 @@ describe('cbq', () => {
     });
 
     it('link-bandwidth should be ignored', () => {
-        assertconv('cbq link-bandwidth 100Mbps', '');
+        assertconv(`
+            cbq link-bandwidth 100Mbps
+            ---
+        `);
     });
 });
 
@@ -334,132 +329,132 @@ describe('cbq', () => {
 
 describe('dhcp', () => {
     it('server enable/disable', () => {
-        assertconv([
-            'dhcp enable',
-            'dhcp mode server'
-        ], [
-            'dhcp.server.service: enable'
-        ]);
+        assertconv(`
+            dhcp enable
+            dhcp mode server
+            ---
+            dhcp.server.service: enable
+        `);
     });
 
     it('server disabled (x86 Fuji factory-config)', () => {
-        assertconv([
-            'interface lan0 add 192.168.0.1/24',
-            'dhcp disable',
-            'dhcp mode server',
-            'dhcp interface lan0 enable',
-            'dhcp interface lan0 expire 24',
-            'dhcp interface lan0 pool 192.168.0.2 253',
-            'dhcp interface lan0 dns add 192.168.0.1',
-        ], [
-                'interface.ge1.ipv4.address: 192.168.0.1/24',
-                'dhcp.server.service: disable',
-                'dhcp.server.100.interface: ge1',
-                'dhcp.server.100.expire: 24',
-                'dhcp.server.100.pool.address: 192.168.0.2/24',
-                'dhcp.server.100.pool.count: 253',
-                'dhcp.server.100.dns.100.address: 192.168.0.1',
-            ]);
+        assertconv(`
+            interface lan0 add 192.168.0.1/24
+            dhcp disable
+            dhcp mode server
+            dhcp interface lan0 enable
+            dhcp interface lan0 expire 24
+            dhcp interface lan0 pool 192.168.0.2 253
+            dhcp interface lan0 dns add 192.168.0.1
+            ---
+            interface.ge1.ipv4.address: 192.168.0.1/24
+            dhcp.server.service: disable
+            dhcp.server.100.interface: ge1
+            dhcp.server.100.expire: 24
+            dhcp.server.100.pool.address: 192.168.0.2/24
+            dhcp.server.100.pool.count: 253
+            dhcp.server.100.dns.100.address: 192.168.0.1
+        `);
     });
 
     it('server interfaces', () => {
-        assertconv([
-            'dhcp enable',
-            'dhcp mode server',
-            'dhcp interface lan0 enable',
-            'dhcp interface lan0 dns add 192.168.0.253',
-            'dhcp interface lan0 dns add 192.168.0.254',
-            'dhcp interface lan0 domain example.jp',
-            'dhcp interface lan0 expire 24',
-            'dhcp interface lan0 gateway 192.168.0.1',
-            'dhcp interface lan0 ignore-unknown-request on',
-            'dhcp interface lan0 ntp add 192.168.0.251',
-            'dhcp interface lan0 ntp add 192.168.0.252',
-            'dhcp interface lan0 wins-node b-node',
-            'dhcp interface lan0 wins-server add 192.168.0.250',
-            'dhcp interface lan0 wpad http://proxy.example.jp/',
-            'dhcp interface lan0 static add 02:00:00:00:00:01 192.168.0.11',
-            'dhcp interface lan0 static external url http://proxy.example.jp/list.txt',
-            'dhcp interface lan0 static external interval 01h02m03s',
-            'dhcp interface lan1 disable',
-            'dhcp interface lan1 dns add 192.168.1.254',
-        ], [
-            'dhcp.server.100.dns.100.address: 192.168.0.253',
-            'dhcp.server.100.dns.200.address: 192.168.0.254',
-            'dhcp.server.100.domain: example.jp',
-            'dhcp.server.100.expire: 24',
-            'dhcp.server.100.gateway: 192.168.0.1',
-            'dhcp.server.100.interface: ge1',
-            'dhcp.server.100.ignore-unknown-request: enable',
-            'dhcp.server.100.ntp.100.address: 192.168.0.251',
-            'dhcp.server.100.ntp.200.address: 192.168.0.252',
-            'dhcp.server.100.wins-node.type: b-node',
-            'dhcp.server.100.wins-server.100.address: 192.168.0.250',
-            'dhcp.server.100.wpad.url: http://proxy.example.jp/',
-            'dhcp.server.100.static.entry.100.mac-address: 02:00:00:00:00:01',
-            'dhcp.server.100.static.entry.100.ip-address: 192.168.0.11',
-            'dhcp.server.100.static.external.url: http://proxy.example.jp/list.txt',
-            'dhcp.server.100.static.external.interval: 01h02m03s',
-            'dhcp.server.service: enable',
-        ]);
+        assertconv(`
+            dhcp enable
+            dhcp mode server
+            dhcp interface lan0 enable
+            dhcp interface lan0 dns add 192.168.0.253
+            dhcp interface lan0 dns add 192.168.0.254
+            dhcp interface lan0 domain example.jp
+            dhcp interface lan0 expire 24
+            dhcp interface lan0 gateway 192.168.0.1
+            dhcp interface lan0 ignore-unknown-request on
+            dhcp interface lan0 ntp add 192.168.0.251
+            dhcp interface lan0 ntp add 192.168.0.252
+            dhcp interface lan0 wins-node b-node
+            dhcp interface lan0 wins-server add 192.168.0.250
+            dhcp interface lan0 wpad http://proxy.example.jp/
+            dhcp interface lan0 static add 02:00:00:00:00:01 192.168.0.11
+            dhcp interface lan0 static external url http://proxy.example.jp/list.txt
+            dhcp interface lan0 static external interval 01h02m03s
+            dhcp interface lan1 disable
+            dhcp interface lan1 dns add 192.168.1.254
+            ---
+            dhcp.server.100.dns.100.address: 192.168.0.253
+            dhcp.server.100.dns.200.address: 192.168.0.254
+            dhcp.server.100.domain: example.jp
+            dhcp.server.100.expire: 24
+            dhcp.server.100.gateway: 192.168.0.1
+            dhcp.server.100.interface: ge1
+            dhcp.server.100.ignore-unknown-request: enable
+            dhcp.server.100.ntp.100.address: 192.168.0.251
+            dhcp.server.100.ntp.200.address: 192.168.0.252
+            dhcp.server.100.wins-node.type: b-node
+            dhcp.server.100.wins-server.100.address: 192.168.0.250
+            dhcp.server.100.wpad.url: http://proxy.example.jp/
+            dhcp.server.100.static.entry.100.mac-address: 02:00:00:00:00:01
+            dhcp.server.100.static.entry.100.ip-address: 192.168.0.11
+            dhcp.server.100.static.external.url: http://proxy.example.jp/list.txt
+            dhcp.server.100.static.external.interval: 01h02m03s
+            dhcp.server.service: enable
+        `);
     });
 
     it('prefix length of pool can be omitted!', () => {
-        assertconv([
-            'interface lan0 add 192.168.0.254/24',
-            'dhcp enable',
-            'dhcp mode server',
-            'dhcp interface lan0 enable',
-            'dhcp interface lan0 pool 192.168.0.10 30',
-        ], [
-            'interface.ge1.ipv4.address: 192.168.0.254/24',
-            'dhcp.server.service: enable',
-            'dhcp.server.100.pool.address: 192.168.0.10/24',
-            'dhcp.server.100.pool.count: 30',
-            'dhcp.server.100.interface: ge1',
-        ]);
+        assertconv(`
+            interface lan0 add 192.168.0.254/24
+            dhcp enable
+            dhcp mode server
+            dhcp interface lan0 enable
+            dhcp interface lan0 pool 192.168.0.10 30
+            ---
+            interface.ge1.ipv4.address: 192.168.0.254/24
+            dhcp.server.service: enable
+            dhcp.server.100.pool.address: 192.168.0.10/24
+            dhcp.server.100.pool.count: 30
+            dhcp.server.100.interface: ge1
+        `);
     });
 
     it('relay enable/disable', () => {
-        assertconv([
-            'dhcp enable',
-            'dhcp mode relay'
-        ], [
-            'dhcp.relay.service: enable'
-        ]);
+        assertconv(`
+            dhcp enable
+            dhcp mode relay
+            ---
+            dhcp.relay.service: enable
+        `);
     });
 
     it('relay interfaces', () => {
-        assertconv([
-            'dhcp enable',
-            'dhcp mode relay',
-            'dhcp interface lan0 enable',
-            'dhcp interface lan0 server add 192.168.0.253',
-            'dhcp interface lan0 server add 192.168.0.254',
-            'dhcp interface lan1 disable',
-            'dhcp interface lan1 server add 192.168.1.254',
-        ], [
-                'dhcp.relay.100.interface: ge1',
-                'dhcp.relay.100.server.100.address: 192.168.0.253',
-                'dhcp.relay.100.server.200.address: 192.168.0.254',
-                'dhcp.relay.service: enable',
-            ]);
+        assertconv(`
+            dhcp enable
+            dhcp mode relay
+            dhcp interface lan0 enable
+            dhcp interface lan0 server add 192.168.0.253
+            dhcp interface lan0 server add 192.168.0.254
+            dhcp interface lan1 disable
+            dhcp interface lan1 server add 192.168.1.254
+            ---
+            dhcp.relay.100.interface: ge1
+            dhcp.relay.100.server.100.address: 192.168.0.253
+            dhcp.relay.100.server.200.address: 192.168.0.254
+            dhcp.relay.service: enable
+        `);
     });
 });
 
 describe('dhcp6', () => {
-    it('legacy single clinet configuration', () => {
-        assertconv([
-            'dhcp6 client enable',
-            'dhcp6 client interface lan1',
-            'dhcp6 client prefix-delegation subnet lan0 sla-id 0x1 interface-id ::1234 enable',
-        ], [
-                'dhcp6.client.service: enable',
-                'dhcp6.client.100.interface: ge0',
-                'dhcp6.client.100.prefix-delegation.100.subnet: ge1',
-                'dhcp6.client.100.prefix-delegation.100.sla-id: 0x1',
-                'dhcp6.client.100.prefix-delegation.100.interface-id: ::1234',
-            ]);
+    it('legacy single client configuration', () => {
+        assertconv(`
+            dhcp6 client enable
+            dhcp6 client interface lan1
+            dhcp6 client prefix-delegation subnet lan0 sla-id 0x1 interface-id ::1234 enable
+            ---
+            dhcp6.client.service: enable
+            dhcp6.client.100.interface: ge0
+            dhcp6.client.100.prefix-delegation.100.subnet: ge1
+            dhcp6.client.100.prefix-delegation.100.sla-id: 0x1
+            dhcp6.client.100.prefix-delegation.100.interface-id: ::1234
+        `);
     });
 
     it('can be run on multiple interfaces', () => {
@@ -557,22 +552,22 @@ describe('dialup-device', () => {
     });
 
     it('as a wwan interface', () => {
-        assertconv([
-            'dialup-device access-point add AP apn example.jp',
-            'dialup-device mdm0 connect-to AP',
-            'dialup-device mdm0 authentication-method chap username foo password bar auto-connect always idle-timer 30',
-            'interface wwan0 over mdm0',
-            'interface wwan0 add dhcp',
-        ], [
-            'interface.wwan0.apn: example.jp',
-            'interface.wwan0.auth-method: chap',
-            'interface.wwan0.auto-connect: always',
-            'interface.wwan0.dialup-device: mdm0',
-            'interface.wwan0.idle-timer: 30',
-            'interface.wwan0.id: foo',
-            'interface.wwan0.ipv4.address: dhcp',
-            'interface.wwan0.password: bar',
-        ]);
+        assertconv(`
+            dialup-device access-point add AP apn example.jp
+            dialup-device mdm0 connect-to AP
+            dialup-device mdm0 authentication-method chap username foo password bar auto-connect always idle-timer 30
+            interface wwan0 over mdm0
+            interface wwan0 add dhcp
+            ---
+            interface.wwan0.apn: example.jp
+            interface.wwan0.auth-method: chap
+            interface.wwan0.auto-connect: always
+            interface.wwan0.dialup-device: mdm0
+            interface.wwan0.idle-timer: 30
+            interface.wwan0.id: foo
+            interface.wwan0.ipv4.address: dhcp
+            interface.wwan0.password: bar
+        `);
     });
 });
 
@@ -596,21 +591,21 @@ describe('dialup-network', () => {
 
 describe('dns forwarder', () => {
     it('add ...', () => {
-        assertconv([
-            'dns forwarder enable',
-            'dns forwarder add 192.168.0.1',
-            'dns forwarder add 192.168.0.2',
-        ], [
-                'dns-forwarder.100.address: 192.168.0.1',
-                'dns-forwarder.200.address: 192.168.0.2',
-                'dns-forwarder.listen.100.interface: ge*',
-                'dns-forwarder.listen.200.interface: ipsec*',
-                'dns-forwarder.listen.300.interface: tunnel*',
-                'dns-forwarder.listen.400.interface: bridge*',
-                'dns-forwarder.listen.500.interface: vlan*',
-                'dns-forwarder.listen.600.interface: pppac*',
-                'dns-forwarder.service: enable',
-        ]);
+        assertconv(`
+            dns forwarder enable
+            dns forwarder add 192.168.0.1
+            dns forwarder add 192.168.0.2
+            ---
+            dns-forwarder.100.address: 192.168.0.1
+            dns-forwarder.200.address: 192.168.0.2
+            dns-forwarder.listen.100.interface: ge*
+            dns-forwarder.listen.200.interface: ipsec*
+            dns-forwarder.listen.300.interface: tunnel*
+            dns-forwarder.listen.400.interface: bridge*
+            dns-forwarder.listen.500.interface: vlan*
+            dns-forwarder.listen.600.interface: pppac*
+            dns-forwarder.service: enable
+        `);
     });
 
     it('aaaa-filter is not supported', () => {
@@ -626,27 +621,27 @@ describe('dns forwarder', () => {
     });
 
     it('disable', () => {
-        assertconv([
-            'dns forwarder disable',
-        ], [
-                'dns-forwarder.service: disable',
-        ]);
+        assertconv(`
+            dns forwarder disable
+            ---
+            dns-forwarder.service: disable
+        `);
     });
 
     it('"ipcp-auto" is converted to "ipcp"', () => {
-        assertconv([
-            'dns forwarder enable',
-            'dns forwarder add ipcp-auto',
-        ], [
-            'dns-forwarder.100.address: ipcp',
-            'dns-forwarder.listen.100.interface: ge*',
-            'dns-forwarder.listen.200.interface: ipsec*',
-            'dns-forwarder.listen.300.interface: tunnel*',
-            'dns-forwarder.listen.400.interface: bridge*',
-            'dns-forwarder.listen.500.interface: vlan*',
-            'dns-forwarder.listen.600.interface: pppac*',
-            'dns-forwarder.service: enable',
-        ]);
+        assertconv(`
+            dns forwarder enable
+            dns forwarder add ipcp-auto
+            ---
+            dns-forwarder.100.address: ipcp
+            dns-forwarder.listen.100.interface: ge*
+            dns-forwarder.listen.200.interface: ipsec*
+            dns-forwarder.listen.300.interface: tunnel*
+            dns-forwarder.listen.400.interface: bridge*
+            dns-forwarder.listen.500.interface: vlan*
+            dns-forwarder.listen.600.interface: pppac*
+            dns-forwarder.service: enable
+        `);
     });
 
     it('query-translation is not supported', () => {
@@ -658,11 +653,11 @@ describe('dns forwarder', () => {
 
 describe('encrypted-password-long', () => {
     it('can convert admin password', () => {
-        assertconv([
-            'encrypted-password-long admin $2a$07$YDRU02fiS6Fy7sr1TcIBkuOFqA/mQaTYmgza4m5QppasE8RIUpZ/m',
-        ], [
-            'login.admin.encrypted-password: $2a$07$YDRU02fiS6Fy7sr1TcIBkuOFqA/mQaTYmgza4m5QppasE8RIUpZ/m',
-        ]);
+        assertconv(`
+            encrypted-password-long admin $2a$07$YDRU02fiS6Fy7sr1TcIBkuOFqA/mQaTYmgza4m5QppasE8RIUpZ/m
+            ---
+            login.admin.encrypted-password: $2a$07$YDRU02fiS6Fy7sr1TcIBkuOFqA/mQaTYmgza4m5QppasE8RIUpZ/m
+        `);
     });
 
     it('does not support "user" account', () => {
@@ -674,10 +669,18 @@ describe('encrypted-password-long', () => {
 
 describe('environment', () => {
     it('login-timer', () => {
-        assertconv('environment login-timer 123', 'terminal.login-timer: 123');
+        assertconv(`
+            environment login-timer 123
+            ---
+            terminal.login-timer: 123
+        `);
     });
     it('pager', () => {
-        assertconv('environment pager off', 'terminal.pager: disable');
+        assertconv(`
+            environment pager off
+            ---
+            terminal.pager: disable
+        `);
     });
     it('terminal is deprecated', () => {
         assert_conversions('environment terminal auto-size on', convs => {
@@ -688,26 +691,24 @@ describe('environment', () => {
 
 describe('filter', () => {
     it('parameters', () => {
-        assertconv([
-            'filter add FOO interface lan1 label "LAB" direction in action pass protocol tcpudp ' +
-            'src 10.0.0.1/32 srcport 1111 dst 10.0.0.2/32 dstport 2222 ipopts any ' +
-            'keepalive 10.0.0.3 state enable state-ttl 123 logging state-only'
-        ], [
-            'filter.ipv4.100.interface: ge0',
-            'filter.ipv4.100.label: LAB',
-            'filter.ipv4.100.direction: in',
-            'filter.ipv4.100.action: pass',
-            'filter.ipv4.100.protocol: tcpudp',
-            'filter.ipv4.100.source.address: 10.0.0.1/32',
-            'filter.ipv4.100.source.port: 1111',
-            'filter.ipv4.100.destination.address: 10.0.0.2/32',
-            'filter.ipv4.100.destination.port: 2222',
-            'filter.ipv4.100.ipopts: any',
-            'filter.ipv4.100.keepalive: 10.0.0.3',
-            'filter.ipv4.100.state: enable',
-            'filter.ipv4.100.state.ttl: 123',
-            'filter.ipv4.100.logging: state-only',
-        ]);
+        assertconv(`
+            filter add FOO interface lan1 label "LAB" direction in action pass protocol tcpudp src 10.0.0.1/32 srcport 1111 dst 10.0.0.2/32 dstport 2222 ipopts any keepalive 10.0.0.3 state enable state-ttl 123 logging state-only
+            ---
+            filter.ipv4.100.interface: ge0
+            filter.ipv4.100.label: LAB
+            filter.ipv4.100.direction: in
+            filter.ipv4.100.action: pass
+            filter.ipv4.100.protocol: tcpudp
+            filter.ipv4.100.source.address: 10.0.0.1/32
+            filter.ipv4.100.source.port: 1111
+            filter.ipv4.100.destination.address: 10.0.0.2/32
+            filter.ipv4.100.destination.port: 2222
+            filter.ipv4.100.ipopts: any
+            filter.ipv4.100.keepalive: 10.0.0.3
+            filter.ipv4.100.state: enable
+            filter.ipv4.100.state.ttl: 123
+            filter.ipv4.100.logging: state-only
+        `);
     });
 
     it('application parameter is deprecated', () => {
@@ -717,14 +718,14 @@ describe('filter', () => {
     });
 
     it('action forward', () => {
-        assertconv([
-            'filter add FOO interface vlan0 direction in action forward 192.168.0.1',
-        ], [
-            'filter.forward.ipv4.100.label: FOO',
-            'filter.forward.ipv4.100.interface: vlan0',
-            'filter.forward.ipv4.100.direction: in',
-            'filter.forward.ipv4.100.gateway: 192.168.0.1',
-        ]);
+        assertconv(`
+            filter add FOO interface vlan0 direction in action forward 192.168.0.1
+            ---
+            filter.forward.ipv4.100.label: FOO
+            filter.forward.ipv4.100.interface: vlan0
+            filter.forward.ipv4.100.direction: in
+            filter.forward.ipv4.100.gateway: 192.168.0.1
+        `);
     });
 
     it('"direction out" implies "interface any"', () => {
@@ -739,16 +740,16 @@ describe('filter', () => {
     });
 
     it('direction in/out -> inout', () => {
-        assertconv([
-            'filter add FOO interface vlan0 direction in/out action pass state disable logging on enable',
-        ], [
-            'filter.ipv4.100.label: FOO',
-            'filter.ipv4.100.action: pass',
-            'filter.ipv4.100.direction: inout',
-            'filter.ipv4.100.interface: vlan0',
-            'filter.ipv4.100.logging: on',
-            'filter.ipv4.100.state: disable'
-        ]);
+        assertconv(`
+            filter add FOO interface vlan0 direction in/out action pass state disable logging on enable
+            ---
+            filter.ipv4.100.label: FOO
+            filter.ipv4.100.action: pass
+            filter.ipv4.100.direction: inout
+            filter.ipv4.100.interface: vlan0
+            filter.ipv4.100.logging: on
+            filter.ipv4.100.state: disable
+        `);
     });
 
     it('srcport/dstport implies protocol tcpudp (if not specified)', () => {
@@ -854,36 +855,34 @@ describe('filter', () => {
 
 describe('filter6', () => {
     it('filter6', () => {
-        assertconv([
-            'filter6 add FOO interface vlan0 direction in/out action pass',
-        ], [
-            'filter.ipv6.100.label: FOO',
-            'filter.ipv6.100.action: pass',
-            'filter.ipv6.100.direction: inout',
-            'filter.ipv6.100.interface: vlan0',
-        ]);
+        assertconv(`
+            filter6 add FOO interface vlan0 direction in/out action pass
+            ---
+            filter.ipv6.100.label: FOO
+            filter.ipv6.100.action: pass
+            filter.ipv6.100.direction: inout
+            filter.ipv6.100.interface: vlan0
+        `);
     });
 
     it('parameters', () => {
-        assertconv([
-            'filter6 add FOO interface lan1 label "LAB" direction in action pass protocol tcpudp ' +
-            'src 1::1/128 srcport 1111 dst 1::2/128 dstport 2222 exthdr any ' +
-            'state enable state-ttl 123 logging state-only'
-        ], [
-            'filter.ipv6.100.interface: ge0',
-            'filter.ipv6.100.label: LAB',
-            'filter.ipv6.100.direction: in',
-            'filter.ipv6.100.action: pass',
-            'filter.ipv6.100.protocol: tcpudp',
-            'filter.ipv6.100.source.address: 1::1/128',
-            'filter.ipv6.100.source.port: 1111',
-            'filter.ipv6.100.destination.address: 1::2/128',
-            'filter.ipv6.100.destination.port: 2222',
-            'filter.ipv6.100.exthdr: any',
-            'filter.ipv6.100.state: enable',
-            'filter.ipv6.100.state.ttl: 123',
-            'filter.ipv6.100.logging: state-only',
-        ]);
+        assertconv(`
+            filter6 add FOO interface lan1 label "LAB" direction in action pass protocol tcpudp src 1::1/128 srcport 1111 dst 1::2/128 dstport 2222 exthdr any state enable state-ttl 123 logging state-only
+            ---
+            filter.ipv6.100.interface: ge0
+            filter.ipv6.100.label: LAB
+            filter.ipv6.100.direction: in
+            filter.ipv6.100.action: pass
+            filter.ipv6.100.protocol: tcpudp
+            filter.ipv6.100.source.address: 1::1/128
+            filter.ipv6.100.source.port: 1111
+            filter.ipv6.100.destination.address: 1::2/128
+            filter.ipv6.100.destination.port: 2222
+            filter.ipv6.100.exthdr: any
+            filter.ipv6.100.state: enable
+            filter.ipv6.100.state.ttl: 123
+            filter.ipv6.100.logging: state-only
+        `);
     });
 
     it('policy routing (action forward)', () => {
@@ -994,12 +993,20 @@ describe('floatlink', () => {
 
 describe('hostname', () => {
     it('simple hostname', () => {
-        assertconv('hostname foo', 'hostname: foo');
+        assertconv(`
+            hostname foo
+            ---
+            hostname: foo
+        `);
     });
 
     it('quotation', () => {
         // hostname "<'\" \\>" -> hostname: "<'\" \\>"
-        assertconv('hostname "<\'\\" \\\\>"', 'hostname: "<\'\\" \\\\>"');
+        assertconv(`
+            hostname "<'\\" \\\\>"
+            ---
+            hostname: "<'\\" \\\\>"
+        `);
     });
 });
 
@@ -1011,7 +1018,10 @@ describe('httpd', () => {
     });
 
     it('is ignored if it is disabled', () => {
-        assertconv('httpd disable', '');
+        assertconv(`
+            httpd disable
+            ---
+        `);
     });
 });
 
@@ -1053,12 +1063,19 @@ describe('ike', () => {
 
 describe('interface', () => {
     it('can change mtu', () => {
-        assertconv('interface ipsec0 mtu 1234', 'interface.ipsec0.mtu: 1234');
+        assertconv(`
+            interface ipsec0 mtu 1234
+            ---
+            interface.ipsec0.mtu: 1234
+        `);
     });
 
     it('has a description', () => {
-        assertconv('interface lan1 description "IIJmio Hikari"',
-         'interface.ge0.description: "IIJmio Hikari"');
+        assertconv(`
+            interface lan1 description "IIJmio Hikari"
+            ---
+            interface.ge0.description: "IIJmio Hikari"
+        `);
     });
 
     it('media', () => {
@@ -1082,48 +1099,47 @@ describe('interface', () => {
 
     // ルーティングベース IPsec 全体のテストは 'ipsec' の方に書く。
     it('ipsec0 unnumbered', () => {
-        assertconv([
-            'interface ipsec0 tunnel 10.0.0.1 10.0.0.2',
-            'interface ipsec0 unnumbered',
-        ], [
-            'interface.ipsec0.ipv4.address: ge1',
-            'interface.ipsec0.ipv4.destination: 10.0.0.2',
-            'interface.ipsec0.ipv4.source: 10.0.0.1',
-        ]);
+        assertconv(`
+            interface ipsec0 tunnel 10.0.0.1 10.0.0.2
+            interface ipsec0 unnumbered
+            ---
+            interface.ipsec0.ipv4.address: ge1
+            interface.ipsec0.ipv4.destination: 10.0.0.2
+            interface.ipsec0.ipv4.source: 10.0.0.1
+        `);
     });
 
     it('ipsec0 unnumbered on lan2', () => {
-        assertconv([
-            'interface ipsec0 tunnel 10.0.0.1 10.0.0.2',
-            'interface ipsec0 unnumbered on lan2',
-        ], [
-            'interface.ipsec0.ipv4.address: ge2',
-            'interface.ipsec0.ipv4.destination: 10.0.0.2',
-            'interface.ipsec0.ipv4.source: 10.0.0.1',
-        ]);
+        assertconv(`
+            interface ipsec0 tunnel 10.0.0.1 10.0.0.2
+            interface ipsec0 unnumbered on lan2
+            ---
+            interface.ipsec0.ipv4.address: ge2
+            interface.ipsec0.ipv4.destination: 10.0.0.2
+            interface.ipsec0.ipv4.source: 10.0.0.1
+        `);
     });
 
     it('ipsec0 floatlink', () => {
-        assertconv([
-            'interface ipsec0 floatlink my-node-id MY-NODE-ID',
-            'interface ipsec0 floatlink peer-node-id PEER-NODE-ID',
-            'interface ipsec0 floatlink floatlink-key FLOATLINK-KEY-X',
-            'interface ipsec0 floatlink preshared-key PRESHARED-KEY-X',
-            'interface ipsec0 floatlink address-family ipv6',
-            'interface ipsec0 floatlink nat-traversal force',
-            'interface ipsec0 floatlink my-address lan1',
-            'floatlink name-service add https://example.jp/floatlink',
-        ], [
-            'interface.ipsec0.floatlink.name-service: https://example.jp/floatlink',
-            'interface.ipsec0.floatlink.my-node-id: MY-NODE-ID',
-            'interface.ipsec0.floatlink.peer-node-id: PEER-NODE-ID',
-            'interface.ipsec0.floatlink.key: FLOATLINK-KEY-X',
-            'interface.ipsec0.preshared-key: PRESHARED-KEY-X',
-            'interface.ipsec0.floatlink.address-family: ipv6',
-            'interface.ipsec0.nat-traversal: force',
-            'interface.ipsec0.floatlink.my-address: ge0',
-        ]);
-
+        assertconv(`
+            interface ipsec0 floatlink my-node-id MY-NODE-ID
+            interface ipsec0 floatlink peer-node-id PEER-NODE-ID
+            interface ipsec0 floatlink floatlink-key FLOATLINK-KEY-X
+            interface ipsec0 floatlink preshared-key PRESHARED-KEY-X
+            interface ipsec0 floatlink address-family ipv6
+            interface ipsec0 floatlink nat-traversal force
+            interface ipsec0 floatlink my-address lan1
+            floatlink name-service add https://example.jp/floatlink
+            ---
+            interface.ipsec0.floatlink.name-service: https://example.jp/floatlink
+            interface.ipsec0.floatlink.my-node-id: MY-NODE-ID
+            interface.ipsec0.floatlink.peer-node-id: PEER-NODE-ID
+            interface.ipsec0.floatlink.key: FLOATLINK-KEY-X
+            interface.ipsec0.preshared-key: PRESHARED-KEY-X
+            interface.ipsec0.floatlink.address-family: ipv6
+            interface.ipsec0.nat-traversal: force
+            interface.ipsec0.floatlink.my-address: ge0
+        `);
     });
 
     // l2tp interface -> look for "describe('l2tp', ...)
@@ -1148,31 +1164,31 @@ describe('interface', () => {
         });
 
         it('supports PPPoE over any ge interfaces', () => {
-            assertconv([
-                'interface pppoe0 over lan0',
-            ], [
-                'interface.pppoe0.over: ge1',
-            ]);
+            assertconv(`
+            interface pppoe0 over lan0
+            ---
+            interface.pppoe0.over: ge1
+        `);
         });
     });
 
     it('tunnel dslite', () => {
-        assertconv([
-            'interface tunnel0 tunnel dslite aftr.example.jp',
-            'interface tunnel0 unnumbered',
-        ], [
-            'interface.tunnel0.ipv4.address: ge1',
-            'interface.tunnel0.ipv6.dslite.aftr: aftr.example.jp',
-        ]);
+        assertconv(`
+            interface tunnel0 tunnel dslite aftr.example.jp
+            interface tunnel0 unnumbered
+            ---
+            interface.tunnel0.ipv4.address: ge1
+            interface.tunnel0.ipv6.dslite.aftr: aftr.example.jp
+        `);
     });
 
     it('vlan', () => {
-        assertconv([
-            'interface vlan0 tag 3',
-        ], [
-            'interface.vlan0.vid: 3',
-            'interface.vlan0.over: ge1',
-        ]);
+        assertconv(`
+            interface vlan0 tag 3
+            ---
+            interface.vlan0.vid: 3
+            interface.vlan0.over: ge1
+        `);
     });
 });
 
@@ -1339,60 +1355,59 @@ describe('ipsec', () => {
     });
 
     it('L2TPv3 over IPsec', () => {
-        assertconv([
-            'l2tp hostname sideA',
-            'l2tp router-id 10.0.0.1',
-            'l2tp add B hostname sideB router-id 10.0.0.2',
-            'interface l2tp0 tunnel 10.0.0.1 10.0.0.2',
-            'interface l2tp0 l2tp B remote-end-id foo',
-            'ike preshared-key add 10.0.0.2 foo',
-            'ike proposal add IKEP encryption aes hash sha1 dh-group modp1536 auth preshared-key lifetime-of-time 8h',
-            'ike peer add B address 10.0.0.2 exchange-mode main proposals IKEP',
-            'ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 '
-            + 'encryption-algorithm aes lifetime-of-time 8h pfs-group modp1536',
-            'ipsec security-association add SA transport 10.0.0.1 10.0.0.2 ike SAP esp enable',
-            'ipsec security-policy add SP security-association SA protocol 115 src 10.0.0.1/32 dst 10.0.0.2/32',
-        ], [
-            'interface.l2tp0.ike.proposal.phase1.dh-group: modp1536',
-            'interface.l2tp0.ike.proposal.phase1.encryption.100.algorithm: aes128',
-            'interface.l2tp0.ike.proposal.phase1.hash.100.algorithm: sha1',
-            'interface.l2tp0.ike.proposal.phase1.lifetime: 8h',
-            'interface.l2tp0.ike.proposal.phase2.authentication.100.algorithm: hmac-sha1',
-            'interface.l2tp0.ike.proposal.phase2.encryption.100.algorithm: aes128',
-            'interface.l2tp0.ike.proposal.phase2.lifetime-of-time: 8h',
-            'interface.l2tp0.ike.proposal.phase2.pfs-group: modp1536',
-            'interface.l2tp0.ipv4.source: 10.0.0.1',
-            'interface.l2tp0.ipv4.destination: 10.0.0.2',
-            'interface.l2tp0.local-hostname: sideA',
-            'interface.l2tp0.remote-hostname: sideB',
-            'interface.l2tp0.local-router-id: 10.0.0.1',
-            'interface.l2tp0.remote-router-id: 10.0.0.2',
-            'interface.l2tp0.remote-end-id: foo',
-            'interface.l2tp0.ipsec-preshared-key: foo',
-        ]);
+        assertconv(`
+            l2tp hostname sideA
+            l2tp router-id 10.0.0.1
+            l2tp add B hostname sideB router-id 10.0.0.2
+            interface l2tp0 tunnel 10.0.0.1 10.0.0.2
+            interface l2tp0 l2tp B remote-end-id foo
+            ike preshared-key add 10.0.0.2 foo
+            ike proposal add IKEP encryption aes hash sha1 dh-group modp1536 auth preshared-key lifetime-of-time 8h
+            ike peer add B address 10.0.0.2 exchange-mode main proposals IKEP
+            ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes lifetime-of-time 8h pfs-group modp1536
+            ipsec security-association add SA transport 10.0.0.1 10.0.0.2 ike SAP esp enable
+            ipsec security-policy add SP security-association SA protocol 115 src 10.0.0.1/32 dst 10.0.0.2/32
+            ---
+            interface.l2tp0.ike.proposal.phase1.dh-group: modp1536
+            interface.l2tp0.ike.proposal.phase1.encryption.100.algorithm: aes128
+            interface.l2tp0.ike.proposal.phase1.hash.100.algorithm: sha1
+            interface.l2tp0.ike.proposal.phase1.lifetime: 8h
+            interface.l2tp0.ike.proposal.phase2.authentication.100.algorithm: hmac-sha1
+            interface.l2tp0.ike.proposal.phase2.encryption.100.algorithm: aes128
+            interface.l2tp0.ike.proposal.phase2.lifetime-of-time: 8h
+            interface.l2tp0.ike.proposal.phase2.pfs-group: modp1536
+            interface.l2tp0.ipv4.source: 10.0.0.1
+            interface.l2tp0.ipv4.destination: 10.0.0.2
+            interface.l2tp0.local-hostname: sideA
+            interface.l2tp0.remote-hostname: sideB
+            interface.l2tp0.local-router-id: 10.0.0.1
+            interface.l2tp0.remote-router-id: 10.0.0.2
+            interface.l2tp0.remote-end-id: foo
+            interface.l2tp0.ipsec-preshared-key: foo
+        `);
     });
 });
 
 describe('macfilter', () => {
     it('mac address list on config', () => {
-        assertconv([
-            'macfilter add CONF action pass src 02:04:06:08:0a:0c on lan0 logging on',
-        ], [
-                'macfilter.entry.100.action: pass',
-                'macfilter.entry.100.address: 02:04:06:08:0a:0c',
-                'macfilter.entry.100.interface: ge1',
-                'macfilter.entry.100.logging: on',
-            ]);
+        assertconv(`
+            macfilter add CONF action pass src 02:04:06:08:0a:0c on lan0 logging on
+            ---
+            macfilter.entry.100.action: pass
+            macfilter.entry.100.address: 02:04:06:08:0a:0c
+            macfilter.entry.100.interface: ge1
+            macfilter.entry.100.logging: on
+        `);
     });
 
     it('on url', () => {
-        assertconv([
-            'macfilter add BYURL action block src http://user:pass@127.0.0.1/mac.txt interval 1h',
-        ], [
-            'macfilter.entry-list.100.action: block',
-            'macfilter.entry-list.100.update-interval: 1h',
-            'macfilter.entry-list.100.url: http://user:pass@127.0.0.1/mac.txt',
-        ]);
+        assertconv(`
+            macfilter add BYURL action block src http://user:pass@127.0.0.1/mac.txt interval 1h
+            ---
+            macfilter.entry-list.100.action: block
+            macfilter.entry-list.100.update-interval: 1h
+            macfilter.entry-list.100.url: http://user:pass@127.0.0.1/mac.txt
+        `);
     });
 });
 
@@ -1461,25 +1476,25 @@ describe('monitor', () => {
 
 describe('nat', () => {
     it('bypass', () => {
-        assertconv([
-            'nat bypass add 192.168.0.1 198.51.100.1 interface vlan0',
-        ], [
-                'nat.ipv4.bypass.100.private: 192.168.0.1',
-                'nat.ipv4.bypass.100.global: 198.51.100.1',
-                'nat.ipv4.bypass.100.interface: vlan0',
-            ]);
+        assertconv(`
+            nat bypass add 192.168.0.1 198.51.100.1 interface vlan0
+            ---
+            nat.ipv4.bypass.100.private: 192.168.0.1
+            nat.ipv4.bypass.100.global: 198.51.100.1
+            nat.ipv4.bypass.100.interface: vlan0
+        `);
     });
 
     it('dynamic', () => {
-        assertconv([
-            'nat dynamic add global 10.0.0.1',
-            'nat dynamic add global 10.0.0.2-10.0.0.3 interface lan1',
-            'nat dynamic add private 192.168.0.9 interface lan1',
-        ], [
-                'nat.ipv4.dnat.100.global.100.address: 10.0.0.1',
-                'nat.ipv4.dnat.100.global.200.address: 10.0.0.2-10.0.0.3',
-                'nat.ipv4.dnat.100.private.100.address: 192.168.0.9'
-            ]);
+        assertconv(`
+            nat dynamic add global 10.0.0.1
+            nat dynamic add global 10.0.0.2-10.0.0.3 interface lan1
+            nat dynamic add private 192.168.0.9 interface lan1
+            ---
+            nat.ipv4.dnat.100.global.100.address: 10.0.0.1
+            nat.ipv4.dnat.100.global.200.address: 10.0.0.2-10.0.0.3
+            nat.ipv4.dnat.100.private.100.address: 192.168.0.9
+        `);
     });
 
     it('napt without global', () => {
@@ -1527,54 +1542,53 @@ describe('nat', () => {
     });
 
     it('reflect', () => {
-        assertconv([
-            'nat reflect add interface lan0',
-        ], [
-                'nat.ipv4.reflect.100.interface: ge1',
-            ]);
+        assertconv(`
+            nat reflect add interface lan0
+            ---
+            nat.ipv4.reflect.100.interface: ge1
+        `);
     });
 
     it('session limit', () => {
-        assertconv([
-            'nat session restricted-per-ip 123',
-            'nat session restricted-per-private-ip 234',
-        ], [
-                'nat.ipv4.option.limit.session-per-ip: 123',
-                'nat.ipv4.option.limit.session-per-private-ip: 234',
-            ]);
+        assertconv(`
+            nat session restricted-per-ip 123
+            nat session restricted-per-private-ip 234
+            ---
+            nat.ipv4.option.limit.session-per-ip: 123
+            nat.ipv4.option.limit.session-per-private-ip: 234
+        `);
     });
 
     it('sip proxy', () => {
-        assertconv([
-            'nat proxy sip add port 5060 protocol udp',
-        ], [
-                'nat.proxy.sip.100.protocol: udp',
-                'nat.proxy.sip.100.port: 5060',
-            ]);
+        assertconv(`
+            nat proxy sip add port 5060 protocol udp
+            ---
+            nat.proxy.sip.100.protocol: udp
+            nat.proxy.sip.100.port: 5060
+        `);
     });
 
     it('snapt with port', () => {
-        assertconv([
-            'nat snapt add protocol tcp listen 80-80 forward 192.168.0.1 81-81 enable interface lan1',
-            'nat snapt add protocol tcp listen 90-90 forward 192.168.0.2 91-91 disable interface vlan0',
-        ], [
-                'nat.ipv4.snapt.100.forward.address: 192.168.0.1',
-                'nat.ipv4.snapt.100.forward.port: 81-81',
-                'nat.ipv4.snapt.100.interface: ge0',
-                'nat.ipv4.snapt.100.listen.port: 80-80',
-                'nat.ipv4.snapt.100.protocol: tcp'
-            ]);
-
+        assertconv(`
+            nat snapt add protocol tcp listen 80-80 forward 192.168.0.1 81-81 enable interface lan1
+            nat snapt add protocol tcp listen 90-90 forward 192.168.0.2 91-91 disable interface vlan0
+            ---
+            nat.ipv4.snapt.100.forward.address: 192.168.0.1
+            nat.ipv4.snapt.100.forward.port: 81-81
+            nat.ipv4.snapt.100.interface: ge0
+            nat.ipv4.snapt.100.listen.port: 80-80
+            nat.ipv4.snapt.100.protocol: tcp
+        `);
     });
 
     it('snapt without port', () => {
-        assertconv([
-            'nat snapt add protocol 41 forward 192.168.0.6 enable interface vlan0',
-        ], [
-                'nat.ipv4.snapt.100.forward.address: 192.168.0.6',
-                'nat.ipv4.snapt.100.interface: vlan0',
-                'nat.ipv4.snapt.100.protocol: 41'
-            ]);
+        assertconv(`
+            nat snapt add protocol 41 forward 192.168.0.6 enable interface vlan0
+            ---
+            nat.ipv4.snapt.100.forward.address: 192.168.0.6
+            nat.ipv4.snapt.100.interface: vlan0
+            nat.ipv4.snapt.100.protocol: 41
+        `);
     });
 
     it('snapt add default', () => {
@@ -1628,38 +1642,38 @@ describe('nat', () => {
     });
 
     it('static', () => {
-        assertconv([
-            'nat static add 192.168.0.1 198.51.100.1 interface vlan0',
-        ], [
-                'nat.ipv4.snat.100.private: 192.168.0.1',
-                'nat.ipv4.snat.100.global: 198.51.100.1',
-                'nat.ipv4.snat.100.interface: vlan0',
-            ]);
+        assertconv(`
+            nat static add 192.168.0.1 198.51.100.1 interface vlan0
+            ---
+            nat.ipv4.snat.100.private: 192.168.0.1
+            nat.ipv4.snat.100.global: 198.51.100.1
+            nat.ipv4.snat.100.interface: vlan0
+        `);
     });
 
     it('timeout', () => {
-        assertconv([
-            'nat timeout 123',
-            'nat timeout protocol tcp-synonly 234',
-        ], [
-                'nat.ipv4.timeout: 123',
-                'nat.ipv4.timeout.tcp-synonly: 234',
-            ]);
+        assertconv(`
+            nat timeout 123
+            nat timeout protocol tcp-synonly 234
+            ---
+            nat.ipv4.timeout: 123
+            nat.ipv4.timeout.tcp-synonly: 234
+        `);
     });
 
     it('upnp', () => {
-        assertconv([
-            'nat upnp on',
-            'nat upnp interface lan1',
-            'nat upnp timeout 1234',
-            'nat upnp timeout type arp',
-        ], [
-                'upnp.service: enable',
-                'upnp.interface: ge0',
-                'upnp.listen.0.interface: ge1',
-                'upnp.timeout: 1234',
-                'upnp.timeout-type: arp',
-            ]);
+        assertconv(`
+            nat upnp on
+            nat upnp interface lan1
+            nat upnp timeout 1234
+            nat upnp timeout type arp
+            ---
+            upnp.service: enable
+            upnp.interface: ge0
+            upnp.listen.0.interface: ge1
+            upnp.timeout: 1234
+            upnp.timeout-type: arp
+        `);
     });
 });
 
@@ -1679,26 +1693,26 @@ describe('nat6', () => {
 
 describe('ntp', () => {
     it('ntp server', () => {
-        assertconv([
-            'ntp enable',
-            'ntp server add 10.0.0.1',
-        ], [
-                'ntp.service: enable',
-                'ntp.server: enable',
-                'ntp.client.100.address: 10.0.0.1',
-            ]);
+        assertconv(`
+            ntp enable
+            ntp server add 10.0.0.1
+            ---
+            ntp.service: enable
+            ntp.server: enable
+            ntp.client.100.address: 10.0.0.1
+        `);
     });
 
     it('ntp client', () => {
-        assertconv([
-            'ntp enable',
-            'ntp mode client',
-            'ntp server add 1.1.1.2',
-        ], [
-                'ntp.service: enable',
-                'ntp.server: disable',
-                'ntp.client.100.address: 1.1.1.2',
-            ]);
+        assertconv(`
+            ntp enable
+            ntp mode client
+            ntp server add 1.1.1.2
+            ---
+            ntp.service: enable
+            ntp.server: disable
+            ntp.client.100.address: 1.1.1.2
+        `);
     });
 
     it('accepts compatibility syntax', () => {
@@ -1776,8 +1790,11 @@ describe('ppp', () => {
 
 describe('pppac', () => {
     it('option', () => {
-        assertconv('pppac option session-limit on',
-            'option.pppac.session-limit: enable');
+        assertconv(`
+            pppac option session-limit on
+            ---
+            option.pppac.session-limit: enable
+        `);
     });
 
     it('minimam l2tp/ipsec server', () => {
@@ -1892,46 +1909,45 @@ describe('pppac', () => {
 
 describe('proxyarp', () => {
     it('proxyarp', () => {
-        assertconv([
-            'proxyarp enable',
-            'proxyarp add FOO interface lan0 address 192.168.0.1 mac-address 02:04:06:08:0a:0c',
-        ], [
-            'proxyarp.100.interface: ge1',
-            'proxyarp.100.ipv4-address: 192.168.0.1',
-            'proxyarp.100.mac-address: 02:04:06:08:0a:0c',
-        ])
-
+        assertconv(`
+            proxyarp enable
+            proxyarp add FOO interface lan0 address 192.168.0.1 mac-address 02:04:06:08:0a:0c
+            ---
+            proxyarp.100.interface: ge1
+            proxyarp.100.ipv4-address: 192.168.0.1
+            proxyarp.100.mac-address: 02:04:06:08:0a:0c
+        `);
     });
 });
 
 describe('resolver', () => {
     it('resolver', () => {
-        assertconv([
-            'resolver enable',
-            'resolver address add ipcp',
-            'resolver address add 192.168.0.1',
-            'resolver domain example.jp',
-            'resolver host-database add a.example.jp address 10.0.0.1,10.0.0.2',
-        ], [
-              'resolver.100.address: ipcp',
-              'resolver.200.address: 192.168.0.1',
-              'resolver.domain: example.jp',
-              'resolver.host-database.100.address: 10.0.0.1',
-              'resolver.host-database.100.hostname: a.example.jp',
-              'resolver.host-database.200.address: 10.0.0.2',
-              'resolver.host-database.200.hostname: a.example.jp',
-              'resolver.service: enable',
-        ]);
+        assertconv(`
+            resolver enable
+            resolver address add ipcp
+            resolver address add 192.168.0.1
+            resolver domain example.jp
+            resolver host-database add a.example.jp address 10.0.0.1,10.0.0.2
+            ---
+            resolver.100.address: ipcp
+            resolver.200.address: 192.168.0.1
+            resolver.domain: example.jp
+            resolver.host-database.100.address: 10.0.0.1
+            resolver.host-database.100.hostname: a.example.jp
+            resolver.host-database.200.address: 10.0.0.2
+            resolver.host-database.200.hostname: a.example.jp
+            resolver.service: enable
+        `);
     });
 
     it('"ipcp-auto" is converted to "ipcp"', () => {
-        assertconv([
-            'resolver enable',
-            'resolver address add ipcp-auto',
-        ], [
-            'resolver.100.address: ipcp',
-            'resolver.service: enable',
-        ]);
+        assertconv(`
+            resolver enable
+            resolver address add ipcp-auto
+            ---
+            resolver.100.address: ipcp
+            resolver.service: enable
+        `);
     });
 
     // resolver 機能で複数のサーバを指定した場合に実際に DNS 問い合わせが送信される順番は
@@ -2000,297 +2016,301 @@ describe('route', () => {
     });
 
     it('RIP with authenticaiton', () => {
-        assertconv([
-            'route dynamic auth-key add FOO type plain-text password himitsu',
-            'route dynamic rip enable',
-            'route dynamic rip update-timer 5',
-            'route dynamic rip expire-timer 30',
-            'route dynamic rip garbage-collection-timer 20',
-            'route dynamic rip interface lan0 enable',
-            'route dynamic rip interface lan0 version ripv2',
-            'route dynamic rip interface lan0 authentication enable',
-            'route dynamic rip interface lan0 authentication auth-key FOO',
-        ], [
-            'rip.interface.100.authentication.plain-text.password: himitsu',
-            'rip.interface.100.authentication.type: plain-text',
-            'rip.interface.100.interface: ge1',
-            'rip.interface.100.version: ripv2',
-            'rip.timer.update: 5',
-            'rip.timer.expire: 30',
-            'rip.timer.garbage-collection: 20',
-        ]);
+        assertconv(`
+            route dynamic auth-key add FOO type plain-text password himitsu
+            route dynamic rip enable
+            route dynamic rip update-timer 5
+            route dynamic rip expire-timer 30
+            route dynamic rip garbage-collection-timer 20
+            route dynamic rip interface lan0 enable
+            route dynamic rip interface lan0 version ripv2
+            route dynamic rip interface lan0 authentication enable
+            route dynamic rip interface lan0 authentication auth-key FOO
+            ---
+            rip.interface.100.authentication.plain-text.password: himitsu
+            rip.interface.100.authentication.type: plain-text
+            rip.interface.100.interface: ge1
+            rip.interface.100.version: ripv2
+            rip.timer.update: 5
+            rip.timer.expire: 30
+            rip.timer.garbage-collection: 20
+        `);
     });
 
     it('redistribute with route-filter', () => {
-        assertconv([
-            'route dynamic route-filter add OSPF network 192.168.0.0/16 interface vlan0 pass set-metric 4',
-            'route dynamic ospf enable',
-            'route dynamic ospf router-id 192.168.0.1',
-            'route dynamic ospf enable',
-            'route dynamic ospf area add 0.0.0.0',
-            'route dynamic ospf link add lan0 area 0.0.0.0',
-            'route dynamic redistribute rip-to-ospf enable metric 30 metric-type 1 route-filter OSPF',
-        ], [
-            'ospf.router-id: 192.168.0.1',
-            'ospf.area.100.id: 0.0.0.0',
-            'ospf.link.100.interface: ge1',
-            'ospf.link.100.area: 0.0.0.0',
-            'ospf.redistribute-from.rip.redistribute: enable',
-            'ospf.redistribute-from.rip.set.metric: 30',
-            'ospf.redistribute-from.rip.set.metric-type: 1',
-            'ospf.redistribute-from.rip.filter.100.action: pass',
-            'ospf.redistribute-from.rip.filter.100.match.prefix: 192.168.0.0/16',
-            'ospf.redistribute-from.rip.filter.100.match.interface: vlan0',
-            'ospf.redistribute-from.rip.filter.100.set.metric: 4',
-        ]);
+        assertconv(`
+            route dynamic route-filter add OSPF network 192.168.0.0/16 interface vlan0 pass set-metric 4
+            route dynamic ospf enable
+            route dynamic ospf router-id 192.168.0.1
+            route dynamic ospf enable
+            route dynamic ospf area add 0.0.0.0
+            route dynamic ospf link add lan0 area 0.0.0.0
+            route dynamic redistribute rip-to-ospf enable metric 30 metric-type 1 route-filter OSPF
+            ---
+            ospf.router-id: 192.168.0.1
+            ospf.area.100.id: 0.0.0.0
+            ospf.link.100.interface: ge1
+            ospf.link.100.area: 0.0.0.0
+            ospf.redistribute-from.rip.redistribute: enable
+            ospf.redistribute-from.rip.set.metric: 30
+            ospf.redistribute-from.rip.set.metric-type: 1
+            ospf.redistribute-from.rip.filter.100.action: pass
+            ospf.redistribute-from.rip.filter.100.match.prefix: 192.168.0.0/16
+            ospf.redistribute-from.rip.filter.100.match.interface: vlan0
+            ospf.redistribute-from.rip.filter.100.set.metric: 4
+        `);
     });
 
     it('redistribute to ospf without route-filter', () => {
-        assertconv([
-            'route dynamic auth-key add FOUR type md5 keyid 6 password seven',
-            'route dynamic ospf enable',
-            'route dynamic ospf router-id 192.168.0.1',
-            'route dynamic ospf enable',
-            'route dynamic ospf area add 0.0.0.0',
-            'route dynamic ospf link add lan0 area 0.0.0.0 authentication auth-key FOUR',
-            'route dynamic redistribute static-to-ospf enable metric 123 metric-type 1',
-            'route dynamic redistribute rip-to-ospf enable',
-        ], [
-            'ospf.router-id: 192.168.0.1',
-            'ospf.area.100.id: 0.0.0.0',
-            'ospf.link.100.interface: ge1',
-            'ospf.link.100.area: 0.0.0.0',
-            'ospf.link.100.authentication.type: md5',
-            'ospf.link.100.authentication.md5.key-id: 6',
-            'ospf.link.100.authentication.md5.secret-key: seven',
-            'ospf.redistribute-from.static.redistribute: enable',
-            'ospf.redistribute-from.static.set.metric-type: 1',
-            'ospf.redistribute-from.static.set.metric: 123',
-            'ospf.redistribute-from.rip.redistribute: enable',
-        ]);
+        assertconv(`
+            route dynamic auth-key add FOUR type md5 keyid 6 password seven
+            route dynamic ospf enable
+            route dynamic ospf router-id 192.168.0.1
+            route dynamic ospf enable
+            route dynamic ospf area add 0.0.0.0
+            route dynamic ospf link add lan0 area 0.0.0.0 authentication auth-key FOUR
+            route dynamic redistribute static-to-ospf enable metric 123 metric-type 1
+            route dynamic redistribute rip-to-ospf enable
+            ---
+            ospf.router-id: 192.168.0.1
+            ospf.area.100.id: 0.0.0.0
+            ospf.link.100.interface: ge1
+            ospf.link.100.area: 0.0.0.0
+            ospf.link.100.authentication.type: md5
+            ospf.link.100.authentication.md5.key-id: 6
+            ospf.link.100.authentication.md5.secret-key: seven
+            ospf.redistribute-from.static.redistribute: enable
+            ospf.redistribute-from.static.set.metric-type: 1
+            ospf.redistribute-from.static.set.metric: 123
+            ospf.redistribute-from.rip.redistribute: enable
+        `);
     });
 
     describe('OSPF', () => {
         it('should generate no ospf lines if ospf is disabled', () => {
-            assertconv([
-                'route dynamic ospf router-id 192.168.0.1',
-                'route dynamic ospf disable',
-                'route dynamic ospf area add 0.0.0.0',
-                'route dynamic ospf link add lan0 area 0.0.0.0',
-                'route dynamic redistribute connected-to-ospf enable',
-                'route dynamic redistribute static-to-ospf enable',
-                'route dynamic redistribute rip-to-ospf enable',
-                'route dynamic redistribute bgp-to-ospf enable',
-            ], []);
+            assertconv(`
+                route dynamic ospf router-id 192.168.0.1
+                route dynamic ospf disable
+                route dynamic ospf area add 0.0.0.0
+                route dynamic ospf link add lan0 area 0.0.0.0
+                route dynamic redistribute connected-to-ospf enable
+                route dynamic redistribute static-to-ospf enable
+                route dynamic redistribute rip-to-ospf enable
+                route dynamic redistribute bgp-to-ospf enable
+                ---
+            `);
         });
     });
 
     describe('BGP', () => {
         it('minimal', () => {
-            assertconv([
-                'route dynamic bgp my-as-number 65001',
-                'route dynamic bgp router-id 192.168.0.1',
-                'route dynamic bgp enable',
-                'route dynamic bgp neighbor add 192.168.0.2 remote-as 65002 enable'
-            ], [
-                "bgp.my-as-number: 65001",
-                "bgp.router-id: 192.168.0.1",
-                "bgp.neighbor.100.address: 192.168.0.2",
-                "bgp.neighbor.100.remote-as: 65002"
-            ]);
+            assertconv(`
+                route dynamic bgp my-as-number 65001
+                route dynamic bgp router-id 192.168.0.1
+                route dynamic bgp enable
+                route dynamic bgp neighbor add 192.168.0.2 remote-as 65002 enable
+                ---
+                bgp.my-as-number: 65001
+                bgp.router-id: 192.168.0.1
+                bgp.neighbor.100.address: 192.168.0.2
+                bgp.neighbor.100.remote-as: 65002
+            `);
         });
 
         it('can prepend AS-path to routes from neighbors', () => {
-            assertconv([
-                'route dynamic route-filter add ASPATH network 10.0.0.0/8 pass set-as-path-prepend 65009,65008',
-                'route dynamic bgp my-as-number 65001',
-                'route dynamic bgp router-id 192.168.0.1',
-                'route dynamic bgp enable',
-                'route dynamic bgp neighbor add 192.168.0.2 remote-as 65002 in-route-filter ASPATH',
-            ], [
-                "bgp.neighbor.100.address: 192.168.0.2",
-                "bgp.neighbor.100.filter.in.100.action: pass",
-                "bgp.neighbor.100.filter.in.100.match.prefix: 10.0.0.0/8",
-                "bgp.neighbor.100.filter.in.100.set.as-path-prepend: \"65009 65008\"",
-                "bgp.neighbor.100.remote-as: 65002",
-                "bgp.my-as-number: 65001",
-                "bgp.router-id: 192.168.0.1"
-            ]);
+            assertconv(`
+                route dynamic route-filter add ASPATH network 10.0.0.0/8 pass set-as-path-prepend 65009,65008
+                route dynamic bgp my-as-number 65001
+                route dynamic bgp router-id 192.168.0.1
+                route dynamic bgp enable
+                route dynamic bgp neighbor add 192.168.0.2 remote-as 65002 in-route-filter ASPATH
+                ---
+                bgp.neighbor.100.address: 192.168.0.2
+                bgp.neighbor.100.filter.in.100.action: pass
+                bgp.neighbor.100.filter.in.100.match.prefix: 10.0.0.0/8
+                bgp.neighbor.100.filter.in.100.set.as-path-prepend: "65009 65008"
+                bgp.neighbor.100.remote-as: 65002
+                bgp.my-as-number: 65001
+                bgp.router-id: 192.168.0.1
+            `);
         });
 
         it('can import redistributed routes', () => {
-            assertconv([
-                'route dynamic route-filter add A network 10.0.0.0/8 interface lan0 '
-                + 'pass set-metric 2 set-weight 3 set-as-path-prepend 4',
-                'route dynamic bgp my-as-number 65001',
-                'route dynamic bgp router-id 192.168.0.1',
-                'route dynamic bgp enable',
-                'route dynamic bgp neighbor add 192.168.0.2 remote-as 65002',
-                'route dynamic redistribute rip-to-bgp enable metric 5 route-filter A',
-            ], [
-                "bgp.ipv4.redistribute-from.rip.redistribute: enable",
-                "bgp.ipv4.redistribute-from.rip.set.metric: 5",
-                "bgp.ipv4.redistribute-from.rip.filter.100.action: pass",
-                "bgp.ipv4.redistribute-from.rip.filter.100.match.prefix: 10.0.0.0/8",
-                "bgp.ipv4.redistribute-from.rip.filter.100.match.interface: ge1",
-                "bgp.ipv4.redistribute-from.rip.filter.100.set.as-path-prepend: 4",
-                "bgp.ipv4.redistribute-from.rip.filter.100.set.metric: 2",
-                "bgp.ipv4.redistribute-from.rip.filter.100.set.weight: 3",
-                "bgp.neighbor.100.address: 192.168.0.2",
-                "bgp.neighbor.100.remote-as: 65002",
-                "bgp.my-as-number: 65001",
-                "bgp.router-id: 192.168.0.1"
-            ]);
+            assertconv(`
+                route dynamic route-filter add A network 10.0.0.0/8 interface lan0 pass set-metric 2 set-weight 3 set-as-path-prepend 4
+                route dynamic bgp my-as-number 65001
+                route dynamic bgp router-id 192.168.0.1
+                route dynamic bgp enable
+                route dynamic bgp neighbor add 192.168.0.2 remote-as 65002
+                route dynamic redistribute rip-to-bgp enable metric 5 route-filter A
+                ---
+                bgp.ipv4.redistribute-from.rip.redistribute: enable
+                bgp.ipv4.redistribute-from.rip.set.metric: 5
+                bgp.ipv4.redistribute-from.rip.filter.100.action: pass
+                bgp.ipv4.redistribute-from.rip.filter.100.match.prefix: 10.0.0.0/8
+                bgp.ipv4.redistribute-from.rip.filter.100.match.interface: ge1
+                bgp.ipv4.redistribute-from.rip.filter.100.set.as-path-prepend: 4
+                bgp.ipv4.redistribute-from.rip.filter.100.set.metric: 2
+                bgp.ipv4.redistribute-from.rip.filter.100.set.weight: 3
+                bgp.neighbor.100.address: 192.168.0.2
+                bgp.neighbor.100.remote-as: 65002
+                bgp.my-as-number: 65001
+                bgp.router-id: 192.168.0.1
+            `);
         });
     });
 });
 
 describe('route6', () => {
     it('static routes', () => {
-        assertconv([
-            'route6 add default router-advertisement interface lan2 distance 3',
-        ], [
-                'route.ipv6.100.destination: default',
-                'route.ipv6.100.gateway: router-advertisement',
-                'route.ipv6.100.router-advertisement-interface: ge2',
-                'route.ipv6.100.distance: 3',
-            ]);
+        assertconv(`
+            route6 add default router-advertisement interface lan2 distance 3
+            ---
+            route.ipv6.100.destination: default
+            route.ipv6.100.gateway: router-advertisement
+            route.ipv6.100.router-advertisement-interface: ge2
+            route.ipv6.100.distance: 3
+        `);
     });
 });
 
 describe('route6 dynamic ospf', () => {
     it('minimal', () => {
-        assertconv([
-            'route6 dynamic ospf router-id 192.168.0.1',
-            'route6 dynamic ospf enable',
-            'route6 dynamic ospf area add 0.0.0.0',
-            'route6 dynamic ospf link add lan0 area 0.0.0.0',
-        ], [
-            "ospf6.area.100.id: 0.0.0.0",
-            "ospf6.link.100.area: 0.0.0.0",
-            "ospf6.link.100.interface: ge1",
-            "ospf6.router-id: 192.168.0.1",
-        ]);
+        assertconv(`
+            route6 dynamic ospf router-id 192.168.0.1
+            route6 dynamic ospf enable
+            route6 dynamic ospf area add 0.0.0.0
+            route6 dynamic ospf link add lan0 area 0.0.0.0
+            ---
+            ospf6.area.100.id: 0.0.0.0
+            ospf6.link.100.area: 0.0.0.0
+            ospf6.link.100.interface: ge1
+            ospf6.router-id: 192.168.0.1
+        `);
     });
 
     it('full', () => {
-        assertconv([
-            'route6 dynamic ospf router-id 192.168.0.1',
-            'route6 dynamic ospf enable',
-            'route6 dynamic ospf area add 0.0.0.0',
-            'route6 dynamic ospf area add 0.0.0.1 range 1::/16',
-            'route6 dynamic ospf link add lan0 area 0.0.0.0 cost 2 hello-interval 3 '
-            + 'dead-interval 4 retransmit-interval 5 transmit-delay 6 priority 7 instance-id 8 '
-            + 'passive-interface off',
-        ], [
-            "ospf6.area.100.id: 0.0.0.0",
-            "ospf6.area.200.id: 0.0.0.1",
-            "ospf6.area.200.range.0.prefix: 1::/16",
-            "ospf6.link.100.area: 0.0.0.0",
-            "ospf6.link.100.cost: 2",
-            "ospf6.link.100.dead-interval: 4",
-            "ospf6.link.100.hello-interval: 3",
-            "ospf6.link.100.instance-id: 8",
-            "ospf6.link.100.interface: ge1",
-            "ospf6.link.100.passive-interface: disable",
-            "ospf6.link.100.priority: 7",
-            "ospf6.link.100.retransmit-interval: 5",
-            "ospf6.link.100.transmit-delay: 6",
-            "ospf6.router-id: 192.168.0.1",
-        ]);
+        assertconv(`
+            route6 dynamic ospf router-id 192.168.0.1
+            route6 dynamic ospf enable
+            route6 dynamic ospf area add 0.0.0.0
+            route6 dynamic ospf area add 0.0.0.1 range 1::/16
+            route6 dynamic ospf link add lan0 area 0.0.0.0 cost 2 hello-interval 3 dead-interval 4 retransmit-interval 5 transmit-delay 6 priority 7 instance-id 8 passive-interface off
+            ---
+            ospf6.area.100.id: 0.0.0.0
+            ospf6.area.200.id: 0.0.0.1
+            ospf6.area.200.range.0.prefix: 1::/16
+            ospf6.link.100.area: 0.0.0.0
+            ospf6.link.100.cost: 2
+            ospf6.link.100.dead-interval: 4
+            ospf6.link.100.hello-interval: 3
+            ospf6.link.100.instance-id: 8
+            ospf6.link.100.interface: ge1
+            ospf6.link.100.passive-interface: disable
+            ospf6.link.100.priority: 7
+            ospf6.link.100.retransmit-interval: 5
+            ospf6.link.100.transmit-delay: 6
+            ospf6.router-id: 192.168.0.1
+        `);
     });
 
     it('is disabled', () => {
-        assertconv('route6 dynamic ospf disable', '');
+        assertconv(`
+            route6 dynamic ospf disable
+            ---
+        `);
     });
 
     it('is redistributed from...', () => {
-        assertconv([
-            'route6 dynamic ospf router-id 192.168.0.1',
-            'route6 dynamic ospf enable',
-            'route6 dynamic redistribute connected-to-ospf enable',
-            'route6 dynamic redistribute ripng-to-ospf enable metric 2',
-            'route6 dynamic redistribute static-to-ospf enable metric 3 metric-type 2',
-        ], [
-            "ospf6.redistribute-from.connected.redistribute: enable",
-            "ospf6.redistribute-from.ripng.redistribute: enable",
-            "ospf6.redistribute-from.ripng.set.metric: 2",
-            "ospf6.redistribute-from.static.redistribute: enable",
-            "ospf6.redistribute-from.static.set.metric: 3",
-            "ospf6.redistribute-from.static.set.metric-type: 2",
-            "ospf6.router-id: 192.168.0.1",
-        ]);
+        assertconv(`
+            route6 dynamic ospf router-id 192.168.0.1
+            route6 dynamic ospf enable
+            route6 dynamic redistribute connected-to-ospf enable
+            route6 dynamic redistribute ripng-to-ospf enable metric 2
+            route6 dynamic redistribute static-to-ospf enable metric 3 metric-type 2
+            ---
+            ospf6.redistribute-from.connected.redistribute: enable
+            ospf6.redistribute-from.ripng.redistribute: enable
+            ospf6.redistribute-from.ripng.set.metric: 2
+            ospf6.redistribute-from.static.redistribute: enable
+            ospf6.redistribute-from.static.set.metric: 3
+            ospf6.redistribute-from.static.set.metric-type: 2
+            ospf6.router-id: 192.168.0.1
+        `);
     });
 });
 
 describe('route6 dynamic ripng', () => {
     it('minimal', () => {
-        assertconv([
-            'route6 dynamic ripng enable',
-            "route6 dynamic ripng interface lan0 enable",
-        ], [
-            "ripng.interface.100.interface: ge1",
-        ]);
+        assertconv(`
+            route6 dynamic ripng enable
+            route6 dynamic ripng interface lan0 enable
+            ---
+            ripng.interface.100.interface: ge1
+        `);
     });
 
     it('full', () => {
-        assertconv([
-            "route6 dynamic route-filter add RIPNG network 1::/32 metric 2 pass set-metric 3",
-            "route6 dynamic ripng enable",
-            "route6 dynamic ripng interface lan0 enable supply-only",
-            "route6 dynamic ripng interface lan0 aggregate add 1::/16 metric 2",
-            "route6 dynamic ripng interface lan0 route-filter out RIPNG",
-            "route6 dynamic ripng interface vlan0 enable listen-only",
-            "route6 dynamic ripng default-route-originate enable",
-        ], [
-            "ripng.default-route-originate.originate: enable",
-            "ripng.interface.100.aggregate.100.metric: 2",
-            "ripng.interface.100.aggregate.100.prefix: 1::/16",
-            "ripng.interface.100.filter.out.100.action: pass",
-            "ripng.interface.100.filter.out.100.match.prefix: 1::/32",
-            "ripng.interface.100.filter.out.100.set.metric: 3",
-            "ripng.interface.100.interface: ge1",
-            "ripng.interface.100.mode: supply-only",
-            "ripng.interface.200.interface: vlan0",
-            "ripng.interface.200.mode: listen-only",
-        ])
+        assertconv(`
+            route6 dynamic route-filter add RIPNG network 1::/32 metric 2 pass set-metric 3
+            route6 dynamic ripng enable
+            route6 dynamic ripng interface lan0 enable supply-only
+            route6 dynamic ripng interface lan0 aggregate add 1::/16 metric 2
+            route6 dynamic ripng interface lan0 route-filter out RIPNG
+            route6 dynamic ripng interface vlan0 enable listen-only
+            route6 dynamic ripng default-route-originate enable
+            ---
+            ripng.default-route-originate.originate: enable
+            ripng.interface.100.aggregate.100.metric: 2
+            ripng.interface.100.aggregate.100.prefix: 1::/16
+            ripng.interface.100.filter.out.100.action: pass
+            ripng.interface.100.filter.out.100.match.prefix: 1::/32
+            ripng.interface.100.filter.out.100.set.metric: 3
+            ripng.interface.100.interface: ge1
+            ripng.interface.100.mode: supply-only
+            ripng.interface.200.interface: vlan0
+            ripng.interface.200.mode: listen-only
+        `);
     });
 
     it('is disabled', () => {
-        assertconv('route6 dynamic ripng disable', '');
+        assertconv(`
+            route6 dynamic ripng disable
+            ---
+        `);
     });
 
     it('is redistributed from...', () => {
-        assertconv([
-            'route6 dynamic ripng enable',
-            'route6 dynamic redistribute connected-to-ripng enable',
-            'route6 dynamic redistribute ospf-to-ripng enable',
-            'route6 dynamic redistribute static-to-ripng enable metric 2',
-        ], [
-            "ripng.redistribute-from.connected.redistribute: enable",
-            "ripng.redistribute-from.ospf6.redistribute: enable",
-            "ripng.redistribute-from.static.redistribute: enable",
-            "ripng.redistribute-from.static.set.metric: 2",
-        ]);
+        assertconv(`
+            route6 dynamic ripng enable
+            route6 dynamic redistribute connected-to-ripng enable
+            route6 dynamic redistribute ospf-to-ripng enable
+            route6 dynamic redistribute static-to-ripng enable metric 2
+            ---
+            ripng.redistribute-from.connected.redistribute: enable
+            ripng.redistribute-from.ospf6.redistribute: enable
+            ripng.redistribute-from.static.redistribute: enable
+            ripng.redistribute-from.static.set.metric: 2
+        `);
     });
 });
 
 describe('rtadvd', () => {
     it('rtadvd', () => {
-        assertconv([
-            'rtadvd enable',
-            'rtadvd interface lan0 enable',
-            'rtadvd interface lan0 advertise manual',
-            'rtadvd interface lan0 advertise add interface-prefix valid-lifetime 20 preferred-lifetime 10 onlink-flag off autonomous-flag off',
-        ], [
-                'router-advertisement.service: enable',
-                'router-advertisement.100.interface: ge1',
-                'router-advertisement.100.advertise.100.prefix: auto',
-                'router-advertisement.100.advertise.100.preferred-lifetime: 10',
-                'router-advertisement.100.advertise.100.valid-lifetime: 20',
-                'router-advertisement.100.advertise.100.autonomous-flag: disable',
-                'router-advertisement.100.advertise.100.onlink-flag: disable',
-            ]);
+        assertconv(`
+            rtadvd enable
+            rtadvd interface lan0 enable
+            rtadvd interface lan0 advertise manual
+            rtadvd interface lan0 advertise add interface-prefix valid-lifetime 20 preferred-lifetime 10 onlink-flag off autonomous-flag off
+            ---
+            router-advertisement.service: enable
+            router-advertisement.100.interface: ge1
+            router-advertisement.100.advertise.100.prefix: auto
+            router-advertisement.100.advertise.100.preferred-lifetime: 10
+            router-advertisement.100.advertise.100.valid-lifetime: 20
+            router-advertisement.100.advertise.100.autonomous-flag: disable
+            router-advertisement.100.advertise.100.onlink-flag: disable
+        `);
     });
 
     it('per-interface parameters', () => {
@@ -2324,101 +2344,100 @@ describe('rtadvd', () => {
 
 describe('snmp', () => {
     it('snmp basic configuration', () => {
-        assertconv([
-            'snmp enable',
-            'snmp community HIMITSU',
-            'snmp sysname SEIL/X4',
-            'snmp trap enable',
-            'snmp trap add 10.0.0.1',
-            'snmp trap add 10.0.0.2',
-            'snmp trap watch add 10.0.0.3 errors 4 interval 5 interval-fail 6',
-            'snmp trap watch add 10.0.0.4',
-            'snmp trap src 10.0.0.5',
-        ], [
-            'snmp.service: enable',
-            'snmp.community: HIMITSU',
-            'snmp.sysname: SEIL/X4',
-            'snmp.trap.agent-address: 10.0.0.5',
-            'snmp.trap.service: enable',
-            'snmp.trap.host.100.address: 10.0.0.1',
-            'snmp.trap.host.200.address: 10.0.0.2',
-            'snmp.trap.watch.100.address: 10.0.0.3',
-            'snmp.trap.watch.100.errors: 4',
-            'snmp.trap.watch.100.interval: 5',
-            'snmp.trap.watch.100.interval-fail: 6',
-            'snmp.trap.watch.100.trap-index: 1',
-            'snmp.trap.watch.200.address: 10.0.0.4',
-            'snmp.trap.watch.200.trap-index: 2',
-        ]);
+        assertconv(`
+            snmp enable
+            snmp community HIMITSU
+            snmp sysname SEIL/X4
+            snmp trap enable
+            snmp trap add 10.0.0.1
+            snmp trap add 10.0.0.2
+            snmp trap watch add 10.0.0.3 errors 4 interval 5 interval-fail 6
+            snmp trap watch add 10.0.0.4
+            snmp trap src 10.0.0.5
+            ---
+            snmp.service: enable
+            snmp.community: HIMITSU
+            snmp.sysname: SEIL/X4
+            snmp.trap.agent-address: 10.0.0.5
+            snmp.trap.service: enable
+            snmp.trap.host.100.address: 10.0.0.1
+            snmp.trap.host.200.address: 10.0.0.2
+            snmp.trap.watch.100.address: 10.0.0.3
+            snmp.trap.watch.100.errors: 4
+            snmp.trap.watch.100.interval: 5
+            snmp.trap.watch.100.interval-fail: 6
+            snmp.trap.watch.100.trap-index: 1
+            snmp.trap.watch.200.address: 10.0.0.4
+            snmp.trap.watch.200.trap-index: 2
+        `);
     });
 });
 
 describe('sshd', () => {
     it('password-authentication system-default, sshd enable', () => {
-        assertconv([
-            'sshd enable',
-        ], [
-                'sshd.password-authentication: enable',
-                'sshd.service: enable',
-            ]);
+        assertconv(`
+            sshd enable
+            ---
+            sshd.password-authentication: enable
+            sshd.service: enable
+        `);
     });
 
     it('password-authentication on, sshd enable', () => {
-        assertconv([
-            'sshd password-authentication on',
-            'sshd enable',
-        ], [
-                'sshd.password-authentication: enable',
-                'sshd.service: enable',
-            ]);
+        assertconv(`
+            sshd password-authentication on
+            sshd enable
+            ---
+            sshd.password-authentication: enable
+            sshd.service: enable
+        `);
     });
 
     it('password-authentication off, sshd enable', () => {
-        assertconv([
-            'sshd password-authentication off',
-            'sshd enable',
-        ], [
-                'sshd.password-authentication: disable',
-                'sshd.service: enable',
-            ]);
+        assertconv(`
+            sshd password-authentication off
+            sshd enable
+            ---
+            sshd.password-authentication: disable
+            sshd.service: enable
+        `);
     });
 
     it('password-authentication system-default, sshd disable', () => {
-        assertconv([
-            'sshd disable',
-        ], [
-                'sshd.password-authentication: enable',
-                'sshd.service: disable',
-            ]);
+        assertconv(`
+            sshd disable
+            ---
+            sshd.password-authentication: enable
+            sshd.service: disable
+        `);
     });
 
     it('password-authentication on, sshd disable', () => {
-        assertconv([
-            'sshd password-authentication on',
-            'sshd disable',
-        ], [
-                'sshd.password-authentication: enable',
-                'sshd.service: disable',
-            ]);
+        assertconv(`
+            sshd password-authentication on
+            sshd disable
+            ---
+            sshd.password-authentication: enable
+            sshd.service: disable
+        `);
     });
 
     it('password-authentication off, sshd disable', () => {
-        assertconv([
-            'sshd password-authentication off',
-            'sshd disable',
-        ], [
-                'sshd.password-authentication: disable',
-                'sshd.service: disable',
-            ]);
+        assertconv(`
+            sshd password-authentication off
+            sshd disable
+            ---
+            sshd.password-authentication: disable
+            sshd.service: disable
+        `);
     });
 
     it('rsa host key', () => {
-        const key = "46,2d2d2d2d2d424547494e2d2d2d2d2d0a2d2d2d2d2d454e44205253412050524956415445204b45592d2d2d2d2d0a"
-        assertconv([
-            `sshd hostkey rsa ${key}`,
-        ], [
-                'sshd.hostkey: "-----BEGIN-----\\\\n-----END RSA PRIVATE KEY-----\\\\n"',
-            ]);
+        assertconv(`
+            sshd hostkey rsa 46,2d2d2d2d2d424547494e2d2d2d2d2d0a2d2d2d2d2d454e44205253412050524956415445204b45592d2d2d2d2d0a
+            ---
+            sshd.hostkey: "-----BEGIN-----\\\\n-----END RSA PRIVATE KEY-----\\\\n"
+        `);
     });
 });
 
@@ -2471,11 +2490,11 @@ describe('syslog', () => {
 
 describe('timezone', () => {
     it('timezone Japan', () => {
-        assertconv([
-            'timezone "Japan"'
-        ], [
-            'option.timezone: JST'
-        ]);
+        assertconv(`
+            timezone "Japan"
+            ---
+            option.timezone: JST
+        `);
     });
 });
 
@@ -2553,15 +2572,15 @@ describe('vrrp', () => {
 
 describe('vrrp3', () => {
     it('vrrp version 3', () => {
-        assertconv([
-            'vrrp3 add FOO interface lan0 vrid 3 address 172.16.0.112 priority 100',
-        ], [
-                'vrrp.vrouter.100.version: 3',
-                'vrrp.vrouter.100.interface: ge1',
-                'vrrp.vrouter.100.vrid: 3',
-                'vrrp.vrouter.100.address: 172.16.0.112',
-                'vrrp.vrouter.100.priority: 100',
-            ]);
+        assertconv(`
+            vrrp3 add FOO interface lan0 vrid 3 address 172.16.0.112 priority 100
+            ---
+            vrrp.vrouter.100.version: 3
+            vrrp.vrouter.100.interface: ge1
+            vrrp.vrouter.100.vrid: 3
+            vrrp.vrouter.100.address: 172.16.0.112
+            vrrp.vrouter.100.priority: 100
+        `);
     });
 
     it('all parameters', () => {
@@ -2629,7 +2648,10 @@ describe('vrrp3', () => {
 
 describe('vendor', () => {
     it('is deprecated', () => {
-        assertconv('vendor IIJ', '');
+        assertconv(`
+            vendor IIJ
+            ---
+        `);
     });
 });
 
