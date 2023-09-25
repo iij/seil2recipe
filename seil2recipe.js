@@ -151,15 +151,27 @@ class Note {
         this.memo.set('qos.class', { 'default': 'root' });
         this.memo.set('resolver.address', []);
 
-        this.if_mappings = {
-            'lan0': 'ge1',
-            'lan1': 'ge0',
-            'lan2': 'ge2',
-            'lan3': 'ge3',
-            'lan4': 'ge4',
-            'lan5': 'ge5',
-            'lan*': 'ge*'
-        };
+        if (target_device != 'ca10') {
+            this.if_mappings = {
+                'lan0': 'ge1',
+                'lan1': 'ge0',
+                'lan2': 'ge2',
+                'lan3': 'ge3',
+                'lan4': 'ge4',
+                'lan5': 'ge5',
+                'lan*': 'ge*'
+            };
+        } else {
+            this.if_mappings = {  // CA10
+                'lan0': 'ge5',
+                'lan1': 'ge4',
+                'lan2': 'ge0',
+                'lan3': 'ge1',
+                'lan4': 'ge2',
+                'lan5': 'ge3',
+                'lan*': 'ge*'
+            };
+        }
 
         //
         // Notes for tangled config parameters
@@ -571,6 +583,7 @@ class Device {
             'w2':    'SA-W2',
             'x4':    'SEIL/X4',
             'ayame': 'SEIL/x86 Ayame',
+            'ca10':  'SEIL CA10',
         }[shortname];
     }
 }

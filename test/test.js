@@ -2652,6 +2652,24 @@ describe('seil6', () => {
     });
 });
 
+describe('ca10', () => {
+    it('can be a target device', () => {
+        const c = new s2r.Converter('hostname foo\n', 'ca10');
+        assert.match(c.recipe_config, /^hostname: foo$/m);
+    });
+
+    it('ge4 is connected to upstream"', () => {
+        const c = new s2r.Converter(`
+            interface lan0 add 192.168.0.1/24
+            interface lan1 add dhcp
+            interface lan2 add 2001:db8::2/64
+        `, 'ca10');
+        assert.match(c.recipe_config, /^interface.ge4.ipv4.address: dhcp$/m);
+        assert.match(c.recipe_config, /^interface.ge5.ipv4.address: 192.168.0.1\/24$/m);
+        assert.match(c.recipe_config, /^interface.ge0.ipv6.address: 2001:db8::2\/64$/m);
+    });
+});
+
 describe('factory-config', () => {
     it('should be converted without script error', () => {
         const buf = fs.readFileSync('index.html');
