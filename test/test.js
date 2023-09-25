@@ -9,9 +9,6 @@ function assertconv(seil_config, recipe_config) {
     let target = 'test';
 
     if (typeof recipe_config == 'string') {
-        if (recipe_config == 'SEIL/X4') {
-            recipe_config = 'x4';
-        }
         if (['x4', 'ayame', 'ca10', 'w2'].includes(recipe_config)) {
             target = recipe_config;
             recipe_config = null;
@@ -1070,7 +1067,7 @@ describe('interface', () => {
             interface lan1 media 100baseTX
             ---
             interface.ge0p0.media: 100baseTX
-        `, 'SEIL/X4');
+        `, 'x4');
     });
 
     it('can change tcp-mss / tcp-mss6', () => {
@@ -1973,7 +1970,7 @@ describe('resolver', () => {
             resolver.100.address: 192.168.0.1
             resolver.200.address: 192.168.0.2
             resolver.300.address: dhcp
-        `, 'SEIL/X4');
+        `, 'x4');
     });
 
     it('config-order -> seil8', () => {
@@ -1988,7 +1985,7 @@ describe('resolver', () => {
             resolver.100.address: 192.168.0.1
             resolver.200.address: ipcp
             resolver.300.address: 192.168.0.2
-        `, 'SEIL/X4');
+        `, 'x4');
     });
 });
 
