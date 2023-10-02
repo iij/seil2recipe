@@ -36,8 +36,9 @@
         <div class="model">To:
           <select id="model-dst" v-model="selected">
             <option value="w2">SA-W2, W2L, W2S (5.33)</option>
-            <option value="x4" selected>SEIL/X4 (2.71)</option>
-            <option value="ayame">SEIL/x86 Ayame (2.71)</option>
+            <option value="x4" selected>SEIL/X4 (3.00)</option>
+            <option value="ayame">SEIL/x86 Ayame (3.00)</option>
+            <option value="ca10">SEIL CA10 (3.00)</option>
           </select>
         </div>
         <textarea id="recipeconfig" class="config-text" v-model="text" rows="20" cols="64" spellcheck="false"
@@ -87,15 +88,16 @@
         text: `hostname ""
 timezone "Japan"
 environment login-timer 300
-ppp add PPPOE-SAMPLE keepalive 30 ipcp enable ipcp-address on ipcp-dns on ipv6cp enable authentication-method chap identifier "" tcp-mss auto
+option ip monitor-linkstate on
+option ip update-connected-route on
+option ipv6 monitor-linkstate on
+option ipv6 update-connected-route on
+ppp add pppoe-sample keepalive 30 ipcp enable ipcp-address on ipcp-dns on ipv6cp enable authentication-method chap identifier "" tcp-mss auto
 interface lan0 media auto
 interface lan0 add 192.168.0.1/24
 interface lan1 media auto
 interface lan1 queue normal
 interface lan2 media auto
-interface lan3 media auto
-interface lan4 media auto
-interface lan5 media auto
 interface pppoe0 over lan1
 bridge disable
 bridge ip-bridging on
@@ -115,10 +117,10 @@ route6 dynamic ripng disable
 route6 dynamic redistribute static-to-ripng disable
 route6 dynamic redistribute connected-to-ripng enable
 route6 dynamic pim-sparse disable
-filter add seil_ctl_lan0 interface lan0 direction in action pass protocol tcp src 192.168.0.0/24 srcport 0-65535 dst self dstport 0-65535 state disable logging off enable
+filter add seil_ctl_lan0 interface lan0 direction in action pass protocol tcp srcport 0-65535 dst self dstport 0-65535 state disable logging off enable
 filter add telnetd_block interface any direction in action block protocol tcp srcport 0-65535 dst self dstport 23 state disable logging on enable
 filter add httpd_block interface any direction in action block protocol tcp srcport 0-65535 dst self dstport 80 state disable logging on enable
-filter6 add seil_ctl_lan0 interface lan0 direction in action pass protocol tcp src fe80::/10 srcport 0-65535 dst self dstport 0-65535 state disable logging off enable
+filter6 add seil_ctl_lan0 interface lan0 direction in action pass protocol tcp srcport 0-65535 dst self dstport 0-65535 state disable logging off enable
 filter6 add telnetd_block interface any direction in action block protocol tcpudp srcport 0-65535 dst self dstport 23 state disable logging on enable
 filter6 add httpd_block interface any direction in action block protocol tcpudp srcport 0-65535 dst self dstport 80 state disable logging on enable
 nat timeout 900

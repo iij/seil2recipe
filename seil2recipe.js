@@ -25,10 +25,10 @@
  */
 
 class Converter {
-    constructor(seilconfig, dst) {
+    constructor(seilconfig, target_device) {
         this.seilconfig  = seilconfig;
         this.conversions = [];
-        this.note        = new Note(dst);
+        this.note        = new Note(target_device);
 
         this.convert();
     }
@@ -134,13 +134,13 @@ Converter.defers = [];
 
 
 class Note {
-    constructor(dst) {
+    constructor(target_device) {
         this.indices = new Map();  // (prefix) -> (last index number)
         this.params  = new Map();
         this.ifindex = new Map();  // (prefix) -> (interface) -> (index)
         this.memo    = new Map();
         this.deps    = new DependencySet();
-        this.dst     = new Device(dst);
+        this.dst     = new Device(target_device);
 
         this.memo.set('bridge.group', new Map());
         this.memo.set('floatlink.interfaces', []);
@@ -151,15 +151,27 @@ class Note {
         this.memo.set('qos.class', { 'default': 'root' });
         this.memo.set('resolver.address', []);
 
-        this.if_mappings = {
-            'lan0': 'ge1',
-            'lan1': 'ge0',
-            'lan2': 'ge2',
-            'lan3': 'ge3',
-            'lan4': 'ge4',
-            'lan5': 'ge5',
-            'lan*': 'ge*'
-        };
+        if (target_device != 'ca10') {
+            this.if_mappings = {
+                'lan0': 'ge1',
+                'lan1': 'ge0',
+                'lan2': 'ge2',
+                'lan3': 'ge3',
+                'lan4': 'ge4',
+                'lan5': 'ge5',
+                'lan*': 'ge*'
+            };
+        } else {
+            this.if_mappings = {  // CA10
+                'lan0': 'ge5',
+                'lan1': 'ge4',
+                'lan2': 'ge0',
+                'lan3': 'ge1',
+                'lan4': 'ge2',
+                'lan5': 'ge3',
+                'lan*': 'ge*'
+            };
+        }
 
         //
         // Notes for tangled config parameters
@@ -257,8 +269,8 @@ class Conversion {
     //
     // Conversion Utility
     //
-    ifmap(new_name) {
-        return this.note.if_mappings[new_name] || new_name;
+    ifmap(old_name) {
+        return this.note.if_mappings[old_name] || old_name;
     }
 
     set_ifmap(old_name, new_name) {
@@ -571,6 +583,7 @@ class Device {
             'w2':    'SA-W2',
             'x4':    'SEIL/X4',
             'ayame': 'SEIL/x86 Ayame',
+            'ca10':  'SEIL CA10',
         }[shortname];
     }
 }
@@ -2438,16 +2451,29 @@ Converter.rules['interface'] = {
         'media': (conv, tokens) => {
             const ifname = conv.ifmap(tokens[1]);
             let media = tokens[3];
-            if (conv.devname != 'SEIL/x86 Ayame') {
+            if (conv.devname == 'SEIL/x86 Ayame') {
+                if (media != 'auto') {
+                    conv.notsupported(`media ${media}`);
+                }
+                conv.add(`interface.${ifname}.media`, 'auto');
+            } else {
                 switch (ifname) {
                     case 'ge0':
-                        conv.add('interface.ge0p0.media', media);
+                        if (conv.devname == 'SEIL CA10') {
+                            conv.add('interface.ge0.media', media);
+                        } else {
+                            conv.add('interface.ge0p0.media', media);
+                        }
                         break;
                     case 'ge1':
-                        conv.add('interface.ge1p0.media', media);
-                        conv.add('interface.ge1p1.media', media);
-                        conv.add('interface.ge1p2.media', media);
-                        conv.add('interface.ge1p3.media', media);
+                        if (conv.devname == 'SEIL CA10') {
+                            conv.add('interface.ge1.media', media);
+                        } else {
+                            conv.add('interface.ge1p0.media', media);
+                            conv.add('interface.ge1p1.media', media);
+                            conv.add('interface.ge1p2.media', media);
+                            conv.add('interface.ge1p3.media', media);
+                        }
                         break;
                     case 'ge2':
                         if (conv.devname.startsWith('SA-')) {
@@ -2461,12 +2487,18 @@ Converter.rules['interface'] = {
                         }
                         conv.add('interface.ge2.media', media);
                         break;
+                    case 'ge4':
+                    case 'ge5':
+                        if (media != '1000baseT-FDX' && media != 'auto') {
+                            conv.notsupported(`${ifname} media ${media}`);
+                            media = 'auto';
+                        }
+                        conv.add(`interface.${ifname}.media`, media);
+                        break;
+                    default:
+                        conv.add(`interface.${ifname}.media`, media);
+                        break;
                 }
-            } else {  // Ayame
-                if (media != 'auto') {
-                    conv.notsupported(`media ${media}`);
-                }
-                conv.add(`interface.${ifname}.media`, 'auto');
             }
         },
 
