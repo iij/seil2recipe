@@ -620,6 +620,7 @@ const CompatibilityList = {
     'route dynamic rip':                               [    0,    1 ],
     'route6 dynamic ospf':                             [    0,    1 ],
     'route6 dynamic ripng':                            [    0,    1 ],
+    'rtadvd':                                          [    0,    1 ],
     'sshd authorized-key admin':                       [    0,    1 ],
     'sshd hostkey':                                    [    0,    1 ],
     'sshd password-authentication enable':             [    0,    1 ],
@@ -4615,8 +4616,16 @@ Converter.rules['route6'] = {
 };
 
 Converter.rules['rtadvd'] = {
-    'disable': 'router-advertisement.service: disable',
-    'enable': 'router-advertisement.service: enable',
+    'disable': (conv, tokens) => {
+        if (!conv.missing('rtadvd', true)) {
+            conv.add('router-advertisement.service', 'disable')
+        }
+    },
+    'enable': (conv, tokens) => {
+        if (!conv.missing('rtadvd')) {
+            conv.add('router-advertisement.service', 'enable')
+        }
+    },
     'interface': {
         '*': {
             'advertise': {
