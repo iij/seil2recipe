@@ -2015,7 +2015,7 @@ describe('route', () => {
         `);
     });
 
-    it('RIP with authenticaiton', () => {
+    it('RIP with many parameters', () => {
         assertconv(`
             route dynamic auth-key add FOO type plain-text password himitsu
             route dynamic rip enable
@@ -2026,14 +2026,33 @@ describe('route', () => {
             route dynamic rip interface lan0 version ripv2
             route dynamic rip interface lan0 authentication enable
             route dynamic rip interface lan0 authentication auth-key FOO
+            route dynamic redistribute bgp-to-rip enable
+            route dynamic redistribute connected-to-rip enable
+            route dynamic redistribute ospf-to-rip enable
+            route dynamic redistribute static-to-rip enable
             ---
             rip.interface.100.authentication.plain-text.password: himitsu
             rip.interface.100.authentication.type: plain-text
             rip.interface.100.interface: ge1
             rip.interface.100.version: ripv2
+            rip.redistribute-from.bgp.redistribute: enable
+            rip.redistribute-from.connected.redistribute: enable
+            rip.redistribute-from.ospf.redistribute: enable
+            rip.redistribute-from.static.redistribute: enable
             rip.timer.update: 5
             rip.timer.expire: 30
             rip.timer.garbage-collection: 20
+        `);
+    });
+
+    it(`does not convert "redistribute *-to-rip" when RIP is disabled`, () => {
+        assertconv(`
+            route dynamic rip disable
+            route dynamic redistribute bgp-to-rip enable
+            route dynamic redistribute connected-to-rip disable
+            route dynamic redistribute ospf-to-rip disable
+            route dynamic redistribute static-to-rip disable
+            ---
         `);
     });
 
