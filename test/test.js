@@ -2431,6 +2431,14 @@ describe('sshd', () => {
         `);
     });
 
+    it('password-authentication system-default, sshd disable, w2', () => {
+        assertconv(`
+            sshd disable
+            ---
+            sshd.service: disable
+        `, 'w2');
+    });
+
     it('password-authentication on, sshd disable', () => {
         assertconv(`
             sshd password-authentication on

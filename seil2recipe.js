@@ -4819,7 +4819,8 @@ Converter.rules['sshd'] = {
 
     // sshd { enable | disable }
     'disable': (conv, tokens) => {
-        if (conv.get_memo('sshd.password-authentication') == null) {
+        if (conv.get_memo('sshd.password-authentication') == null &&
+            !conv.missing('sshd password-authentication enable', true)) {
             conv.add('sshd.password-authentication', 'enable');
         }
         conv.add('sshd.service', 'disable');
