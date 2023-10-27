@@ -626,6 +626,7 @@ const CompatibilityList = {
     'sshd password-authentication enable':             [    0,    1 ],
     'syslog remote ipv6':                              [    0,    1 ],
     'telnetd':                                         [    0,    1 ],
+    'terminal':                                        [    0,    1 ],
     'upnp.listen.[].interface':                        [    0,    1 ],
     'vrrp add ... watch':                              [    0,    1 ],
 };
@@ -728,7 +729,7 @@ function beautify(recipe_lines) {
             }
         }
     });
-    return sorted.join('\n') + '\n';
+    return sorted.map((line) => line + '\n').join('');
 }
 
 function on2enable(onoff) {
@@ -1802,7 +1803,21 @@ Converter.rules['encrypted-password-long'] = (conv, tokens) => {
 };
 
 Converter.rules['environment'] = {
-    'login-timer': tokens => `terminal.login-timer: ${tokens[2]}`,
+    'login-timer': (conv, tokens) => {
+        const login_timer = tokens[2];
+        conv.defer((conv) => {
+            if (login_timer != null) {
+                if (conv.missing('terminal', true)) {
+                    // ログインできない設定ならエラーを出さずに単に無視する。
+                    if (conv.get_memo('sshd.enable') || conv.get_memo('telnetd.enable')) {
+                        conv.notsupported('environment login-timer');
+                    }
+                    return;
+                }
+                conv.add('terminal.login-timer', login_timer);
+            }
+        });
+    },
     'pager': tokens => `terminal.pager: ${on2enable(tokens[2])}`,
     'terminal': 'deprecated',
 };
@@ -4827,6 +4842,7 @@ Converter.rules['sshd'] = {
     },
 
     'enable': (conv, tokens) => {
+        conv.set_memo('sshd.enable', true);
         if (conv.get_memo('sshd.password-authentication') == null) {
             conv.add('sshd.password-authentication', 'enable');
         }
@@ -5009,6 +5025,7 @@ Converter.rules['telnetd'] = {
     'enable': (conv, tokens) => {
         if (conv.missing('telnetd')) { return; }
         conv.add('telnetd.service', 'enable');
+        conv.set_memo('telnetd.enable', true);
     },
     'disable': 'telnetd.service: disable'
 };

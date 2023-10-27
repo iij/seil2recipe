@@ -17,6 +17,7 @@ function assertconv(convspec, target = 'test') {
         return !default_config_set.has(line);
     });
     actual.sort();
+    if (actual.length == 1 && actual[0] == '') { actual = []; }
 
     var expected = recipe_config;
     if (!(expected instanceof Array)) {
@@ -675,6 +676,14 @@ describe('environment', () => {
             terminal.login-timer: 123
         `);
     });
+
+    it('login-timer', () => {
+        assertconv(`
+            environment login-timer 123
+            ---
+        `, 'w2');
+    });
+
     it('pager', () => {
         assertconv(`
             environment pager off
