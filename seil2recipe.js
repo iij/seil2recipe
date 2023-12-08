@@ -2736,7 +2736,7 @@ function ike_peer(conv, prefix, peer, if_prefix) {
     const prefix_ike = if_prefix ? `${prefix}.ike` : prefix;
     const prefix_proposal = if_prefix ? `${prefix}.ike.proposal.phase1` : `${prefix}.proposal`;
 
-    conv.param2recipe(peer, 'dpd', `${prefix}.dpd`);
+    conv.param2recipe(peer, 'dpd', `${prefix_ike}.dpd`);
     conv.param2recipe(peer, 'esp-fragment-size', `${prefix}.esp-fragment-size`);
     conv.param2recipe(peer, 'nonce-size', `${prefix}.nonce-size`);
     conv.param2recipe(peer, 'prefer-new-phase1', `${prefix}.prefer-new-phase1`);

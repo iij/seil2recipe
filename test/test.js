@@ -1230,7 +1230,7 @@ describe('ipsec', () => {
             interface ipsec0 tunnel 10.0.0.1 10.0.0.2
             ike preshared-key add "10.0.0.2" "twotwotwotwo"
             ike proposal add IKEP encryption aes,3des hash sha256,md5 authentication preshared-key dh-group modp1536 lifetime-of-time 24h
-            ike peer add TWO address 10.0.0.2 exchange-mode main proposals IKEP my-identifier address peers-identifier address initial-contact enable tunnel-interface enable
+            ike peer add TWO address 10.0.0.2 exchange-mode main proposals IKEP my-identifier address peers-identifier address initial-contact enable tunnel-interface enable dpd enable
             ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes256,aes lifetime-of-time 8h
             ipsec security-association add SA tunnel-interface ipsec0 ike SAP esp enable
             ----
@@ -1239,6 +1239,7 @@ describe('ipsec', () => {
             interface.ipsec0.ipv6.forward: pass
             interface.ipsec0.preshared-key: twotwotwotwo
             interface.ipsec0.ike.initial-contact: enable
+            interface.ipsec0.ike.dpd: enable
             interface.ipsec0.ike.proposal.phase1.dh-group: modp1536
             interface.ipsec0.ike.check-level: strict
             interface.ipsec0.ike.my-identifier.type: address
