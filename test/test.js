@@ -159,6 +159,7 @@ describe('authentication+pppac', () => {
             interface.pppac0.l2tp.idle-timer: 123
             interface.pppac0.l2tp.ipsec.preshared-key: SecretKey
             interface.pppac0.l2tp.service: enable
+            interface.pppac0.max-session: none
             interface.pppac1.authentication.100.type: radius
             interface.pppac1.authentication.100.radius.authentication-server.100.address: 172.17.0.1
             interface.pppac1.authentication.100.radius.authentication-server.100.port: 1814
@@ -177,6 +178,7 @@ describe('authentication+pppac', () => {
             interface.pppac1.l2tp.idle-timer: 123
             interface.pppac1.l2tp.ipsec.preshared-key: SecretKey
             interface.pppac1.l2tp.service: enable
+            interface.pppac1.max-session: none
             interface.pppac2.authentication.100.type: account-list
             interface.pppac2.authentication.100.account-list.interval: 123
             interface.pppac2.authentication.100.account-list.url: http://example.jp/
@@ -189,6 +191,7 @@ describe('authentication+pppac', () => {
             interface.pppac2.l2tp.idle-timer: 123
             interface.pppac2.l2tp.ipsec.preshared-key: SecretKey
             interface.pppac2.l2tp.service: enable
+            interface.pppac2.max-session: none
             `);
     });
 });
@@ -1830,6 +1833,7 @@ describe('pppac', () => {
             interface.pppac0.l2tp.authentication.200.method: chap
             interface.pppac0.l2tp.ipsec.preshared-key: foobar
             interface.pppac0.l2tp.service: enable
+            interface.pppac0.max-session: none
             `);
     });
 
@@ -1848,6 +1852,7 @@ describe('pppac', () => {
             interface pppac0 ipcp-configuration IPCP5L
             interface pppac0 bind-tunnel-protocol PROTO5L
             interface pppac0 bind-realm REALM5L
+            interface pppac0 max-session unlimit
             interface pppac0 tunnel-end-address 192.168.0.1
             interface pppac0 user-max-session 5
             interface pppac1 ipcp-configuration IPCP5A
@@ -1868,6 +1873,7 @@ describe('pppac', () => {
             interface.pppac0.l2tp.authentication.300.method: mschapv2
             interface.pppac0.l2tp.ipsec.requirement: optional
             interface.pppac0.l2tp.service: enable
+            interface.pppac0.max-session: none
             interface.pppac0.user-max-session: 5
             interface.pppac1.authentication.100.type: account-list
             interface.pppac1.authentication.100.account-list.url: http://a.example.jp/
@@ -1879,7 +1885,53 @@ describe('pppac', () => {
             interface.pppac1.l2tp.authentication.100.method: mschapv2
             interface.pppac1.l2tp.ipsec.requirement: optional
             interface.pppac1.l2tp.service: enable
+            interface.pppac1.max-session: none
             `);
+    });
+
+    it('max-session & user-max-session', () => {
+        // seil3 <num> -> seil8 <num>
+        assertconv(`
+            interface pppac0 max-session 123
+            ---
+            interface.pppac0.max-session: 123
+        `);
+
+        // seil3 unlimit -> seil8 none
+        assertconv(`
+            interface pppac0 max-session unlimit
+            ---
+            interface.pppac0.max-session: none
+        `);
+
+        // seil3 system-default = seil8 none
+        assertconv(`
+            pppac protocol l2tp add FOO accept-interface lan0 authentication-method pap
+            interface pppac0 bind-tunnel-protocol FOO
+            ---
+            interface.pppac0.l2tp.accept.100.interface: ge1
+            interface.pppac0.l2tp.authentication.100.method: pap
+            interface.pppac0.l2tp.ipsec.requirement: optional
+            interface.pppac0.l2tp.service: enable
+            interface.pppac0.max-session: none
+        `);
+
+        // seil3 unlimit -> seil6 (not supported)
+        assertconv(`
+            interface pppac0 max-session unlimit
+            ---
+        `, 'w2');
+
+        // seil3 system-default -> seil6 default (=256)
+        assertconv(`
+            pppac protocol l2tp add FOO6 accept-interface lan1 authentication-method pap
+            interface pppac0 bind-tunnel-protocol FOO6
+            ---
+            interface.pppac0.l2tp.accept.100.interface: ge0
+            interface.pppac0.l2tp.authentication.100.method: pap
+            interface.pppac0.l2tp.ipsec.requirement: optional
+            interface.pppac0.l2tp.service: enable
+        `, 'w2');
     });
 
     it('sstp server', () => {
@@ -1900,6 +1952,7 @@ describe('pppac', () => {
             interface.pppac0.ipcp.pool.100.address: 192.168.128.0
             interface.pppac0.ipcp.pool.100.count: 256
             interface.pppac0.ipv4.address: 192.168.127.1
+            interface.pppac0.max-session: none
             interface.pppac0.sstp.accept.100.interface: ge0
             interface.pppac0.sstp.authentication.100.method: pap
             interface.pppac0.sstp.authentication.200.method: chap

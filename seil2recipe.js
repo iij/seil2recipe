@@ -147,6 +147,7 @@ class Note {
         this.memo.set('ike.peer.dynamic', []);
         this.memo.set('ike.preshared-key', {});
         this.memo.set('interface.l2tp.tunnel', {});
+        this.memo.set('interface.pppac.max-session', new Map());
         this.memo.set('interface.router-advertisements', []);
         this.memo.set('qos.class', { 'default': 'root' });
         this.memo.set('resolver.address', []);
@@ -606,6 +607,7 @@ const CompatibilityList = {
     'ipsec security-association add ... ipv6':         [    0,    1 ],
     'interface ... add dhcp6':                         [    0,    1 ],
     'interface ... add router-advertisement(s)':       [    0,    1 ],
+    'interface pppac max-session unlimit':             [    0,    1 ],
     'nat6':                                            [    0,    1 ],
     'option ip fragment-requeueing off':               [    0,    1 ],
     'option ip monitor-linkstate off':                 [    0,    1 ],
@@ -2358,6 +2360,10 @@ Converter.rules['interface'] = {
                 conv.param2recipe(protocol, 'sstp-keepalive-timeout', `${k1}.sstp.keepalive.timeout`);
                 conv.param2recipe(protocol, 'tcp-mss-adjust', `${k1}.sstp.tcp-mss-adjust`, on2enable);
             }
+
+            if (!conv.get_memo('interface.pppac.max-session').has(ifname)) {
+                conv.get_memo('interface.pppac.max-session').set(ifname, 'default');
+            }
         },
 
         'description': (conv, tokens) => {
@@ -2458,7 +2464,16 @@ Converter.rules['interface'] = {
         // interface <pppac> max-session <number_of_sessions>
         'max-session': (conv, tokens) => {
             const ifname = conv.ifmap(tokens[1]);
-            conv.add(`interface.${ifname}.max-session`, tokens[3]);
+            const num    = tokens[3];
+
+            conv.get_memo('interface.pppac.max-session').set(ifname, num);
+            if (num == 'unlimit') {
+                if (!conv.missing('interface pppac max-session unlimit')) {
+                    conv.add(`interface.${ifname}.max-session`, 'none');
+                }
+            } else {
+                conv.add(`interface.${ifname}.max-session`, num);
+            }
         },
 
         'mdi': 'deprecated',
@@ -2731,6 +2746,16 @@ Converter.rules['interface'] = {
         },
     },
 };
+
+Converter.defer((conv) => {
+    if (!conv.missing('interface pppac max-session unlimit', true)) {
+        conv.get_memo('interface.pppac.max-session').forEach((num, ifname) => {
+            if (num == 'default') {
+                conv.add(`interface.${ifname}.max-session`, 'none');
+            }
+        });
+    }
+});
 
 function ike_peer(conv, prefix, peer, if_prefix) {
     const prefix_ike = if_prefix ? `${prefix}.ike` : prefix;
