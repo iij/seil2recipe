@@ -200,6 +200,37 @@ describe('authentication+pppac', () => {
             interface.pppac2.max-session: none
             `);
     });
+
+    it('radius message-authenticator', () => {
+        assertconv(`
+            authentication realm add REALM4 type radius
+            authentication radius REALM4 authentication-server add 192.168.1.1 secret SECRET
+            authentication radius-option request-message-authenticator on response-message-authenticator require
+            pppac pool add POOL4 address 192.168.0.0/24
+            pppac ipcp-configuration add IPCP4 pool POOL4
+            pppac protocol l2tp add PROTO4 accept-interface any
+            interface pppac0 ipcp-configuration IPCP4
+            interface pppac0 bind-tunnel-protocol PROTO4
+            interface pppac0 bind-realm REALM4
+            interface pppac0 tunnel-end-address 192.168.0.1
+            ipsec anonymous-l2tp-transport enable
+            ipsec anonymous-l2tp-transport preshared-key "foobar"
+            ----
+            interface.pppac0.authentication.100.radius.authentication-server.100.address: 192.168.1.1
+            interface.pppac0.authentication.100.radius.authentication-server.100.shared-secret: SECRET
+            interface.pppac0.authentication.100.radius.request.message-authenticator: enable
+            interface.pppac0.authentication.100.radius.response.message-authenticator: required
+            interface.pppac0.authentication.100.type: radius
+            interface.pppac0.ipcp.pool.100.address: 192.168.0.0
+            interface.pppac0.ipcp.pool.100.count: 256
+            interface.pppac0.ipv4.address: 192.168.0.1
+            interface.pppac0.l2tp.authentication.100.method: mschapv2
+            interface.pppac0.l2tp.authentication.200.method: chap
+            interface.pppac0.l2tp.ipsec.preshared-key: foobar
+            interface.pppac0.l2tp.service: enable
+            interface.pppac0.max-session: none
+        `);
+    });
 });
 
 describe('bridge', () => {
