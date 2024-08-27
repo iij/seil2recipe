@@ -39,6 +39,12 @@ function assert_conversions(seil_config, fun) {
     fun.call(null, c.conversions);
 }
 
+function assert_notsupported(seil_config, target = 'test') {
+    const c = new s2r.Converter(seil_config + '\n', target);
+    const errors = c.conversions.map((conv) => conv.errors).flat();
+    assert.equal(errors[0].type, 'notsupported');
+}
+
 
 describe('application-gateway', () => {
     it('all parameters', () => {
@@ -572,6 +578,19 @@ describe('dialup-device', () => {
             interface.wwan0.ipv4.address: dhcp
             interface.wwan0.password: bar
         `);
+    });
+
+    it('ux312nc-lte-only is not supported on seil6/seil8 yet', () => {
+        // warning: incomplete config.
+        const config_e = `dialup-device mdm0 device-option ux312nc-lte-only enable
+                          interface ppp0 over mdm0`;
+        assert_notsupported(config_e, 'w2');
+        assert_notsupported(config_e, 'x4');
+
+        const config_d = `dialup-device mdm0 device-option ux312nc-lte-only disable
+                          interface ppp0 over mdm0`;
+        assert_notsupported(config_d, 'w2');
+        assert_notsupported(config_d, 'x4');
     });
 });
 

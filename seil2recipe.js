@@ -597,6 +597,7 @@ const CompatibilityList = {
     'dhcp6 relay':                                     [    0,    1 ],
     'dhcp6 server':                                    [    0,    1 ],
     'dialup-device ... device-option ux312nc-3g-only': [    1,    0 ],
+    'dialup-device ... device-option ux312nc-lte-only':[    0,    0 ],
     'dialup-network':                                  [    1,    0 ],
     'filter6 add ... action forward':                  [    0,    1 ],
     'ike peer add ... check-level':                    [    0,    1 ],
@@ -1730,7 +1731,8 @@ Converter.rules['dialup-device'] = {
         // dialup-device { <foma> | <emobile> | <softbank> | <kddi> |<mdm> }
         //  keepalive add <IPv4address>
         // dialup-device <mdm> device-option ux312nc-3g-only { on | off }
-        conv.read_params('dialup-device', tokens, 1, {
+        // dialup-device <mdm> device-option ux312nc-lte-only { enable | disable }
+        const params = conv.read_params('dialup-device', tokens, 1, {
             'connect-to': true,
             'pin': true,
             'auto-reset-interval': 'notsupported',
@@ -1742,6 +1744,12 @@ Converter.rules['dialup-device'] = {
             'idle-timer': true,
             'device-option': 2,
         });
+
+        // Note: you cannot write 2 device-option's on the same line.
+        const opt = params['device-option'];
+        if (opt != null) {
+            conv.set_param('dialup-device', tokens[1], opt[0], opt[1]);
+        }
     }
 };
 
@@ -2568,12 +2576,14 @@ Converter.rules['interface'] = {
                 conv.param2recipe(ddev, 'pin', `${k1}.pin`);
                 conv.param2recipe(ddev, 'username', `${k1}.id`);
 
-                if (ddev['device-option'] != null &&
-                    ddev['device-option'][0] == 'ux312nc-3g-only' &&
-                    ddev['device-option'][1] == 'on') {
+                if (ddev['ux312nc-3g-only'] == 'on') {
                     if (!conv.missing('dialup-device ... device-option ux312nc-3g-only')) {
                         conv.add(`${k1}.device-option.ux312nc-3g-only`, 'enable');
                     }
+                }
+
+                if (ddev['ux312nc-lte-only'] != null) {
+                    conv.missing('dialup-device ... device-option ux312nc-lte-only');
                 }
 
                 const apname = ddev['connect-to'];
