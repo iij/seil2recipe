@@ -986,6 +986,14 @@ Converter.rules['authentication'] = {
             }
         }
     },
+    // authentication radius-option request-message-authenticator {on|off}
+    //     response-message-authenticator {optional|require}
+    'radius-option': (conv, tokens) => {
+        conv.read_params('authentication.radius-option', tokens, 1, {
+            'request-message-authenticator': true,
+            'response-message-authenticator': true,
+        });
+    },
     'realm': {
         'add': {
             '*': {
@@ -2293,6 +2301,13 @@ Converter.rules['interface'] = {
                 if (retry) {
                     conv.add(`${kauth}.radius.request.retry: ${retry}`);
                 }
+
+                const ro = conv.get_params('authentication.radius-option')['radius-option'];
+                if (ro != null) {
+                    conv.param2recipe(ro, 'request-message-authenticator', `${kauth}.radius.request.message-authenticator`, on2enable);
+                    conv.param2recipe(ro, 'response-message-authenticator', `${kauth}.radius.response.message-authenticator`,
+                        val => (val == 'require') ? 'required' : val);
+                };
             });
         },
 
