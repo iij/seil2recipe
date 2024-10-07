@@ -2462,6 +2462,17 @@ Converter.rules['interface'] = {
             if (pool['type']) {
                 conv.add(`interface.${ifname}.ipcp.pool.100.type: ${pool['type']}`);
             }
+
+            conv.param2recipe(ipcp, 'dns-primary', `interface.${ifname}.ipcp.dns-server.0.ipv4.address`);
+            conv.param2recipe(ipcp, 'dns-secondary', `interface.${ifname}.ipcp.dns-server.1.ipv4.address`);
+            conv.param2recipe(ipcp, 'wins-server-primary', `interface.${ifname}.ipcp.wins-server.0.ipv4.address`);
+            conv.param2recipe(ipcp, 'wins-server-secondary', `interface.${ifname}.ipcp.wins-server.1.ipv4.address`);
+
+            if (ipcp['accept-user-address'] == null) {
+                conv.add(`interface.${ifname}.ipcp.accept-user-address: enable`);
+            } else {
+                conv.param2recipe(ipcp, 'accept-user-address', `interface.${ifname}.ipcp.accept-user-address`, on2enable);
+            }
         },
 
         'l2tp': {

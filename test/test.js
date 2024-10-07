@@ -156,6 +156,7 @@ describe('authentication+pppac', () => {
             interface.pppac0.authentication.100.user.100.framed-ip-netmask: 255.255.255.255
             interface.pppac0.authentication.100.user.100.name: user_a
             interface.pppac0.authentication.100.user.100.password: PASSWORD
+            interface.pppac0.ipcp.accept-user-address: enable
             interface.pppac0.ipcp.pool.100.address: 192.168.128.0
             interface.pppac0.ipcp.pool.100.count: 256
             interface.pppac0.ipv4.address: 192.168.127.1
@@ -175,6 +176,7 @@ describe('authentication+pppac', () => {
             interface.pppac1.authentication.100.radius.accounting-server.100.shared-secret: RADACC
             interface.pppac1.authentication.100.radius.request.timeout: 123
             interface.pppac1.authentication.100.radius.request.retry: 4
+            interface.pppac1.ipcp.accept-user-address: enable
             interface.pppac1.ipcp.pool.100.address: 192.168.128.0
             interface.pppac1.ipcp.pool.100.count: 256
             interface.pppac1.ipv4.address: 192.168.127.2
@@ -188,6 +190,7 @@ describe('authentication+pppac', () => {
             interface.pppac2.authentication.100.type: account-list
             interface.pppac2.authentication.100.account-list.interval: 123
             interface.pppac2.authentication.100.account-list.url: http://example.jp/
+            interface.pppac2.ipcp.accept-user-address: enable
             interface.pppac2.ipcp.pool.100.address: 192.168.128.0
             interface.pppac2.ipcp.pool.100.count: 256
             interface.pppac2.ipv4.address: 192.168.127.3
@@ -221,6 +224,7 @@ describe('authentication+pppac', () => {
             interface.pppac0.authentication.100.radius.request.message-authenticator: enable
             interface.pppac0.authentication.100.radius.response.message-authenticator: required
             interface.pppac0.authentication.100.type: radius
+            interface.pppac0.ipcp.accept-user-address: enable
             interface.pppac0.ipcp.pool.100.address: 192.168.0.0
             interface.pppac0.ipcp.pool.100.count: 256
             interface.pppac0.ipv4.address: 192.168.0.1
@@ -1876,6 +1880,7 @@ describe('pppac', () => {
             ----
             interface.pppac0.authentication.100.user.100.name: USER4
             interface.pppac0.authentication.100.user.100.password: PASS4
+            interface.pppac0.ipcp.accept-user-address: enable
             interface.pppac0.ipcp.pool.100.address: 192.168.0.0
             interface.pppac0.ipcp.pool.100.count: 256
             interface.pppac0.ipv4.address: 192.168.0.1
@@ -1895,7 +1900,7 @@ describe('pppac', () => {
             authentication account-list REALM5A url http://a.example.jp/ interval 10m
             pppac pool add POOL5L address 192.168.1.0/24
             pppac pool add POOL5A address 192.168.2.0/24
-            pppac ipcp-configuration add IPCP5L pool POOL5L
+            pppac ipcp-configuration add IPCP5L pool POOL5L dns-primary 192.168.0.10 dns-secondary 192.168.0.11 wins-server-primary 192.168.0.20 wins-server-secondary 192.168.0.21 accept-user-address off
             pppac ipcp-configuration add IPCP5A pool POOL5A
             pppac protocol l2tp add PROTO5L accept-interface vlan0 authentication-method pap,chap,mschapv2 accept-dialin on
             pppac protocol l2tp add PROTO5A accept-interface vlan1 authentication-method mschapv2
@@ -1915,6 +1920,11 @@ describe('pppac', () => {
             interface.pppac0.authentication.100.user.100.password: PASS5
             interface.pppac0.ipcp.pool.100.address: 192.168.1.0
             interface.pppac0.ipcp.pool.100.count: 256
+            interface.pppac0.ipcp.dns-server.0.ipv4.address: 192.168.0.10
+            interface.pppac0.ipcp.dns-server.1.ipv4.address: 192.168.0.11
+            interface.pppac0.ipcp.wins-server.0.ipv4.address: 192.168.0.20
+            interface.pppac0.ipcp.wins-server.1.ipv4.address: 192.168.0.21
+            interface.pppac0.ipcp.accept-user-address: disable
             interface.pppac0.ipv4.address: 192.168.0.1
             interface.pppac0.l2tp.accept.100.interface: vlan0
             interface.pppac0.l2tp.accept-dialin: enable
@@ -1928,6 +1938,7 @@ describe('pppac', () => {
             interface.pppac1.authentication.100.type: account-list
             interface.pppac1.authentication.100.account-list.url: http://a.example.jp/
             interface.pppac1.authentication.100.account-list.interval: 10m
+            interface.pppac1.ipcp.accept-user-address: enable
             interface.pppac1.ipcp.pool.100.address: 192.168.2.0
             interface.pppac1.ipcp.pool.100.count: 256
             interface.pppac1.ipv4.address: 192.168.0.1
@@ -1999,6 +2010,7 @@ describe('pppac', () => {
             ---
             interface.pppac0.authentication.100.user.100.name: USER_S
             interface.pppac0.authentication.100.user.100.password: PASS_S
+            interface.pppac0.ipcp.accept-user-address: enable
             interface.pppac0.ipcp.pool.100.address: 192.168.128.0
             interface.pppac0.ipcp.pool.100.count: 256
             interface.pppac0.ipv4.address: 192.168.127.1
