@@ -4134,7 +4134,7 @@ Converter.rules['route'] = {
 
             'network': (conv, tokens) => {
                 // route dynamic bgp network add <network_IPv4address/prefixlen>
-                const k1 = conv.get_index('bgp.network');
+                const k1 = conv.get_index('bgp.ipv4.network');
                 conv.add(`${k1}.prefix`, tokens[5]);
             },
 

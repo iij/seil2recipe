@@ -2261,6 +2261,32 @@ describe('route', () => {
             `);
         });
 
+        it('bgp full', () => {
+            assertconv(`
+                route dynamic route-filter add A network 1.1.1.1/32 pass
+                route dynamic route-filter add B network 2.2.2.2/32 pass
+                route dynamic bgp my-as-number 65001
+                route dynamic bgp router-id 192.168.0.1
+                route dynamic bgp enable
+                route dynamic bgp neighbor add 192.168.0.2 remote-as 65002 hold-timer 3 weight 1 in-route-filter A out-route-filter B authentication md5 PASSWORD enable
+                route dynamic bgp neighbor add 192.168.0.3 remote-as 65003 disable
+                route dynamic bgp network add 192.168.0.0/24
+                ---
+                bgp.ipv4.network.100.prefix: 192.168.0.0/24
+                bgp.my-as-number: 65001
+                bgp.neighbor.100.address: 192.168.0.2
+                bgp.neighbor.100.authentication.password: PASSWORD
+                bgp.neighbor.100.filter.in.100.action: pass
+                bgp.neighbor.100.filter.in.100.match.prefix: 1.1.1.1/32
+                bgp.neighbor.100.filter.out.100.action: pass
+                bgp.neighbor.100.filter.out.100.match.prefix: 2.2.2.2/32
+                bgp.neighbor.100.hold-timer: 3
+                bgp.neighbor.100.remote-as: 65002
+                bgp.neighbor.100.weight: 1
+                bgp.router-id: 192.168.0.1
+                `);
+        });
+
         it('can prepend AS-path to routes from neighbors', () => {
             assertconv(`
                 route dynamic route-filter add ASPATH network 10.0.0.0/8 pass set-as-path-prepend 65009,65008
