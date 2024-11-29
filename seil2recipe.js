@@ -3264,6 +3264,10 @@ Converter.rules['macfilter'] = {
             'interval': true,
             'block-dhcp': 'notsupported'
         });
+
+        params['action'] ||= 'pass'
+        params['on'] ||= 'lan0'
+
         var k1;
         if (params['interval']) {  // URL 指定の場合は必ず interval パラメタがある。
             k1 = conv.get_index('macfilter.entry-list');

@@ -1458,12 +1458,16 @@ describe('ipsec', () => {
 describe('macfilter', () => {
     it('mac address list on config', () => {
         assertconv(`
-            macfilter add CONF action pass src 02:04:06:08:0a:0c on lan0 logging on
+            macfilter add CONF action pass src 02:04:06:08:0a:0c on lan2 logging on
+            macfilter add MINIMAL src 00:00:00:00:00:00
             ---
-            macfilter.entry.100.action: pass
-            macfilter.entry.100.address: 02:04:06:08:0a:0c
-            macfilter.entry.100.interface: ge1
-            macfilter.entry.100.logging: on
+            macfilter.entry.100.action:    pass
+            macfilter.entry.100.address:   02:04:06:08:0a:0c
+            macfilter.entry.100.interface: ge2
+            macfilter.entry.100.logging:   on
+            macfilter.entry.200.action:    pass
+            macfilter.entry.200.address:   00:00:00:00:00:00
+            macfilter.entry.200.interface: ge1
         `);
     });
 
@@ -1472,6 +1476,7 @@ describe('macfilter', () => {
             macfilter add BYURL action block src http://user:pass@127.0.0.1/mac.txt interval 1h
             ---
             macfilter.entry-list.100.action: block
+            macfilter.entry-list.100.interface: ge1
             macfilter.entry-list.100.update-interval: 1h
             macfilter.entry-list.100.url: http://user:pass@127.0.0.1/mac.txt
         `);
