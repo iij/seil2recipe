@@ -439,7 +439,7 @@ describe('dhcp', () => {
             dhcp.server.100.static.entry.100.mac-address: 02:00:00:00:00:01
             dhcp.server.100.static.entry.100.ip-address: 192.168.0.11
             dhcp.server.100.static.external.url: http://proxy.example.jp/list.txt
-            dhcp.server.100.static.external.interval: 01h02m03s
+            dhcp.server.100.static.external.interval: 3723
             dhcp.server.service: enable
         `);
     });
@@ -2976,5 +2976,28 @@ describe('order issues', () => {
             interface.ipsec1.floatlink.my-node-id: MYNODE0
             interface.ipsec1.floatlink.name-service: https://example.com/
         `);
+    });
+});
+
+describe('time2sec', () => {
+    it('time strings', () => {
+        const conv = new s2r.Converter('hostname a', 'test');
+        const c = conv.conversions[0];
+        assert.equal(c.time2sec('123'), 123);
+
+        assert.equal(c.time2sec('1s'),       1);
+        assert.equal(c.time2sec('2m'),       120);
+        assert.equal(c.time2sec('3m4s'),     184);
+        assert.equal(c.time2sec('5h'),       18000);
+        assert.equal(c.time2sec('6h7s'),     21607);
+        assert.equal(c.time2sec('8h9m'),     29340);
+        assert.equal(c.time2sec('1h2m3s'),   3723);
+        assert.equal(c.time2sec('4d5s'),     345605);
+        assert.equal(c.time2sec('6d7m'),     518820);
+        assert.equal(c.time2sec('8d9m1s'),   691741);
+        assert.equal(c.time2sec('2d3h'),     183600);
+        assert.equal(c.time2sec('4d5h6s'),   363606);
+        assert.equal(c.time2sec('7d8h9m'),   634140);
+        assert.equal(c.time2sec('1d2h3m4s'), 93784);
     });
 });
