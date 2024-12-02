@@ -300,16 +300,6 @@ class Conversion {
         return b;
     }
 
-    time2sec(str) {
-        const a = str.match(/^(?:(\d+)d)?(?:([0-9]+)h)?(?:([0-9]+)m)?(?:([0-9]+)s?)?$/);
-        let sec = 0
-        sec += parseInt((a[1] || 0), 10) * 86400
-        sec += parseInt((a[2] || 0), 10) * 3600
-        sec += parseInt((a[3] || 0), 10) * 60
-        sec += parseInt((a[4] || 0), 10);
-        return String(sec);
-    }
-
     //
     // Proxy methods
     //
@@ -746,6 +736,17 @@ function commaEach(str, fun) {
         str.split(',').forEach(fun);
     }
 }
+
+function time2sec(str) {
+    const a = str.match(/^(?:(\d+)d)?(?:([0-9]+)h)?(?:([0-9]+)m)?(?:([0-9]+)s?)?$/);
+    let sec = 0
+    sec += parseInt((a[1] || 0), 10) * 86400
+    sec += parseInt((a[2] || 0), 10) * 3600
+    sec += parseInt((a[3] || 0), 10) * 60
+    sec += parseInt((a[4] || 0), 10);
+    return String(sec);
+}
+Converter.time2sec = time2sec;
 
 Array.prototype.conv_aes = function() {
     return this.map(alg => (alg == "aes") ? "aes128" : alg).dedup();
@@ -1420,7 +1421,7 @@ Converter.rules['dhcp'] = {
                     'interval': (conv, tokens) => {
                         const k = dhcp_get_interface(conv, tokens[2]);
                         if (k) {
-                            conv.add(`${k}.static.external.interval`, conv.time2sec(tokens[6]));
+                            conv.add(`${k}.static.external.interval`, time2sec(tokens[6]));
                         }
 
                     },
@@ -2063,7 +2064,7 @@ function ike_params(conv, tokens) {
             fun: val => {
                 if (conv.missing('ike global-parameters', true)) {
                     if (is_time) {
-                        val = conv.time2sec(val);
+                        val = time2sec(val);
                     }
                     if (val != defval) {
                         conv.warning(`ike ${word} は ${conv.note.dst.name} ではサポートされていません。`);
@@ -2072,7 +2073,7 @@ function ike_params(conv, tokens) {
                 }
                 // interval だけは受け入れる表記が異なる。
                 if (word == 'interval') {
-                    val = conv.time2sec(val);
+                    val = time2sec(val);
                 }
                 return val;
             }

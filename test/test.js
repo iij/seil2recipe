@@ -2981,23 +2981,27 @@ describe('order issues', () => {
 
 describe('time2sec', () => {
     it('time strings', () => {
-        const conv = new s2r.Converter('hostname a', 'test');
-        const c = conv.conversions[0];
-        assert.equal(c.time2sec('123'), 123);
+        const time2sec = s2r.Converter.time2sec;
 
-        assert.equal(c.time2sec('1s'),       1);
-        assert.equal(c.time2sec('2m'),       120);
-        assert.equal(c.time2sec('3m4s'),     184);
-        assert.equal(c.time2sec('5h'),       18000);
-        assert.equal(c.time2sec('6h7s'),     21607);
-        assert.equal(c.time2sec('8h9m'),     29340);
-        assert.equal(c.time2sec('1h2m3s'),   3723);
-        assert.equal(c.time2sec('4d5s'),     345605);
-        assert.equal(c.time2sec('6d7m'),     518820);
-        assert.equal(c.time2sec('8d9m1s'),   691741);
-        assert.equal(c.time2sec('2d3h'),     183600);
-        assert.equal(c.time2sec('4d5h6s'),   363606);
-        assert.equal(c.time2sec('7d8h9m'),   634140);
-        assert.equal(c.time2sec('1d2h3m4s'), 93784);
+        assert.equal(time2sec('1s'),       1);
+        assert.equal(time2sec('2m'),       120);
+        assert.equal(time2sec('3m4s'),     184);
+        assert.equal(time2sec('5h'),       18000);
+        assert.equal(time2sec('6h7s'),     21607);
+        assert.equal(time2sec('8h9m'),     29340);
+        assert.equal(time2sec('1h2m3s'),   3723);
+        assert.equal(time2sec('1d'),       86400);
+        assert.equal(time2sec('4d5s'),     345605);
+        assert.equal(time2sec('6d7m'),     518820);
+        assert.equal(time2sec('8d9m1s'),   691741);
+        assert.equal(time2sec('2d3h'),     183600);
+        assert.equal(time2sec('4d5h6s'),   363606);
+        assert.equal(time2sec('7d8h9m'),   634140);
+        assert.equal(time2sec('1d2h3m4s'), 93784);
+
+        assert.equal(time2sec('123'), 123);
+        assert.equal(time2sec('2m4'), 124);
+        assert.equal(time2sec('1h0m3s'), 3603);
+        //assert.equal(time2sec('3s2m1h'), 3723);  // NOTYET
     });
 });
