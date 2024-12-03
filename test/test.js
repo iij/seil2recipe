@@ -1125,6 +1125,14 @@ describe('ike', () => {
             ike.strict-padding-byte-check: enable
         `);
     });
+
+    it('enforces an upper limit on "ike interval"', () => {
+        assertconv(`
+            ike interval 10m
+            ---
+            ike.interval: 300
+        `);
+    });
 });
 
 describe('interface', () => {
@@ -1286,9 +1294,9 @@ describe('ipsec', () => {
         assertconv(`
             interface ipsec0 tunnel 10.0.0.1 10.0.0.2
             ike preshared-key add "10.0.0.2" "twotwotwotwo"
-            ike proposal add IKEP encryption aes,3des hash sha256,md5 authentication preshared-key dh-group modp1536 lifetime-of-time 24h
+            ike proposal add IKEP encryption aes,3des hash sha256,md5 authentication preshared-key dh-group modp1536 lifetime-of-time 1d
             ike peer add TWO address 10.0.0.2 exchange-mode main proposals IKEP my-identifier address peers-identifier address initial-contact enable tunnel-interface enable dpd enable
-            ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes256,aes lifetime-of-time 8h
+            ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes256,aes lifetime-of-time 7200
             ipsec security-association add SA tunnel-interface ipsec0 ike SAP esp enable
             ----
             interface.ipsec0.ipv4.source: 10.0.0.1
@@ -1309,7 +1317,7 @@ describe('ipsec', () => {
             interface.ipsec0.ike.proposal.phase2.authentication.100.algorithm: hmac-sha1
             interface.ipsec0.ike.proposal.phase2.encryption.100.algorithm: aes256
             interface.ipsec0.ike.proposal.phase2.encryption.200.algorithm: aes128
-            interface.ipsec0.ike.proposal.phase2.lifetime-of-time: 8h
+            interface.ipsec0.ike.proposal.phase2.lifetime-of-time: 7200
         `);
     });
 
@@ -1479,6 +1487,17 @@ describe('macfilter', () => {
             macfilter.entry-list.100.interface: ge1
             macfilter.entry-list.100.update-interval: 1h
             macfilter.entry-list.100.url: http://user:pass@127.0.0.1/mac.txt
+        `);
+    });
+
+    it('must convert interval without units', () => {
+        assertconv(`
+            macfilter add A action pass src http://127.0.0.1/ interval 3600
+            ---
+            macfilter.entry-list.100.action: pass
+            macfilter.entry-list.100.interface: ge1
+            macfilter.entry-list.100.update-interval: 1h
+            macfilter.entry-list.100.url: http://127.0.0.1/
         `);
     });
 });
@@ -2983,6 +3002,7 @@ describe('time2sec', () => {
     it('time strings', () => {
         const time2sec = s2r.Converter.time2sec;
 
+        // combinations of d, h, m, and s.
         assert.equal(time2sec('1s'),       1);
         assert.equal(time2sec('2m'),       120);
         assert.equal(time2sec('3m4s'),     184);
@@ -3003,5 +3023,15 @@ describe('time2sec', () => {
         assert.equal(time2sec('2m4'), 124);
         assert.equal(time2sec('1h0m3s'), 3603);
         //assert.equal(time2sec('3s2m1h'), 3723);  // NOTYET
+    });
+});
+
+describe('time2hms', () => {
+    it('converts time into HMS)', () => {
+        const time2hms = s2r.Converter.time2hms;
+        assert.equal(time2hms('1d2h3m4s'), '26h3m4s');
+        assert.equal(time2hms('1d'), '24h');
+        assert.equal(time2hms('12h34m56s'), '12h34m56s');
+        assert.equal(time2hms('123'), '123');
     });
 });

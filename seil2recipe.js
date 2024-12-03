@@ -738,7 +738,10 @@ function commaEach(str, fun) {
 }
 
 function time2sec(str) {
-    const a = str.match(/^(?:(\d+)d)?(?:([0-9]+)h)?(?:([0-9]+)m)?(?:([0-9]+)s?)?$/);
+    const a = str.match(/^(?:([0-9]+)d)?(?:([0-9]+)h)?(?:([0-9]+)m)?(?:([0-9]+)s?)?$/);
+    if (a == null) {
+        return str;
+    }
     let sec = 0
     sec += parseInt((a[1] || 0), 10) * 86400
     sec += parseInt((a[2] || 0), 10) * 3600
@@ -747,6 +750,28 @@ function time2sec(str) {
     return String(sec);
 }
 Converter.time2sec = time2sec;
+
+// レシピコンフィグで受理されない時刻表記を正規化する。
+function time2hms(str) {
+    if (str.match(/^([0-9][0-9]?h)?([0-9][0-9]?m)?([0-9][0-9]?s)?$/)) {
+        return str;
+    }
+    if (str.match(/^[0-9]+$/)) {
+        return str;
+    }
+
+    let sec = parseInt(time2sec(str));
+    let hh = Math.floor(sec / 3600);
+    let mm = Math.floor((sec % 3600) / 60);
+    let ss = Math.floor(sec % 60);
+
+    let ret = '';
+    if (hh > 0) ret += hh.toFixed() + 'h';
+    if (mm > 0) ret += mm.toFixed() + 'm';
+    if (ss > 0 || sec == 0) ret += ss.toFixed() + 's';
+    return ret;
+}
+Converter.time2hms = time2hms;
 
 Array.prototype.conv_aes = function() {
     return this.map(alg => (alg == "aes") ? "aes128" : alg).dedup();
@@ -1995,9 +2020,9 @@ Converter.rules['floatlink'] = {
                     conv.add(`${k1}.algorithm`, hash);
                 });
             },
-            // floatlink ike proposal hash {system-default | { sha1 | sha256 | sha512 },...}
+            // floatlink ike proposal lifetime-of-time { <time> | system-default }
             'lifetime-of-time': (conv, tokens) => {
-                conv.add(`floatlink.ike.proposal.phase1.lifetime`, tokens[4]);
+                conv.add(`floatlink.ike.proposal.phase1.lifetime`, time2hms(tokens[4]));
             },
         },
     },
@@ -2016,7 +2041,7 @@ Converter.rules['floatlink'] = {
                 });
             },
             'lifetime-of-time': (conv, tokens) => {
-                conv.add(`floatlink.ike.proposal.phase2.lifetime-of-time`, tokens[4]);
+                conv.add(`floatlink.ike.proposal.phase2.lifetime-of-time`, time2hms(tokens[4]));
             },
             'pfs-group': (conv, tokens) => {
                 conv.add(`floatlink.ike.proposal.phase2.pfs-group`, tokens[4]);
@@ -2058,14 +2083,14 @@ Converter.rules['httpd'] = {
 function ike_params(conv, tokens) {
     // ike interval 40s
     pdefs = {};
-    function add(word, defval, is_time=false) {
+    function add(word, defval) {
         pdefs[word] = {
             key: `ike.${word}`,
             fun: val => {
+                if (word == 'phase1-timeout' || word == 'phase2-timeout') {
+                    val = time2hms(val);
+                }
                 if (conv.missing('ike global-parameters', true)) {
-                    if (is_time) {
-                        val = time2sec(val);
-                    }
                     if (val != defval) {
                         conv.warning(`ike ${word} は ${conv.note.dst.name} ではサポートされていません。`);
                     }
@@ -2073,7 +2098,12 @@ function ike_params(conv, tokens) {
                 }
                 // interval だけは受け入れる表記が異なる。
                 if (word == 'interval') {
-                    val = time2sec(val);
+                    sec = time2sec(val);
+                    if (sec > 300) {
+                        conv.warning(`ike interval は上限値の 300s に切り詰められます。`);
+                        sec = 300;
+                    }
+                    val = String(sec);
                 }
                 return val;
             }
@@ -2087,8 +2117,8 @@ function ike_params(conv, tokens) {
     add('maximum-padding-length', 20);
     add('nat-keepalive-interval', 120);
     add('per-send', 1);
-    add('phase1-timeout', 30, true);
-    add('phase2-timeout', 30, true);
+    add('phase1-timeout', 30);
+    add('phase2-timeout', 30);
     add('randomize-padding-length', 'disable');
     add('randomize-padding-value', 'enable');
     add('retry', 5);
@@ -2163,7 +2193,7 @@ Converter.rules['ike'] = {
                 'encryption': true,
                 'hash': true,
                 'dh-group': true,
-                'lifetime-of-time': true
+                'lifetime-of-time': time2hms,
             });
         }
     },
@@ -3065,7 +3095,7 @@ Converter.rules['ipsec'] = {
             conv.read_params('ipsec.security-association.proposal', tokens, 4, {
                 'authentication-algorithm': true,
                 'encryption-algorithm': true,
-                'lifetime-of-time': true,
+                'lifetime-of-time': time2hms,
                 'pfs-group': true,
             });
         }
@@ -3123,7 +3153,7 @@ Converter.rules['ipsec'] = {
                     conv.add(`${ka}.algorithm`, name);
                 });
                 conv.param2recipe(ikep, 'dh-group', `${k2}.phase1.dh-group`);
-                conv.param2recipe(ikep, 'lifetime-of-time', `${k2}.phase1.lifetime`);
+                conv.param2recipe(ikep, 'lifetime-of-time', `${k2}.phase1.lifetime`, time2hms);
 
                 // phase2 parameters
                 sap['authentication-algorithm'].split(',').forEach(name => {
@@ -3134,7 +3164,7 @@ Converter.rules['ipsec'] = {
                     const ka = conv.get_index(`${k2}.phase2.encryption`);
                     conv.add(`${ka}.algorithm`, name);
                 });
-                conv.param2recipe(sap, 'lifetime-of-time', `${k2}.phase2.lifetime-of-time`);
+                conv.param2recipe(sap, 'lifetime-of-time', `${k2}.phase2.lifetime-of-time`, time2hms);
                 conv.param2recipe(sap, 'pfs-group', `${k2}.phase2.pfs-group`);
             }
             const ikepeer = conv.get_memo(`ike.peer.address.${dstaddr}`);
@@ -3178,7 +3208,7 @@ Converter.rules['ipsec'] = {
             conv.add(`${ka}.algorithm`, alg);
         });
         if (sap['lifetime-of-time']) {
-            conv.add(`${kprop}.lifetime-of-time`, sap['lifetime-of-time']);
+            conv.add(`${kprop}.lifetime-of-time`, time2hms(sap['lifetime-of-time']));
         }
         const pfs_group = sap['pfs-group'];
         if (pfs_group) {
@@ -3271,7 +3301,14 @@ Converter.rules['macfilter'] = {
         if (params['interval']) {  // URL 指定の場合は必ず interval パラメタがある。
             k1 = conv.get_index('macfilter.entry-list');
             conv.param2recipe(params, 'src', `${k1}.url`);
-            conv.param2recipe(params, 'interval', `${k1}.update-interval`);
+            conv.param2recipe(params, 'interval', `${k1}.update-interval`,
+                // 時刻の単位が無い表記は受け入れられないため変換する。
+                str => {
+                    if (str.match(/^[0-9]+$/)) {
+                        str += 's';
+                    }
+                    return time2hms(str);
+                 });
         } else {
             k1 = conv.get_index('macfilter.entry');
             conv.param2recipe(params, 'src', `${k1}.address`);
