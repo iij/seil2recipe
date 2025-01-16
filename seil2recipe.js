@@ -123,6 +123,8 @@ class Converter {
             fun(deferconv);
         });
         this.conversions.push(deferconv);
+
+        this.note.tconf.expand();
     }
 
     static defer(fun) {
@@ -139,8 +141,8 @@ class Note {
         this.params  = new Map();
         this.ifindex = new Map();  // (prefix) -> (interface) -> (index)
         this.memo    = new Map();
-        this.deps    = new DependencySet();
         this.dst     = new Device(target_device);
+        this.tconf   = new TreeConfig();
 
         this.memo.set('bridge.group', new Map());
         this.memo.set('floatlink.interfaces', []);
@@ -303,8 +305,8 @@ class Conversion {
     //
     // Proxy methods
     //
-    get deps() {
-        return this.note.deps;
+    get tconf() {
+        return this.note.tconf;
     }
 
     get_index(prefix, zero_origin) {
@@ -630,28 +632,104 @@ class Error {
     }
 }
 
-class DependencySet {
+class TreeConfig {
     constructor() {
-        this.floatlink = { url: null, iflist: [] };
+        this.root = new Map();
     }
 
-    add_floatlink_name_service(conv, url) {
-        this.floatlink.url = { conv: conv, value: url };
-        this.emit();
-    }
-
-    add_floatlink_iface(conv, ifname) {
-        this.floatlink.iflist.push({ conv: conv, value: ifname})
-        this.emit();
-    }
-
-    emit() {
-        if (this.floatlink.url) {
-            this.floatlink.iflist.forEach(iface => {
-                iface.conv.add(`interface.${iface.value}.floatlink.name-service`, this.floatlink.url.value);
-            });
-            this.floatlink.iflist = [];
+    get(symbols) {
+        let node = this.root;
+        for (const sym of symbols) {
+            if (!(node instanceof Map)) {
+                throw new Error(`bad TreeConfig keys: ${symbols}`);
+            }
+            node = node.get(sym);
+            if (node == undefined) {
+                return undefined;
+            }
         }
+        return node;  // a TreeConfigValue or a Map (subtree).
+    }
+
+    match(pattern) {
+        let node = this.root;
+        let idx  = 0;
+        for (const sym of pattern) {
+            if (!(node instanceof Map)) {
+                throw new Error(`bad TreeConfig matcher: ${pattern}`);
+            }
+            if (sym == '*') {
+                break;
+            } else {
+                node = node.get(sym);
+                if (node == undefined) {
+                    return [];
+                }
+            }
+            idx += 1;
+        }
+
+        const candidates = Array.from(node.keys());
+        let retval = [];
+        for (const cand of candidates) {
+            const symbols = Array.from(pattern);
+            symbols[idx] = cand;
+            const cval = this.get(symbols)
+            if (cval) {
+                retval.push([cand, cval]);
+            }
+        }
+
+        return retval;
+    }
+
+    set(labels, val, conv) {
+        let node  = this.root;
+        let index = 0;
+        for (const label of labels) {
+            if (index == labels.length - 1) {
+                const oldval = node.get(label);
+                if (oldval instanceof Map) {
+                    throw new Error(`TreeConfig leaf is a Map: ${labels}`);
+                }
+                node.set(label, new TreeConfigValue(val, conv));
+                return;
+            } else {
+                let child = node.get(label)
+                if (child instanceof Map) {
+                    node = child;
+                } else if (child == undefined) {
+                    child = new Map();
+                    node.set(label, child);
+                    node = child;
+                } else {
+                    throw new Error(`value found on an intermediate node of TreeConfig: ${labels} index ${index}`);
+                }
+            }
+            index += 1;
+        }
+    }
+
+    expand() {
+        this.expand_floatlink();
+    }
+
+    expand_floatlink() {
+        const ns = this.get(['floatlink', 'name-service']);
+
+        if (ns) {
+            const m = this.match(['interface', '*', 'floatlink', 'my-node-id']);
+            for (const [m, cval] of this.match(['interface', '*', 'floatlink', 'my-node-id'])) {
+                cval.conv.add(`interface.${m}.floatlink.name-service`, ns.str);
+            }
+        }
+    }
+}
+
+class TreeConfigValue {
+    constructor(str, conv) {
+        this.str  = str;
+        this.conv = conv;
     }
 }
 
@@ -2059,7 +2137,7 @@ Converter.rules['floatlink'] = {
             // seil3 系専用サーバの URL が書いてある場合は、汎用サーバの
             // URL に置き換える。
             let url = tokens[3].replace('floatlink-seil.', 'floatlink.');
-            conv.deps.add_floatlink_name_service(conv, url);
+            conv.tconf.set(['floatlink', 'name-service'], url, conv);
         }
     },
     'route': 'notsupported',
@@ -2462,7 +2540,7 @@ Converter.rules['interface'] = {
                 conv.add(`interface.${ifname}.floatlink.my-node-id`, tokens[4]);
 
                 // my-node-id は必須キーなので、このタイミングで書く。
-                conv.deps.add_floatlink_iface(conv, ifname);
+                conv.tconf.set(['interface', ifname, 'floatlink', 'my-node-id'], tokens[4], conv);
             },
             'nat-traversal': (conv, tokens) => {
                 const ifname = conv.ifmap(tokens[1]);

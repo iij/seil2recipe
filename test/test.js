@@ -2996,6 +2996,41 @@ describe('order issues', () => {
             interface.ipsec1.floatlink.name-service: https://example.com/
         `);
     });
+
+    it('multiple floatlink interfaces', () => {
+        assertconv(`
+            interface ipsec0 floatlink my-node-id MYNODE0
+            floatlink name-service add https://example.com/
+            interface ipsec1 floatlink my-node-id MYNODE1
+            ---
+            interface.ipsec0.floatlink.my-node-id: MYNODE0
+            interface.ipsec0.floatlink.name-service: https://example.com/
+            interface.ipsec1.floatlink.my-node-id: MYNODE1
+            interface.ipsec1.floatlink.name-service: https://example.com/
+        `);
+
+        assertconv(`
+            floatlink name-service add https://example.com/
+            interface ipsec0 floatlink my-node-id MYNODE0
+            interface ipsec1 floatlink my-node-id MYNODE1
+            ---
+            interface.ipsec0.floatlink.my-node-id: MYNODE0
+            interface.ipsec0.floatlink.name-service: https://example.com/
+            interface.ipsec1.floatlink.my-node-id: MYNODE1
+            interface.ipsec1.floatlink.name-service: https://example.com/
+        `);
+
+        assertconv(`
+            interface ipsec0 floatlink my-node-id MYNODE0
+            interface ipsec1 floatlink my-node-id MYNODE1
+            floatlink name-service add https://example.com/
+            ---
+            interface.ipsec0.floatlink.my-node-id: MYNODE0
+            interface.ipsec0.floatlink.name-service: https://example.com/
+            interface.ipsec1.floatlink.my-node-id: MYNODE1
+            interface.ipsec1.floatlink.name-service: https://example.com/
+        `);
+    });
 });
 
 describe('time2sec', () => {
