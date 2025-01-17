@@ -710,6 +710,22 @@ class TreeConfig {
         }
     }
 
+    set_params(labels, params, conv) {
+        const name = params['*NAME*'];
+        for (const key in params) {
+            this.set(labels.concat(name, key), params[key], conv);
+        }
+    }
+
+    expand_leafmap(leafmap, rules) {
+        for (const key in rules) {
+            const cval = leafmap.get(key);
+            if (cval) {
+                cval.conv.add(rules[key], cval.str);
+            }
+        }
+    }
+
     expand() {
         this.expand_floatlink();
     }
@@ -720,21 +736,19 @@ class TreeConfig {
             return;
         }
 
-        const m = this.match(['interface', '*', 'floatlink', 'my-node-id']);
         for (const [m, cval] of this.match(['interface', '*', 'floatlink', 'my-node-id'])) {
             cval.conv.add(`interface.${m}.floatlink.name-service`, ns.str);
         }
 
-        for (const [_, cval] of this.match(['floatlink', 'route', '*'])) {
-            const conv = cval.conv;
-            const params = cval.str;
-
-            const k = conv.get_index('route.ipv4');
-            conv.param2recipe(params, '*NAME*', `${k}.floatlink.destination`);
-            conv.param2recipe(params, 'distance', `${k}.distance`);
-            conv.param2recipe(params, 'floatlink-key', `${k}.floatlink.key`);
-            conv.param2recipe(params, 'gateway', `${k}.gateway`);
+        for (const [_, leafmap] of this.match(['floatlink', 'route', '*'])) {
+            const k = ns.conv.get_index('route.ipv4');
             ns.conv.add(`${k}.floatlink.name-service`, ns.str);
+            this.expand_leafmap(leafmap, {
+                '*NAME*': `${k}.floatlink.destination`,
+                'distance': `${k}.distance`,
+                'floatlink-key': `${k}.floatlink.key`,
+                'gateway': `${k}.gateway`,
+            });
         }
     }
 }
@@ -2161,8 +2175,7 @@ Converter.rules['floatlink'] = {
                 'floatlink-key': true,
                 'gateway': true,
             });
-            const name = tokens[3];
-            conv.tconf.set(['floatlink', 'route', name], params, conv);
+            conv.tconf.set_params(['floatlink', 'route'], params, conv);
         }
     }
 };
