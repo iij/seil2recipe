@@ -1055,6 +1055,19 @@ describe('floatlink', () => {
             floatlink.ike.proposal.phase2.pfs-group: modp3072
         `);
     });
+
+    it('route', () => {
+        assertconv(`
+            floatlink name-service add https://example.jp/floatlink
+            floatlink route add NODE1 gateway 1.2.3.4 floatlink-key FLOATLINKKEY1 distance 123
+            ---
+            route.ipv4.100.floatlink.destination: NODE1
+            route.ipv4.100.floatlink.key: FLOATLINKKEY1
+            route.ipv4.100.floatlink.name-service: https://example.jp/floatlink
+            route.ipv4.100.distance: 123
+            route.ipv4.100.gateway: 1.2.3.4
+        `);
+    });
 });
 
 describe('hostname', () => {
@@ -2993,6 +3006,41 @@ describe('order issues', () => {
             interface ipsec1 floatlink my-node-id MYNODE0
             ---
             interface.ipsec1.floatlink.my-node-id: MYNODE0
+            interface.ipsec1.floatlink.name-service: https://example.com/
+        `);
+    });
+
+    it('multiple floatlink interfaces', () => {
+        assertconv(`
+            interface ipsec0 floatlink my-node-id MYNODE0
+            floatlink name-service add https://example.com/
+            interface ipsec1 floatlink my-node-id MYNODE1
+            ---
+            interface.ipsec0.floatlink.my-node-id: MYNODE0
+            interface.ipsec0.floatlink.name-service: https://example.com/
+            interface.ipsec1.floatlink.my-node-id: MYNODE1
+            interface.ipsec1.floatlink.name-service: https://example.com/
+        `);
+
+        assertconv(`
+            floatlink name-service add https://example.com/
+            interface ipsec0 floatlink my-node-id MYNODE0
+            interface ipsec1 floatlink my-node-id MYNODE1
+            ---
+            interface.ipsec0.floatlink.my-node-id: MYNODE0
+            interface.ipsec0.floatlink.name-service: https://example.com/
+            interface.ipsec1.floatlink.my-node-id: MYNODE1
+            interface.ipsec1.floatlink.name-service: https://example.com/
+        `);
+
+        assertconv(`
+            interface ipsec0 floatlink my-node-id MYNODE0
+            interface ipsec1 floatlink my-node-id MYNODE1
+            floatlink name-service add https://example.com/
+            ---
+            interface.ipsec0.floatlink.my-node-id: MYNODE0
+            interface.ipsec0.floatlink.name-service: https://example.com/
+            interface.ipsec1.floatlink.my-node-id: MYNODE1
             interface.ipsec1.floatlink.name-service: https://example.com/
         `);
     });
