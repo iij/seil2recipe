@@ -716,12 +716,25 @@ class TreeConfig {
 
     expand_floatlink() {
         const ns = this.get(['floatlink', 'name-service']);
+        if (ns == null) {
+            return;
+        }
 
-        if (ns) {
-            const m = this.match(['interface', '*', 'floatlink', 'my-node-id']);
-            for (const [m, cval] of this.match(['interface', '*', 'floatlink', 'my-node-id'])) {
-                cval.conv.add(`interface.${m}.floatlink.name-service`, ns.str);
-            }
+        const m = this.match(['interface', '*', 'floatlink', 'my-node-id']);
+        for (const [m, cval] of this.match(['interface', '*', 'floatlink', 'my-node-id'])) {
+            cval.conv.add(`interface.${m}.floatlink.name-service`, ns.str);
+        }
+
+        for (const [_, cval] of this.match(['floatlink', 'route', '*'])) {
+            const conv = cval.conv;
+            const params = cval.str;
+
+            const k = conv.get_index('route.ipv4');
+            conv.param2recipe(params, '*NAME*', `${k}.floatlink.destination`);
+            conv.param2recipe(params, 'distance', `${k}.distance`);
+            conv.param2recipe(params, 'floatlink-key', `${k}.floatlink.key`);
+            conv.param2recipe(params, 'gateway', `${k}.gateway`);
+            ns.conv.add(`${k}.floatlink.name-service`, ns.str);
         }
     }
 }
@@ -2140,7 +2153,18 @@ Converter.rules['floatlink'] = {
             conv.tconf.set(['floatlink', 'name-service'], url, conv);
         }
     },
-    'route': 'notsupported',
+
+    'route': {
+        'add': (conv, tokens) => {
+            const params = conv.read_params(null, tokens, 3, {
+                'distance': true,
+                'floatlink-key': true,
+                'gateway': true,
+            });
+            const name = tokens[3];
+            conv.tconf.set(['floatlink', 'route', name], params, conv);
+        }
+    }
 };
 
 Converter.rules['hostname'] = (conv, tokens) => {
