@@ -1474,6 +1474,43 @@ describe('ipsec', () => {
             interface.l2tp0.ipsec-preshared-key: foo
         `);
     });
+
+    it('multiple security policies can share a security-association', () => {
+        assertconv(`
+            ike preshared-key add "172.16.0.1" "hogehogehoge"
+            ike proposal add A encryption aes256 hash sha1 authentication preshared-key dh-group modp1536 lifetime-of-time 1d
+            ike peer add A address 172.16.0.1 exchange-mode main proposals A
+            ipsec security-association proposal add A authentication-algorithm hmac-sha256 encryption-algorithm aes256
+            ipsec security-association add A tunnel 172.16.0.2 172.16.0.1 ike A esp enable
+            ipsec security-policy add A security-association A src 1.1.1.1/32 dst any
+            ipsec security-policy add B security-association A src 1.1.1.2/32 dst any
+            ----
+            ike.peer.100.address: 172.16.0.1
+            ike.peer.100.check-level: strict
+            ike.peer.100.exchange-mode: main
+            ike.peer.100.nat-traversal: disable
+            ike.peer.100.preshared-key: hogehogehoge
+            ike.peer.100.proposal.dh-group: modp1536
+            ike.peer.100.proposal.encryption.100.algorithm: aes256
+            ike.peer.100.proposal.hash.100.algorithm: sha1
+            ike.peer.100.proposal.lifetime: 24h
+            ipsec.security-association.sa0.address-type: static
+            ipsec.security-association.sa0.local-address: 172.16.0.2
+            ipsec.security-association.sa0.remote-address: 172.16.0.1
+            ipsec.security-association.sa0.share-session: enable
+            ipsec.security-policy.100.destination.address: any
+            ipsec.security-policy.100.ike.proposal.authentication.100.algorithm: hmac-sha256
+            ipsec.security-policy.100.ike.proposal.encryption.100.algorithm: aes256
+            ipsec.security-policy.100.security-association: sa0
+            ipsec.security-policy.100.source.address: 1.1.1.1/32
+            ipsec.security-policy.200.destination.address: any
+            ipsec.security-policy.200.ike.proposal.authentication.100.algorithm: hmac-sha256
+            ipsec.security-policy.200.ike.proposal.encryption.100.algorithm: aes256
+            ipsec.security-policy.200.security-association: sa0
+            ipsec.security-policy.200.source.address: 1.1.1.2/32
+            `);
+    });
+
 });
 
 describe('macfilter', () => {

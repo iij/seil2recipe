@@ -2938,6 +2938,13 @@ Converter.defer((conv) => {
 });
 
 function ike_peer(conv, prefix, peer, if_prefix) {
+    // write only once
+    if (peer['*DONE*']) {
+        return;
+    } else {
+        peer['*DONE*'] = true;
+    }
+
     const prefix_ike = if_prefix ? `${prefix}.ike` : prefix;
     const prefix_proposal = if_prefix ? `${prefix}.ike.proposal.phase1` : `${prefix}.proposal`;
 
@@ -3238,6 +3245,12 @@ Converter.rules['ipsec'] = {
         if (sa == null) {
             conv.badconfig(`ipsec security-association ${sa_name} is not properly configured`);
             return;
+        }
+        if (sa['*SP*'] == null) {
+            sa['*SP*'] = "one";
+        } else if (sa['*SP*'] == "one") {
+            conv.add(`ipsec.security-association.${sa['idx']}.share-session`, 'enable');
+            sa['*SP*'] = "some";
         }
 
         const sap_name = sa['ike'];
