@@ -587,7 +587,7 @@ const CompatibilityList = {
     'dhcp6 relay':                                     [    0,    1 ],
     'dhcp6 server':                                    [    0,    1 ],
     'dialup-device ... device-option ux312nc-3g-only': [    1,    0 ],
-    'dialup-device ... device-option ux312nc-lte-only':[    0,    0 ],
+    'dialup-device ... device-option ux312nc-lte-only':[    1,    0 ],
     'dialup-network':                                  [    1,    0 ],
     'filter6 add ... action forward':                  [    0,    1 ],
     'ike peer add ... check-level':                    [    0,    1 ],
@@ -2753,7 +2753,9 @@ Converter.rules['interface'] = {
                 }
 
                 if (ddev['ux312nc-lte-only'] != null) {
-                    conv.missing('dialup-device ... device-option ux312nc-lte-only');
+                    if (!conv.missing('dialup-device ... device-option ux312nc-lte-only')) {
+                        conv.add(`${k1}.device-option.ux312nc-lte-only`, ddev['ux312nc-lte-only']);
+                    }
                 }
 
                 const apname = ddev['connect-to'];

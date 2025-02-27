@@ -568,7 +568,6 @@ describe('dialup-device', () => {
             ppp add PPP ipcp enable ipcp-address on ipcp-dns on ipv6cp enable identifier pppuser@mobile.example.jp passphrase ppppass keepalive 8 auto-connect ondemand idle-timer 30
             dialup-device access-point add AP cid 2 apn example.jp pdp-type ip
             dialup-device mdm0 connect-to AP pin 1234 auto-reset-fail-count 10
-            dialup-device mdm0 device-option ux312nc-3g-only on
             dialup-device keepalive-send-interval 30
             dialup-device keepalive-down-count 20
             dialup-device keepalive-timeout 3
@@ -581,7 +580,6 @@ describe('dialup-device', () => {
             interface.ppp0.auto-reset-keepalive.down-detect-time: 10
             interface.ppp0.auto-reset-keepalive.reply-timeout: 3
             interface.ppp0.cid: 2
-            interface.ppp0.device-option.ux312nc-3g-only: enable
             interface.ppp0.dialup-device: mdm0
             interface.ppp0.id: pppuser@mobile.example.jp
             interface.ppp0.idle-timer: 30
@@ -615,16 +613,29 @@ describe('dialup-device', () => {
         `);
     });
 
-    it('ux312nc-lte-only is not supported on seil6/seil8 yet', () => {
+    it('ux312nc-lte-only is not supported on seil8', () => {
+        assertconv(`
+            dialup-device access-point add AP apn example.jp
+            dialup-device mdm0 connect-to AP
+            dialup-device mdm0 authentication-method chap username foo password bar
+            dialup-device mdm0 device-option ux312nc-lte-only enable
+            interface wwan0 over mdm0
+            ---
+            interface.wwan0.apn: example.jp
+            interface.wwan0.auth-method: chap
+            interface.wwan0.dialup-device: mdm0
+            interface.wwan0.id: foo
+            interface.wwan0.password: bar
+            interface.wwan0.device-option.ux312nc-lte-only: enable
+        `, 'w2');
+
         // warning: incomplete config.
         const config_e = `dialup-device mdm0 device-option ux312nc-lte-only enable
                           interface ppp0 over mdm0`;
-        assert_notsupported(config_e, 'w2');
         assert_notsupported(config_e, 'x4');
 
         const config_d = `dialup-device mdm0 device-option ux312nc-lte-only disable
                           interface ppp0 over mdm0`;
-        assert_notsupported(config_d, 'w2');
         assert_notsupported(config_d, 'x4');
     });
 });
