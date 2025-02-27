@@ -4641,11 +4641,13 @@ Converter.rules['route'] = {
                 'exact-match': 0,
                 'interface': true,
                 'metric': true,
+                'tag': 'notsupported',
                 'pass':  0,
                 'block': 0,
                 'set-as-path-prepend': true,
                 'set-metric': true,
                 'set-metric-type': true,
+                'set-tag': 'notsupported',
                 'set-weight': true,
             });
         },

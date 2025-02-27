@@ -2414,6 +2414,11 @@ describe('route', () => {
             `);
         });
     });
+
+    it('does not support "route-filter tag / set-tag"', () => {
+        assert_notsupported("route dynamic route-filter add A tag 1");
+        assert_notsupported("route dynamic route-filter add B set-tag 1");
+    });
 });
 
 describe('route6', () => {
