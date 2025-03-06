@@ -1524,6 +1524,33 @@ describe('ipsec', () => {
 
 });
 
+describe('l2tp', () => {
+    it('l2tpv3 with ipsec by floatlink', () => {
+        assertconv(`
+            l2tp hostname sideA
+            l2tp router-id 10.0.0.1
+            l2tp add B hostname sideB router-id 10.0.0.2
+            interface l2tp0 floatlink my-node-id floatlinkA
+            interface l2tp0 floatlink peer-node-id floatlinkB
+            interface l2tp0 floatlink preshared-key PRESHAREDKEY
+            interface l2tp0 floatlink floatlink-key FLOATLINKKEY
+            interface l2tp0 l2tp B remote-end-id vpn1
+            floatlink name-service add https://example.com/
+            ---
+            interface.l2tp0.floatlink.name-service: https://example.com/
+            interface.l2tp0.floatlink.my-node-id: floatlinkA
+            interface.l2tp0.floatlink.peer-node-id: floatlinkB
+            interface.l2tp0.floatlink.key: FLOATLINKKEY
+            interface.l2tp0.local-hostname: sideA
+            interface.l2tp0.local-router-id: 10.0.0.1
+            interface.l2tp0.remote-end-id: vpn1
+            interface.l2tp0.remote-hostname: sideB
+            interface.l2tp0.remote-router-id: 10.0.0.2
+            interface.l2tp0.ipsec-preshared-key: PRESHAREDKEY
+        `);
+    });
+});
+
 describe('macfilter', () => {
     it('mac address list on config', () => {
         assertconv(`

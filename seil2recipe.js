@@ -2589,7 +2589,11 @@ Converter.rules['interface'] = {
             },
             'preshared-key': (conv, tokens) => {
                 const ifname = conv.ifmap(tokens[1]);
-                conv.add(`interface.${ifname}.preshared-key`, tokens[4]);
+                if (ifname.match(/^l2tp\d+$/)) {
+                    conv.add(`interface.${ifname}.ipsec-preshared-key`, tokens[4]);
+                } else {
+                    conv.add(`interface.${ifname}.preshared-key`, tokens[4]);
+                }
             }
         },
 
