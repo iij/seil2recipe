@@ -1072,6 +1072,7 @@ describe('floatlink', () => {
             floatlink name-service add https://example.jp/floatlink
             floatlink route add NODE1 gateway 1.2.3.4 floatlink-key FLOATLINKKEY1 distance 123
             ---
+            floatlink.auto-pass-filter: enable
             route.ipv4.100.floatlink.destination: NODE1
             route.ipv4.100.floatlink.key: FLOATLINKKEY1
             route.ipv4.100.floatlink.name-service: https://example.jp/floatlink
@@ -1229,6 +1230,7 @@ describe('interface', () => {
             interface ipsec0 floatlink my-address lan1
             floatlink name-service add https://example.jp/floatlink
             ---
+            floatlink.auto-pass-filter: enable
             interface.ipsec0.floatlink.name-service: https://example.jp/floatlink
             interface.ipsec0.floatlink.my-node-id: MY-NODE-ID
             interface.ipsec0.floatlink.peer-node-id: PEER-NODE-ID
@@ -1537,6 +1539,7 @@ describe('l2tp', () => {
             interface l2tp0 l2tp B remote-end-id vpn1
             floatlink name-service add https://example.com/
             ---
+            floatlink.auto-pass-filter: enable
             interface.l2tp0.floatlink.name-service: https://example.com/
             interface.l2tp0.floatlink.my-node-id: floatlinkA
             interface.l2tp0.floatlink.peer-node-id: floatlinkB
@@ -3075,6 +3078,7 @@ describe('order issues', () => {
             interface ipsec1 floatlink my-node-id MYNODE0
             floatlink name-service add https://example.com/
             ---
+            floatlink.auto-pass-filter: enable
             interface.ipsec1.floatlink.my-node-id: MYNODE0
             interface.ipsec1.floatlink.name-service: https://example.com/
         `);
@@ -3085,6 +3089,7 @@ describe('order issues', () => {
             floatlink name-service add https://example.com/
             interface ipsec1 floatlink my-node-id MYNODE0
             ---
+            floatlink.auto-pass-filter: enable
             interface.ipsec1.floatlink.my-node-id: MYNODE0
             interface.ipsec1.floatlink.name-service: https://example.com/
         `);
@@ -3096,6 +3101,7 @@ describe('order issues', () => {
             floatlink name-service add https://example.com/
             interface ipsec1 floatlink my-node-id MYNODE1
             ---
+            floatlink.auto-pass-filter: enable
             interface.ipsec0.floatlink.my-node-id: MYNODE0
             interface.ipsec0.floatlink.name-service: https://example.com/
             interface.ipsec1.floatlink.my-node-id: MYNODE1
@@ -3107,6 +3113,7 @@ describe('order issues', () => {
             interface ipsec0 floatlink my-node-id MYNODE0
             interface ipsec1 floatlink my-node-id MYNODE1
             ---
+            floatlink.auto-pass-filter: enable
             interface.ipsec0.floatlink.my-node-id: MYNODE0
             interface.ipsec0.floatlink.name-service: https://example.com/
             interface.ipsec1.floatlink.my-node-id: MYNODE1
@@ -3118,6 +3125,7 @@ describe('order issues', () => {
             interface ipsec1 floatlink my-node-id MYNODE1
             floatlink name-service add https://example.com/
             ---
+            floatlink.auto-pass-filter: enable
             interface.ipsec0.floatlink.my-node-id: MYNODE0
             interface.ipsec0.floatlink.name-service: https://example.com/
             interface.ipsec1.floatlink.my-node-id: MYNODE1

@@ -590,6 +590,7 @@ const CompatibilityList = {
     'dialup-device ... device-option ux312nc-lte-only':[    1,    0 ],
     'dialup-network':                                  [    1,    0 ],
     'filter6 add ... action forward':                  [    0,    1 ],
+    'floatlink.auto-pass-filter':                      [    0,    1 ],
     'ike peer add ... check-level':                    [    0,    1 ],
     'ike peer add ... initial-contact disable':        [    0,    1 ],
     'ike peer add ... nat-traversal disable':          [    0,    1 ],
@@ -734,6 +735,9 @@ class TreeConfig {
         const ns = this.get(['floatlink', 'name-service']);
         if (ns == null) {
             return;
+        }
+        if (!ns.conv.missing('floatlink.auto-pass-filter', 1)) {
+            ns.conv.add('floatlink.auto-pass-filter: enable');
         }
 
         for (const [m, cval] of this.match(['interface', '*', 'floatlink', 'my-node-id'])) {
