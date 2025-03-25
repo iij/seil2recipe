@@ -2586,6 +2586,18 @@ describe('route6 dynamic ripng', () => {
 });
 
 describe('rtadvd', () => {
+    it('advertises automatica prefix', () => {
+        assertconv(`
+            rtadvd enable
+            rtadvd interface lan0 enable
+            rtadvd interface lan0 advertise auto
+            ---
+            router-advertisement.service: enable
+            router-advertisement.100.interface: ge1
+            router-advertisement.100.advertise.100.prefix: auto
+        `);
+    });
+
     it('rtadvd', () => {
         assertconv(`
             rtadvd enable

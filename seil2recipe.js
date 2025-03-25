@@ -4925,7 +4925,15 @@ Converter.rules['rtadvd'] = {
                         },
                     });
                 },
-                'auto': [],
+                'auto': (conv, tokens) => {
+                    const ifname = conv.ifmap(tokens[2]);
+                    const k1 = conv.get_memo(`rtadvd.interface.${ifname}`);
+                    if (k1 == null) {
+                        return;
+                    }
+                    const k2 = conv.get_index(`${k1}.advertise`);
+                    conv.add(`${k2}.prefix`, 'auto');
+                },
                 'manual': (conv, tokens) => {
                     const ifname = conv.ifmap(tokens[3]);
                     conv.set_memo(`rtadvd.interface.${ifname}`, conv.get_index('router-advertisement'));
