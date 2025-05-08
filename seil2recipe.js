@@ -2462,7 +2462,14 @@ Converter.rules['interface'] = {
         'bind-tunnel-protocol': (conv, tokens) => {
             // interface <pppac> bind-tunnel-protocol <protocol_config_name>,...
             const ifname = conv.ifmap(tokens[1]);
-            const protocol = conv.get_params('pppac.protocol')[tokens[3]];
+
+            let pcname = tokens[3];
+            if (pcname.includes(',')) {
+                pcname = pcname.split(',')[0];
+                conv.warning(`複数のプロトコルが指定されている場合は正しく変換できません。先頭のプロトコル("${pcname}")のみ変換します。`);
+            }
+
+            const protocol = conv.get_params('pppac.protocol')[pcname];
             if (protocol == null) {
                 // it may be unsupported protocol
                 return;
