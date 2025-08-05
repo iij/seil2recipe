@@ -450,15 +450,35 @@ describe('dhcp', () => {
             dhcp enable
             dhcp mode server
             dhcp interface lan0 enable
+            dhcp interface lan0 expire 24
             dhcp interface lan0 pool 192.168.0.10 30
             ---
             interface.ge1.ipv4.address: 192.168.0.254/24
             dhcp.server.service: enable
+            dhcp.server.100.expire: 24
+            dhcp.server.100.interface: ge1
             dhcp.server.100.pool.address: 192.168.0.10/24
             dhcp.server.100.pool.count: 30
-            dhcp.server.100.interface: ge1
         `);
     });
+
+    it('expire default value has been changed (24 -> 12)', () => {
+        assertconv(`
+            interface lan0 add 192.168.0.1/24
+            dhcp enable
+            dhcp mode server
+            dhcp interface lan0 enable
+            dhcp interface lan0 pool 192.168.0.2 253
+            ---
+            interface.ge1.ipv4.address: 192.168.0.1/24
+            dhcp.server.service: enable
+            dhcp.server.100.interface: ge1
+            dhcp.server.100.expire: 24
+            dhcp.server.100.pool.address: 192.168.0.2/24
+            dhcp.server.100.pool.count: 253
+        `);
+    });
+
 
     it('relay enable/disable', () => {
         assertconv(`

@@ -711,6 +711,13 @@ class TreeConfig {
         }
     }
 
+    set_default(labels, val, conv) {
+        if (this.get(labels)) {
+            return;
+        }
+        this.set(labels, val, conv);
+    }
+
     set_params(labels, params, conv) {
         const name = params['*NAME*'];
         for (const key in params) {
@@ -728,7 +735,15 @@ class TreeConfig {
     }
 
     expand() {
+        this.expand_dhcp();
         this.expand_floatlink();
+    }
+
+    expand_dhcp() {
+        for (const [ifname, cval] of this.match(['dhcp', 'interface', '*', 'expire'])) {
+            const k = dhcp_get_interface(cval.conv, ifname);
+            cval.conv.add(`${k}.expire`, cval.str);
+        }
     }
 
     expand_floatlink() {
@@ -1470,13 +1485,14 @@ Converter.rules['dhcp'] = {
                 const idx = conv.if2index('dhcp.interface', ifname);
                 conv.set_memo(`dhcp.interface.${idx}`, true);
                 conv.add(`dhcp.${mode}.${idx}.interface`, ifname);
+                if (mode == 'server') {
+                    conv.tconf.set_default(['dhcp', 'interface', tokens[2], 'expire'], "24", conv);
+                }
             },
 
             'expire': (conv, tokens) => {
                 const k = dhcp_get_interface(conv, tokens[2]);
-                if (k) {
-                    conv.add(`${k}.expire`, tokens[4]);
-                }
+                conv.tconf.set(['dhcp', 'interface', tokens[2], 'expire'], tokens[4], conv);
             },
 
             'gateway': (conv, tokens) => {
