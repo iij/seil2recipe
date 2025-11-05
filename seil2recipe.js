@@ -583,7 +583,6 @@ const CompatibilityList = {
     // feature                                          seil6 seil8
     'application-gateway http-proxy':                  [    0,    1 ],
     'application-gateway mode ftp':                    [    1,    0 ],
-    'cbq':                                             [    0,    1 ],
     'dhcp6 relay':                                     [    0,    1 ],
     'dhcp6 server':                                    [    0,    1 ],
     'dialup-device ... device-option ux312nc-3g-only': [    1,    0 ],
@@ -1287,7 +1286,6 @@ Converter.rules['cbq'] = {
     //     [maxburst { normal | <maxburst> }] [minburst { normal | <minburst> }]
     //     [packetsize { normal | <size> }] [maxdelay { normal | <delay> }]
     'class': (conv, tokens) => {
-        if (conv.missing('cbq')) { return; }
         if (!conv.get_memo('qos.service')) {
             conv.add('qos.service', 'enable');
             conv.set_memo('qos.service', true);
@@ -1338,7 +1336,6 @@ Converter.rules['cbq'] = {
     //  [mactype { any | arp | sna | <mactype>}]
     //  [enable | disable]
     'filter': (conv, tokens) => {
-        if (conv.missing('cbq')) { return; }
         const class_map = conv.get_memo('qos.class');
         const params = conv.read_params(null, tokens, 3, {
             'class': true,
@@ -2870,7 +2867,6 @@ Converter.rules['interface'] = {
         'queue': {
             'normal': [],
             'cbq': (conv, tokens) => {
-                if (conv.missing('cbq')) { return; }
                 const ifname = conv.ifmap(tokens[1]);
                 const idx1 = conv.if2index('qos.interface', ifname);
                 const k1 = `qos.interface.${idx1}`;
