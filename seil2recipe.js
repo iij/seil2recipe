@@ -4347,8 +4347,8 @@ Converter.rules['route'] = {
                 // route dynamic ospf administrative-distance
                 //     { external | inter-area | intra-area } { <number> | system-default }
                 'external': tokens => `ospf.administrative-distance.external: ${tokens[5]}`,
-                'inter-area': tokens => `ospf.administrative-distance.external: ${tokens[5]}`,
-                'intra-area':  tokens => `ospf.administrative-distance.external: ${tokens[5]}`,
+                'inter-area': tokens => `ospf.administrative-distance.inter-area: ${tokens[5]}`,
+                'intra-area':  tokens => `ospf.administrative-distance.intra-area: ${tokens[5]}`,
             },
             'area': (conv, tokens) => {
                 if (!conv.get_memo('ospf.enable')) { return; }
@@ -4387,7 +4387,6 @@ Converter.rules['route'] = {
             },
             'disable': [],
             'enable': (conv, tokens) => {
-                if (conv.missing('route6 dynamic ospf')) { return; }
                 const id = conv.get_memo('ospf.router-id');
                 if (id == null) {
                     conv.badconfig('router-id が設定されていません。');

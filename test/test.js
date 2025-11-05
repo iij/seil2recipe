@@ -2379,6 +2379,30 @@ describe('route', () => {
                 ---
             `);
         });
+
+        it('global parameters', () => {
+            assertconv(`
+                route dynamic ospf router-id 192.168.0.1
+                route dynamic ospf enable
+                route dynamic ospf area add 0.0.0.0
+                route dynamic ospf link add lan0 area 0.0.0.0
+                route dynamic ospf administrative-distance external 1
+                route dynamic ospf administrative-distance inter-area 2
+                route dynamic ospf administrative-distance intra-area 3
+                route dynamic ospf default-route-originate enable metric 9 metric-type 2
+                ---
+                ospf.router-id:                               192.168.0.1
+                ospf.area.100.id:                             0.0.0.0
+                ospf.link.100.area:                           0.0.0.0
+                ospf.link.100.interface:                      ge1
+                ospf.administrative-distance.external:        1
+                ospf.administrative-distance.inter-area:      2
+                ospf.administrative-distance.intra-area:      3
+                ospf.default-route-originate.originate:       enable
+                ospf.default-route-originate.set.metric:      9
+                ospf.default-route-originate.set.metric-type: 2
+            `);
+        });
     });
 
     describe('BGP', () => {
