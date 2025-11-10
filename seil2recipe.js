@@ -2979,14 +2979,18 @@ function ike_peer(conv, prefix, peer, if_prefix) {
 
     conv.param2recipe(peer, 'dpd', `${prefix_ike}.dpd`);
     conv.param2recipe(peer, 'esp-fragment-size', `${prefix}.esp-fragment-size`);
-    conv.param2recipe(peer, 'nonce-size', `${prefix}.nonce-size`);
-    conv.param2recipe(peer, 'prefer-new-phase1', `${prefix}.prefer-new-phase1`);
-    conv.param2recipe(peer, 'responder-only', `${prefix}.responder-only`, on2enable);
+    conv.param2recipe(peer, 'nonce-size', `${prefix_ike}.nonce-size`);
+    conv.param2recipe(peer, 'prefer-new-phase1', `${prefix_ike}.prefer-new-phase1`);
+    conv.param2recipe(peer, 'responder-only', `${prefix_ike}.responder-only`, on2enable);
     conv.param2recipe(peer, 'variable-size-key-exchange-payload', `${prefix}.variable-size-key-exchange-payload`);
 
-    if (!if_prefix) {
+    if (if_prefix) {
+        if (peer['exchange-mode'] != 'main') {
+            conv.param2recipe(peer, 'exchange-mode', `${prefix_ike}.exchange-mode`);
+        }
+    } else {
         conv.param2recipe(peer, 'address', `${prefix}.address`);
-        conv.param2recipe(peer, 'exchange-mode', `${prefix_ike}.exchange-mode`);
+        conv.param2recipe(peer, 'exchange-mode', `${prefix}.exchange-mode`);
     }
 
     // check-level はデフォルト値が strict -> obey に変更され、
@@ -3066,7 +3070,7 @@ function ike_peer(conv, prefix, peer, if_prefix) {
     if (psk) {
         conv.add(`${prefix}.preshared-key`, psk);
     } else {
-        conv.error('${psk_id} に対する preshared-key がありません。');
+        conv.badconfig(`${psk_id} に対応する preshared-key がありません。`);
     }
 }
 

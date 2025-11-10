@@ -1341,7 +1341,7 @@ describe('ipsec', () => {
             interface ipsec0 tunnel 10.0.0.1 10.0.0.2
             ike preshared-key add "10.0.0.2" "twotwotwotwo"
             ike proposal add IKEP encryption aes,3des hash sha256,md5 authentication preshared-key dh-group modp1536 lifetime-of-time 1d
-            ike peer add TWO address 10.0.0.2 exchange-mode main proposals IKEP my-identifier address peers-identifier address initial-contact enable tunnel-interface enable dpd enable
+            ike peer add TWO address 10.0.0.2 exchange-mode main proposals IKEP my-identifier address peers-identifier address initial-contact enable nonce-size 8 tunnel-interface enable dpd enable responder-only on prefer-new-phase1 enable
             ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes256,aes lifetime-of-time 7200
             ipsec security-association add SA tunnel-interface ipsec0 ike SAP esp enable
             ----
@@ -1351,6 +1351,9 @@ describe('ipsec', () => {
             interface.ipsec0.preshared-key: twotwotwotwo
             interface.ipsec0.ike.initial-contact: enable
             interface.ipsec0.ike.dpd: enable
+            interface.ipsec0.ike.nonce-size: 8
+            interface.ipsec0.ike.prefer-new-phase1: enable
+            interface.ipsec0.ike.responder-only: enable
             interface.ipsec0.ike.proposal.phase1.dh-group: modp1536
             interface.ipsec0.ike.check-level: strict
             interface.ipsec0.ike.my-identifier.type: address
@@ -1364,6 +1367,34 @@ describe('ipsec', () => {
             interface.ipsec0.ike.proposal.phase2.encryption.100.algorithm: aes256
             interface.ipsec0.ike.proposal.phase2.encryption.200.algorithm: aes128
             interface.ipsec0.ike.proposal.phase2.lifetime-of-time: 7200
+        `);
+    });
+
+    it('routing-based ipsec, aggressive mode', () => {
+        assertconv(`
+            interface ipsec0 tunnel 10.0.0.1 10.0.0.2
+            ike preshared-key add "foo@bar" "fugafugafuga"
+            ike proposal add IKEP encryption aes128 hash sha256 authentication preshared-key dh-group modp1536
+            ike peer add IKEPEER address 10.0.0.2 exchange-mode aggressive proposals IKEP my-identifier fqdn "foo" peers-identifier user-fqdn "foo@bar" tunnel-interface enable
+            ipsec security-association proposal add SAP authentication-algorithm hmac-sha1 encryption-algorithm aes256
+            ipsec security-association add SA tunnel-interface ipsec0 ike SAP esp enable
+            ---
+            interface.ipsec0.ipv4.source: 10.0.0.1
+            interface.ipsec0.ipv4.destination: 10.0.0.2
+            interface.ipsec0.ipv6.forward: pass
+            interface.ipsec0.preshared-key: fugafugafuga
+            interface.ipsec0.ike.check-level: strict
+            interface.ipsec0.ike.exchange-mode: aggressive
+            interface.ipsec0.ike.my-identifier.type: fqdn
+            interface.ipsec0.ike.my-identifier.fqdn: foo
+            interface.ipsec0.ike.peers-identifier.type: user-fqdn
+            interface.ipsec0.ike.peers-identifier.user-fqdn: foo@bar
+            interface.ipsec0.ike.proposal.phase1.encryption.100.algorithm: aes128
+            interface.ipsec0.ike.proposal.phase1.hash.100.algorithm: sha256
+            interface.ipsec0.ike.proposal.phase1.dh-group: modp1536
+            interface.ipsec0.ike.proposal.phase1.lifetime: 8h
+            interface.ipsec0.ike.proposal.phase2.authentication.100.algorithm: hmac-sha1
+            interface.ipsec0.ike.proposal.phase2.encryption.100.algorithm: aes256
         `);
     });
 
