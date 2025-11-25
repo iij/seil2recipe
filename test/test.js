@@ -1720,13 +1720,18 @@ describe('nat', () => {
 
     it('dynamic', () => {
         assertconv(`
+            nat dynamic add private 192.168.0.9 interface lan1
+            nat dynamic add private 192.168.0.10-11 interface lan1
+            nat dynamic add private 192.168.0.12 interface pppoe0
             nat dynamic add global 10.0.0.1
             nat dynamic add global 10.0.0.2-10.0.0.3 interface lan1
-            nat dynamic add private 192.168.0.9 interface lan1
+            nat dynamic add global 10.0.0.4 interface pppoe1
             ---
+            nat.ipv4.dnat.100.interface: ge0
             nat.ipv4.dnat.100.global.100.address: 10.0.0.1
             nat.ipv4.dnat.100.global.200.address: 10.0.0.2-10.0.0.3
             nat.ipv4.dnat.100.private.100.address: 192.168.0.9
+            nat.ipv4.dnat.100.private.200.address: 192.168.0.10-11
         `);
     });
 

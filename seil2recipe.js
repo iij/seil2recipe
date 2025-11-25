@@ -683,7 +683,21 @@ class TreeConfig {
         return retval;
     }
 
+    push(labels, val, conv) {
+        let cval = new TreeConfigValue(val, conv);
+        let array = this.get(labels);
+        if (array == undefined) {
+            this.set_raw(labels, [cval], conv);
+        } else {
+            array.push(cval);
+        }
+    }
+
     set(labels, val, conv) {
+        this.set_raw(labels, new TreeConfigValue(val, conv));
+    }
+
+    set_raw(labels, rawval) {
         let node  = this.root;
         let index = 0;
         for (const label of labels) {
@@ -692,7 +706,7 @@ class TreeConfig {
                 if (oldval instanceof Map) {
                     throw new Error(`TreeConfig leaf is a Map: ${labels}`);
                 }
-                node.set(label, new TreeConfigValue(val, conv));
+                node.set(label, rawval);
                 return;
             } else {
                 let child = node.get(label)
@@ -736,6 +750,7 @@ class TreeConfig {
     expand() {
         this.expand_dhcp();
         this.expand_floatlink();
+        this.expand_nat();
     }
 
     expand_dhcp() {
@@ -767,6 +782,28 @@ class TreeConfig {
                 'floatlink-key': `${k}.floatlink.key`,
                 'gateway': `${k}.gateway`,
             });
+        }
+    }
+
+    expand_nat() {
+        for (const [ifname, _] of this.match(['nat', 'dnat', '*'])) {
+            let privates = this.get(['nat', 'dnat', ifname, 'private']);
+            let globals = this.get(['nat', 'dnat', ifname, 'global']);
+            if (privates != null && globals != null) {
+                const conv = privates[0].conv;
+                const k1 = conv.get_index('nat.ipv4.dnat');
+                conv.add(`${k1}.interface`, ifname);
+
+                for (const cval of privates) {
+                    const k2 = cval.conv.get_index(`${k1}.private`);
+                    cval.conv.add(`${k2}.address`, cval.str);
+                }
+
+                for (const cval of globals) {
+                    const k3 = cval.conv.get_index(`${k1}.global`);
+                    cval.conv.add(`${k3}.address`, cval.str);
+                }
+            }
         }
     }
 }
@@ -3657,25 +3694,13 @@ Converter.rules['nat'] = {
             'global': (conv, tokens) => {
                 // nat dynamic add global <global_IPaddress> [interface <interface>]
                 const ifname = conv.natifname(tokens[6]);
-                const m = `nat.dynamic.global.${ifname}`;
-                const globals = conv.get_memo(m);
-                if (globals) {
-                    globals.push(tokens[4]);
-                } else {
-                    conv.set_memo(m, [ tokens[4] ]);
-                }
+                conv.tconf.push(['nat', 'dnat', ifname, 'global'], tokens[4], conv);
             },
 
             'private': (conv, tokens) => {
                 // nat dynamic add private <private_IPaddress> [interface <interface>]
                 const ifname = conv.natifname(tokens[6]);
-                const m = `nat.dynamic.global.${ifname}`;
-                const k1 = conv.get_index('nat.ipv4.dnat');
-                conv.get_memo(m).forEach(g => {
-                    const k2 = conv.get_index(`${k1}.global`);
-                    conv.add(`${k2}.address`, g);
-                });
-                conv.add(`${k1}.private.100.address: ${tokens[4]}`);
+                conv.tconf.push(['nat', 'dnat', ifname, 'private'], tokens[4], conv);
             },
         },
     },
