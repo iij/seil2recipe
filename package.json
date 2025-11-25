@@ -7,12 +7,10 @@
     "@colors/colors": "^1.5.0"
   },
   "devDependencies": {
-    "mocha": "^11.1.0",
-    "nyc": "^15.0.0"
+    "mocha": "^11.1.0"
   },
   "scripts": {
     "test": "mocha",
-    "coverage": "nyc --reporter=text --reporter=html mocha",
     "watch": "mocha --watch --reporter min"
   },
   "author": "Internet Initiative Japan Inc.",
