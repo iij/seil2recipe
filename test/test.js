@@ -2500,7 +2500,42 @@ describe('route', () => {
             `);
         });
 
-        it('can import redistributed routes', () => {
+        it('can import redistributed routes from connected/static/rip/ospf', () => {
+            assertconv(`
+                route dynamic route-filter add STATIC network 10.0.0.2/32 pass
+                route dynamic route-filter add RIP network 10.0.0.3/32 pass
+                route dynamic route-filter add OSPF network 10.0.0.4/32 pass
+                route dynamic bgp my-as-number 65001
+                route dynamic bgp router-id 192.168.0.1
+                route dynamic bgp enable
+                route dynamic bgp neighbor add 192.168.0.2 remote-as 65002
+                route dynamic redistribute connected-to-bgp enable metric 1
+                route dynamic redistribute static-to-bgp enable metric 2 route-filter STATIC
+                route dynamic redistribute rip-to-bgp enable metric 3 route-filter RIP
+                route dynamic redistribute ospf-to-bgp enable metric 4 route-filter OSPF
+                ---
+                bgp.ipv4.redistribute-from.connected.redistribute: enable
+                bgp.ipv4.redistribute-from.connected.set.metric: 1
+                bgp.ipv4.redistribute-from.static.redistribute: enable
+                bgp.ipv4.redistribute-from.static.set.metric: 2
+                bgp.ipv4.redistribute-from.static.filter.100.action: pass
+                bgp.ipv4.redistribute-from.static.filter.100.match.prefix: 10.0.0.2/32
+                bgp.ipv4.redistribute-from.rip.redistribute: enable
+                bgp.ipv4.redistribute-from.rip.set.metric: 3
+                bgp.ipv4.redistribute-from.rip.filter.100.action: pass
+                bgp.ipv4.redistribute-from.rip.filter.100.match.prefix: 10.0.0.3/32
+                bgp.ipv4.redistribute-from.ospf.redistribute: enable
+                bgp.ipv4.redistribute-from.ospf.set.metric: 4
+                bgp.ipv4.redistribute-from.ospf.filter.100.action: pass
+                bgp.ipv4.redistribute-from.ospf.filter.100.match.prefix: 10.0.0.4/32
+                bgp.neighbor.100.address: 192.168.0.2
+                bgp.neighbor.100.remote-as: 65002
+                bgp.my-as-number: 65001
+                bgp.router-id: 192.168.0.1
+            `);
+        });
+
+        it('can apply route-filter on redistributed routes', () => {
             assertconv(`
                 route dynamic route-filter add A network 10.0.0.0/8 interface lan0 pass set-metric 2 set-weight 3 set-as-path-prepend 4
                 route dynamic bgp my-as-number 65001

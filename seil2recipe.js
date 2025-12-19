@@ -4520,8 +4520,8 @@ Converter.rules['route'] = {
                     conv.syntaxerror(tokens[3]);
                     return;
                 };
-                const from = fixup_ospf6(fromto[1]);
-                const to = fixup_ospf6(fromto[2]);
+                const from = fromto[1];
+                const to = fromto[2];
                 const to_prefix = (to == 'bgp') ? 'bgp.ipv4' : to;
                 if (!conv.get_memo(`${to}.enable`)) { return; }
 
@@ -4709,9 +4709,6 @@ Converter.rules['route'] = {
     },
 };
 
-function fixup_ospf6(str) {
-    return (str == 'ospf') ? 'ospf6' : str;
-}
 
 Converter.rules['route6'] = {
     'add': (conv, tokens) => {
@@ -4821,8 +4818,8 @@ Converter.rules['route6'] = {
                         return;
                     };
 
-                    const from = fixup_ospf6(fromto[1]);
-                    const to   = fixup_ospf6(fromto[2]);
+                    const from = (fromto[1] == 'ospf') ? 'ospf6' : fromto[1];
+                    const to = (fromto[2] == 'ospf') ? 'ospf6' : fromto[2]
 
                     if (!conv.get_memo(`${to}.enable`)) {
                         return;
