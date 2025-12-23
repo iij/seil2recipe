@@ -599,6 +599,7 @@ const CompatibilityList = {
     'interface ... add dhcp6':                         [    0,    1 ],
     'interface ... add router-advertisement(s)':       [    0,    1 ],
     'interface pppac max-session unlimit':             [    0,    1 ],
+    'interface pppoe over':                            [    0,    1 ],
     'nat6':                                            [    0,    1 ],
     'option ip fragment-requeueing off':               [    0,    1 ],
     'option ip monitor-linkstate off':                 [    0,    1 ],
@@ -2792,12 +2793,17 @@ Converter.rules['interface'] = {
             const ifname = conv.ifmap(tokens[1]);
             const ddev = conv.get_params('dialup-device')[device];
             const dnet = conv.get_params('dialup-network')[device];
-            if (device == 'lan1') {
-                // default value for <pppoe>
-            } else if (device.startsWith('lan')) {
-                // non-default values for <pppoe>
-                const ifname = conv.ifmap(tokens[1]);
-                conv.add(`interface.${ifname}.over`, conv.ifmap(device));
+            if (device.startsWith('lan')) {
+                if (conv.missing('interface pppoe over', true)) {
+                    if (device == 'lan1') {
+                        // it is okay - implicit default value
+                    } else {
+                        conv.notsupported('interface pppoe over');
+                    }
+                } else {
+                    const ifname = conv.ifmap(tokens[1]);
+                    conv.add(`interface.${ifname}.over`, conv.ifmap(device));
+                }
             } else if (ddev != null) {
                 // for <ppp>
                 const k1 = `interface.${ifname}`;

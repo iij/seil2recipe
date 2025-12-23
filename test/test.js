@@ -1278,6 +1278,7 @@ describe('interface', () => {
                 interface.pppoe0.ipv4.tcp-mss: 1404
                 interface.pppoe0.ipv6.tcp-mss: 1406
                 interface.pppoe0.ipv6cp: enable
+                interface.pppoe0.over: ge0
                 interface.pppoe0.keepalive: 30
                 interface.pppoe0.password: PASS
             `);
@@ -1288,7 +1289,18 @@ describe('interface', () => {
             interface pppoe0 over lan0
             ---
             interface.pppoe0.over: ge1
-        `);
+            `);
+        });
+
+        it('seil6 does not support "over" key', () => {
+            assertconv(`
+                ppp add PPP ipcp enable identifier user@example.jp
+                interface pppoe0 ppp-configuration PPP
+                interface pppoe0 over lan1
+                ---
+                interface.pppoe0.id: user@example.jp
+                interface.pppoe0.ipcp: enable
+            `, 'w2');
         });
     });
 
