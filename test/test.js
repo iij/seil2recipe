@@ -2413,6 +2413,38 @@ describe('route', () => {
         `);
     });
 
+    describe('RIP', () => {
+        it('can import redistributed routes from connected/static/ospf/bgp', () => {
+            assertconv(`
+                route dynamic route-filter add STATIC network 10.0.0.2/32 pass
+                route dynamic route-filter add OSPF network 10.0.0.3/32 pass
+                route dynamic route-filter add BGP network 10.0.0.4/32 pass
+                route dynamic rip enable
+                route dynamic rip interface lan0 enable
+                route dynamic redistribute connected-to-rip enable metric 1
+                route dynamic redistribute static-to-rip enable metric 2 route-filter STATIC
+                route dynamic redistribute ospf-to-rip enable metric 3 route-filter OSPF
+                route dynamic redistribute bgp-to-rip enable metric 4 route-filter BGP
+                ---
+                rip.interface.100.interface: ge1
+                rip.redistribute-from.connected.redistribute: enable
+                rip.redistribute-from.connected.set.metric: 1
+                rip.redistribute-from.static.redistribute: enable
+                rip.redistribute-from.static.set.metric: 2
+                rip.redistribute-from.static.filter.100.action: pass
+                rip.redistribute-from.static.filter.100.match.prefix: 10.0.0.2/32
+                rip.redistribute-from.ospf.redistribute: enable
+                rip.redistribute-from.ospf.set.metric: 3
+                rip.redistribute-from.ospf.filter.100.action: pass
+                rip.redistribute-from.ospf.filter.100.match.prefix: 10.0.0.3/32
+                rip.redistribute-from.bgp.redistribute: enable
+                rip.redistribute-from.bgp.set.metric: 4
+                rip.redistribute-from.bgp.filter.100.action: pass
+                rip.redistribute-from.bgp.filter.100.match.prefix: 10.0.0.4/32
+            `);
+        });
+    });
+
     describe('OSPF', () => {
         it('should generate no ospf lines if ospf is disabled', () => {
             assertconv(`
@@ -2449,6 +2481,45 @@ describe('route', () => {
                 ospf.default-route-originate.originate:       enable
                 ospf.default-route-originate.set.metric:      9
                 ospf.default-route-originate.set.metric-type: 2
+            `);
+        });
+
+        it('can import redistributed routes from connected/static/rip/bgp', () => {
+            assertconv(`
+                route dynamic route-filter add STATIC network 10.0.0.2/32 pass
+                route dynamic route-filter add RIP network 10.0.0.3/32 pass
+                route dynamic route-filter add BGP network 10.0.0.4/32 pass
+                route dynamic ospf router-id 192.168.0.1
+                route dynamic ospf enable
+                route dynamic ospf area add 0.0.0.0
+                route dynamic ospf link add lan0 area 0.0.0.0
+                route dynamic redistribute connected-to-ospf enable metric 1 metric-type 2
+                route dynamic redistribute static-to-ospf enable metric 2 metric-type 2 route-filter STATIC
+                route dynamic redistribute rip-to-ospf enable metric 3 metric-type 2 route-filter RIP
+                route dynamic redistribute bgp-to-ospf enable metric 4 metric-type 2 route-filter BGP
+                ---
+                ospf.router-id:          192.168.0.1
+                ospf.area.100.id:        0.0.0.0
+                ospf.link.100.area:      0.0.0.0
+                ospf.link.100.interface: ge1
+                ospf.redistribute-from.connected.redistribute: enable
+                ospf.redistribute-from.connected.set.metric: 1
+                ospf.redistribute-from.connected.set.metric-type: 2
+                ospf.redistribute-from.static.redistribute: enable
+                ospf.redistribute-from.static.set.metric: 2
+                ospf.redistribute-from.static.set.metric-type: 2
+                ospf.redistribute-from.static.filter.100.action: pass
+                ospf.redistribute-from.static.filter.100.match.prefix: 10.0.0.2/32
+                ospf.redistribute-from.rip.redistribute: enable
+                ospf.redistribute-from.rip.set.metric: 3
+                ospf.redistribute-from.rip.set.metric-type: 2
+                ospf.redistribute-from.rip.filter.100.action: pass
+                ospf.redistribute-from.rip.filter.100.match.prefix: 10.0.0.3/32
+                ospf.redistribute-from.bgp.redistribute: enable
+                ospf.redistribute-from.bgp.set.metric: 4
+                ospf.redistribute-from.bgp.set.metric-type: 2
+                ospf.redistribute-from.bgp.filter.100.action: pass
+                ospf.redistribute-from.bgp.filter.100.match.prefix: 10.0.0.4/32
             `);
         });
     });

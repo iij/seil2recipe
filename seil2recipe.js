@@ -4484,114 +4484,47 @@ Converter.rules['route'] = {
         },
 
         // route dynamic redistribute { static-to-rip | ospf-to-rip | bgp-to-rip }
-        //     { disable | enable [metric <metric>]
+        //   { disable | enable [metric <metric>]
         //     [route-filter <route-filter-name>[,<route-filter-name>...]] }
-        'redistribute': {
-            'bgp-to-ospf': (conv, tokens) => {
-                if (conv.get_memo('ospf.enable')) {
-                    conv.add('ospf.redistribute-from.bgp.redistribute', tokens[4]);
-                }
-            },
+        // route dynamic redistribute connected-to-rip
+        //   { disable | enable [metric <metric>] }
+        //
+        // route dynamic redistribute { static-to-ospf | rip-to-ospf | bgp-to-ospf }
+        //   { disable | enable [metric <metric>] [metric-type <metric-type>]
+        //     [route-filter <route-filter-name>[,<route-filter-name>...]] }
+        // route dynamic redistribute connected-to-ospf
+        //   { disable | enable [metric <metric>] [metric-type <metric-type>] }
+        //
+        // route dynamic redistribute { static-to-bgp | rip-to-bgp | ospf-to-bgp }
+        //   { disable | enable [metric <metric>]
+        //     [route-filter <route-filter-name>[,<route-filter-name>...]] }
+        // route dynamic redistribute connected-to-bgp
+        //   { disable | enable [metric <metric>] }
+        'redistribute': (conv, tokens) => {
+            const fromto = tokens[3].match(/^(\w+)-to-(\w+)$/);
+            if (!fromto) {
+                conv.syntaxerror(tokens[3]);
+                return;
+            };
+            const from = fromto[1];
+            const to = fromto[2];
+            const to_prefix = (to == 'bgp') ? 'bgp.ipv4' : to;
+            if (!conv.get_memo(`${to}.enable`)) { return; }
 
-            'bgp-to-rip': (conv, tokens) => {
-                if (conv.get_memo('rip.enable')) {
-                    conv.add('rip.redistribute-from.bgp.redistribute', tokens[4]);
-                }
-            },
-
-            'connected-to-ospf': (conv, tokens) => {
-                if (conv.get_memo('ospf.enable')) {
-                    conv.add('ospf.redistribute-from.connected.redistribute', tokens[4]);
-                }
-            },
-
-            'connected-to-rip': (conv, tokens) => {
-                if (conv.get_memo('rip.enable')) {
-                    conv.add('rip.redistribute-from.connected.redistribute', tokens[4]);
-                }
-            },
-
-            'ospf-to-rip': (conv, tokens) => {
-                if (conv.get_memo('rip.enable')) {
-                    conv.add('rip.redistribute-from.ospf.redistribute', tokens[4]);
-                }
-            },
-
-            // route dynamic redistribute { static-to-bgp | rip-to-bgp | ospf-to-bgp }
-            //     { disable | enable [metric <metric>]
-            //     [route-filter <route-filter-name>[,<route-filter-name>...]] }
-            '*': (conv, tokens) => {
-                const fromto = tokens[3].match(/^(\w+)-to-(\w+)$/);
-                if (!fromto) {
-                    conv.syntaxerror(tokens[3]);
-                    return;
-                };
-                const from = fromto[1];
-                const to = fromto[2];
-                const to_prefix = (to == 'bgp') ? 'bgp.ipv4' : to;
-                if (!conv.get_memo(`${to}.enable`)) { return; }
-
-                const params = conv.read_params(null, tokens, 3, {
-                    'metric': `${to_prefix}.redistribute-from.${from}.set.metric`,
-                    'route-filter': true,
-                    'enable': 0,
-                    'disable': 0,
-                });
-                if (params['disable']) {
-                    return;
-                }
-                conv.add(`${to_prefix}.redistribute-from.${from}.redistribute`, 'enable');
-                (params['route-filter'] || "").split(',').forEach(name => {
-                    route_filter(conv, `${to_prefix}.redistribute-from.${from}.filter`, name);
-                });
-            },
-
-            'rip-to-ospf': (conv, tokens) => {
-                // route dynamic redistribute rip-to-ospf {disable|enable}
-                //     [metric <metric>] [metric-type <metric-type>]
-                //     [route-filter <route-filter-name>[,<route-filter-name>...]]
-                if (conv.get_memo('ospf.enable')) {
-                    const r = tokens[3].match(/([a-z]+)-to-([a-z]+)/);
-                    const from = r[1];
-                    const to = r[2];
-
-                    conv.add(`ospf.redistribute-from.${from}.redistribute`, tokens[4]);
-                    const params = conv.read_params(null, tokens, 3, {
-                        'disable': 0,
-                        'enable': 0,
-                        'metric': `${to}.redistribute-from.${from}.set.metric`,
-                        'metric-type': `${to}.redistribute-from.${from}.set.metric-type`,
-                        'route-filter': true,
-                    });
-                    (params['route-filter'] || "").split(',').forEach(name => {
-                        const rf = conv.get_params('route-filter.ipv4')[name];
-                        if (rf == null) {
-                            return;
-                        }
-                        const k1 = conv.get_index(`${to}.redistribute-from.${from}.filter`);
-                        conv.param2recipe(rf, 'interface', `${k1}.match.interface`, val => conv.ifmap(val));
-                        conv.param2recipe(rf, 'network', `${k1}.match.prefix`, val => `${val}`);
-                        conv.param2recipe(rf, 'set-metric', `${k1}.set.metric`);
-                        conv.param2recipe(rf, 'set-metric-type', `${k1}.set.metric-type`);
-                        if (rf['pass']) {
-                            conv.add(`${k1}.action`, 'pass');
-                        }
-                        if (rf['block']) {
-                            conv.add(`${k1}.action`, 'block');
-                        }
-                    });
-                }
-            },
-
-            'static-to-rip': (conv, tokens) => {
-                if (conv.get_memo('rip.enable')) {
-                    conv.add('rip.redistribute-from.static.redistribute', tokens[4]);
-                }
-            },
-
-            'static-to-ospf': (conv, tokens) => {
-                return Converter.rules['route']['dynamic']['redistribute']['rip-to-ospf'](conv, tokens);
-            },
+            const params = conv.read_params(null, tokens, 3, {
+                'metric': `${to_prefix}.redistribute-from.${from}.set.metric`,
+                'metric-type': `${to_prefix}.redistribute-from.${from}.set.metric-type`,
+                'route-filter': true,
+                'enable': 0,
+                'disable': 0,
+            });
+            if (params['disable']) {
+                return;
+            }
+            conv.add(`${to_prefix}.redistribute-from.${from}.redistribute`, 'enable');
+            (params['route-filter'] || "").split(',').forEach(name => {
+                route_filter(conv, `${to_prefix}.redistribute-from.${from}.filter`, name);
+            });
         },
 
         'rip': {
