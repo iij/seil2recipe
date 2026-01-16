@@ -608,7 +608,9 @@ const CompatibilityList = {
     'option ipv6 fragment-requeueing off':             [    0,    1 ],
     'option ipv6 monitor-linkstate off':               [    0,    1 ],
     'option ipv6 redirects on':                        [    0,    1 ],
+    'ppp acname':                                      [    1,    0 ],
     'ppp authentication-method none':                  [    1,    0 ],
+    'ppp servicename':                                 [    1,    0 ],
     'pppac option session-limit off':                  [    0,    1 ],
     'resolver server-priority':                        [    1,    0 ],
     'route dynamic rip':                               [    0,    1 ],
@@ -2905,6 +2907,14 @@ Converter.rules['interface'] = {
             if (!ifname.match(/^pppoe\d+$/)) {
                 conv.param2recipe(params, 'idle-timer', `${k1}.idle-timer`);
             }
+
+            // servicename and acname
+            if (!conv.missing('ppp servicename')) {
+                conv.param2recipe(params, 'servicename', `${k1}.servicename`);
+            }
+            if (!conv.missing('ppp acname')) {
+                conv.param2recipe(params, 'acname', `${k1}.acname`);
+            }
         },
 
         'queue': {
@@ -4060,8 +4070,8 @@ Converter.rules['ppp'] = {
             'keepalive': true,
             'ipcp-address': true,
             'ipcp-dns': true,
-            'acname': 'notsupported',
-            'servicename': 'notsupported',
+            'acname': true,
+            'servicename': true,
             'authentication-method': true,
             'identifier': true,
             'passphrase': true,

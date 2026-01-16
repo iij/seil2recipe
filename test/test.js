@@ -1302,6 +1302,19 @@ describe('interface', () => {
                 interface.pppoe0.ipcp: enable
             `, 'w2');
         });
+
+        it('servicename/acname (seil6 only)', () => {
+            assertconv(`
+                ppp add PPP ipcp enable identifier user@example.jp servicename ServiceName acname AcName
+                interface pppoe0 ppp-configuration PPP
+                interface pppoe0 over lan1
+                ---
+                interface.pppoe0.id: user@example.jp
+                interface.pppoe0.ipcp: enable
+                interface.pppoe0.servicename: ServiceName
+                interface.pppoe0.acname: AcName
+            `, 'w2');
+        });
     });
 
     it('tunnel dslite', () => {
