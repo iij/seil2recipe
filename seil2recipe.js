@@ -2023,7 +2023,20 @@ Converter.rules['environment'] = {
         });
     },
     'pager': tokens => `terminal.pager: ${on2enable(tokens[2])}`,
-    'terminal': 'deprecated',
+
+    // environment terminal auto-size { on | off }
+    // environment terminal column { <column> | system-default }
+    // environment terminal row { <row> | system-default }
+    'terminal': (conv, tokens) => {
+        // 端末ログインできない機種では無視する。
+        if (conv.missing('terminal', true)) { return; }
+
+        // seil8 は environment terminal auto-size on 相当で動作するので、
+        // auto-size on なら警告を出さない。
+        if (tokens[2] != 'auto-size' || tokens[3] != 'on') {
+            conv.deprecated('terminal');
+        }
+    },
 };
 
 function convert_filter46(conv, tokens, ipver) {

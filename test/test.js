@@ -779,9 +779,12 @@ describe('environment', () => {
             terminal.pager: disable
         `);
     });
-    it('terminal is deprecated', () => {
-        assert_conversions('environment terminal auto-size on', convs => {
+    it('deprecates most terminal parameters', () => {
+        assert_conversions('environment terminal column 80', convs => {
             assert.equal(convs[0].errors[0].type, 'deprecated');
+        });
+        assert_conversions('environment terminal auto-size on', convs => {
+            assert.strictEqual(convs[0].errors.length, 0);
         });
     });
 });
