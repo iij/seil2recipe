@@ -42,7 +42,7 @@ function assert_conversions(seil_config, fun) {
 function assert_notsupported(seil_config, target = 'test') {
     const c = new s2r.Converter(seil_config + '\n', target);
     const errors = c.conversions.map((conv) => conv.errors).flat();
-    assert.equal(errors[0].type, 'notsupported');
+    assert.equal(errors[0]?.type, 'notsupported');
 }
 
 
@@ -2659,9 +2659,41 @@ describe('route', () => {
         });
     });
 
-    it('does not support "route-filter tag / set-tag"', () => {
-        assert_notsupported("route dynamic route-filter add A tag 1");
-        assert_notsupported("route dynamic route-filter add B set-tag 1");
+    it('route-filter tag / set-tag', () => {
+        assertconv(`
+            route dynamic route-filter add OSPF network 10.0.0.4/32 pass tag 4
+            route dynamic route-filter add BGP network 10.0.0.5/32 pass set-tag 5
+            route dynamic ospf router-id 192.168.0.1
+            route dynamic ospf enable
+            route dynamic ospf area add 0.0.0.0
+            route dynamic ospf link add lan0 area 0.0.0.0
+            route dynamic bgp my-as-number 65001
+            route dynamic bgp router-id 192.168.0.1
+            route dynamic bgp enable
+            route dynamic bgp neighbor add 192.168.0.2 remote-as 65002
+            route dynamic redistribute bgp-to-ospf enable route-filter BGP
+            route dynamic redistribute ospf-to-bgp enable route-filter OSPF
+            ---
+            ospf.router-id:          192.168.0.1
+            ospf.area.100.id:        0.0.0.0
+            ospf.link.100.area:      0.0.0.0
+            ospf.link.100.interface: ge1
+            ospf.redistribute-from.bgp.redistribute: enable
+            ospf.redistribute-from.bgp.filter.100.action: pass
+            ospf.redistribute-from.bgp.filter.100.match.prefix: 10.0.0.5/32
+            ospf.redistribute-from.bgp.filter.100.set.tag: 5
+            bgp.ipv4.redistribute-from.ospf.redistribute: enable
+            bgp.ipv4.redistribute-from.ospf.filter.100.action: pass
+            bgp.ipv4.redistribute-from.ospf.filter.100.match.prefix: 10.0.0.4/32
+            bgp.ipv4.redistribute-from.ospf.filter.100.match.tag: 4
+            bgp.neighbor.100.address: 192.168.0.2
+            bgp.neighbor.100.remote-as: 65002
+            bgp.my-as-number: 65001
+            bgp.router-id: 192.168.0.1
+            `);
+
+        assert_notsupported("route dynamic route-filter add A tag 1", 'w2');
+        assert_notsupported("route dynamic route-filter add B set-tag 1", 'w2');
     });
 });
 

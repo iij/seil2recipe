@@ -613,6 +613,7 @@ const CompatibilityList = {
     'ppp servicename':                                 [    1,    0 ],
     'pppac option session-limit off':                  [    0,    1 ],
     'resolver server-priority':                        [    1,    0 ],
+    'route-filter tag / set-tag':                      [    0,    1 ],
     'route dynamic rip':                               [    0,    1 ],
     'route6 dynamic ospf':                             [    0,    1 ],
     'route6 dynamic ripng':                            [    0,    1 ],
@@ -4279,7 +4280,9 @@ function route_filter_common(conv, prefix, name, af) {
         val => val.split(',').join(' '));
     conv.param2recipe(rf, 'set-metric', `${k}.set.metric`);
     conv.param2recipe(rf, 'set-metric-type', `${k}.set.metric-type`);
+    conv.param2recipe(rf, 'set-tag', `${k}.set.tag`);
     conv.param2recipe(rf, 'set-weight', `${k}.set.weight`);
+    conv.param2recipe(rf, 'tag', `${k}.match.tag`, val => `${val}`);
     if (rf['pass']) {
         conv.add(`${k}.action`, 'pass');
     }
@@ -4658,13 +4661,17 @@ Converter.rules['route'] = {
                 'exact-match': 0,
                 'interface': true,
                 'metric': true,
-                'tag': 'notsupported',
+                'tag': _ => {
+                    return !conv.missing('route-filter tag / set-tag');
+                },
                 'pass':  0,
                 'block': 0,
                 'set-as-path-prepend': true,
                 'set-metric': true,
                 'set-metric-type': true,
-                'set-tag': 'notsupported',
+                'set-tag': _ => {
+                    return !conv.missing('route-filter tag / set-tag');
+                },
                 'set-weight': true,
             });
         },
