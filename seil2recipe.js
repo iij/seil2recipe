@@ -5479,6 +5479,4 @@ Converter.rules['wol-target'] = {
     '*': 'notsupported',
 };
 
-if (typeof exports !== 'undefined') {
-    exports.Converter = Converter;
-}
+export { Converter };

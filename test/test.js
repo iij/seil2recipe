@@ -1,7 +1,10 @@
-const assert = require('assert');
-const fs     = require('fs');
-const s2r    = require('../seil2recipe');
 
+import assert from 'node:assert';
+import fs from 'node:fs';
+import { describe, it } from 'node:test';
+
+import { Converter } from '../seil2recipe.js';
+const s2r = { Converter: Converter }
 
 const default_config_set = new Set(new s2r.Converter('', 'test').recipe_config.trim().split('\n'));
 
