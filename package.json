@@ -4,15 +4,9 @@
   "description": "SEIL to Recipe Config Converter",
   "main": "main.js",
   "type": "module",
-  "dependencies": {
-    "@colors/colors": "^1.5.0"
-  },
-  "devDependencies": {
-    "mocha": "^11.1.0"
-  },
   "scripts": {
-    "test": "mocha",
-    "watch": "mocha --watch --reporter min"
+    "test": "node --test",
+    "watch": "node --test --watch"
   },
   "author": "Internet Initiative Japan Inc.",
   "license": "MIT"
