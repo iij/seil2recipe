@@ -4,9 +4,8 @@ import fs from 'node:fs';
 import { describe, it } from 'node:test';
 
 import { Converter } from '../seil2recipe.js';
-const s2r = { Converter: Converter }
 
-const default_config_set = new Set(new s2r.Converter('', 'test').recipe_config.trim().split('\n'));
+const default_config_set = new Set(new Converter('', 'test').recipe_config.trim().split('\n'));
 
 function assertconv(convspec, target = 'test') {
     const [ seil_config, recipe_config ] = convspec.split("---\n");
@@ -14,7 +13,7 @@ function assertconv(convspec, target = 'test') {
         assert.fail('no separator found!');
     }
 
-    const c = new s2r.Converter(seil_config, target);
+    const c = new Converter(seil_config, target);
 
     var actual = c.recipe_config.trim().split('\n').filter(line => {
         return !default_config_set.has(line);
@@ -38,12 +37,12 @@ function assert_conversions(seil_config, fun) {
     if (seil_config instanceof Array) {
         seil_config = seil_config.join('\n');
     }
-    const c = new s2r.Converter(seil_config + '\n', 'test');
+    const c = new Converter(seil_config + '\n', 'test');
     fun.call(null, c.conversions);
 }
 
 function assert_notsupported(seil_config, target = 'test') {
-    const c = new s2r.Converter(seil_config + '\n', target);
+    const c = new Converter(seil_config + '\n', target);
     const errors = c.conversions.map((conv) => conv.errors).flat();
     assert.equal(errors[0]?.type, 'notsupported');
 }
@@ -753,7 +752,7 @@ describe('encrypted-password-long', () => {
     });
 
     it('does not support "user" account', () => {
-        const c = new s2r.Converter('encrypted-password-long user foo');
+        const c = new Converter('encrypted-password-long user foo');
         const e = c.conversions[0].errors[0]
         assert.strictEqual(e.type, 'notsupported');
     });
@@ -3216,12 +3215,12 @@ describe('vendor', () => {
 
 describe('w2', () => {
     it('can be a target device', () => {
-        const c = new s2r.Converter('hostname foo\n', 'w2');
+        const c = new Converter('hostname foo\n', 'w2');
         assert.strictEqual(c.recipe_config, 'hostname: foo\n');
     });
 
     it('does not support "option statistics access"', () => {
-        const c = new s2r.Converter('option statistics access on', 'w2');
+        const c = new Converter('option statistics access on', 'w2');
         const e = c.conversions[0].errors[0]
         assert.strictEqual(e.type, 'notsupported');
     });
@@ -3257,7 +3256,7 @@ describe('x4', () => {
     });
 
     it('ge2 does not support half-duplex', () => {
-        const c = new s2r.Converter('interface lan2 media 10baseT\n', 'x4');
+        const c = new Converter('interface lan2 media 10baseT\n', 'x4');
         const e = c.conversions[0].errors[0]
         assert.strictEqual(e.type, 'notsupported');
     });
@@ -3271,7 +3270,7 @@ describe('ayame', () => {
             interface.ge1.media: auto
         `, 'ayame');
 
-        const c2 = new s2r.Converter('interface lan1 media 10baseT\n', 'ayame');
+        const c2 = new Converter('interface lan1 media 10baseT\n', 'ayame');
         const e = c2.conversions[0].errors[0]
         assert.strictEqual(e.type, 'notsupported');
     });
@@ -3279,12 +3278,12 @@ describe('ayame', () => {
 
 describe('ca10', () => {
     it('can be a target device', () => {
-        const c = new s2r.Converter('hostname foo\n', 'ca10');
+        const c = new Converter('hostname foo\n', 'ca10');
         assert.match(c.recipe_config, /^hostname: foo$/m);
     });
 
     it('ge4 is connected to upstream"', () => {
-        const c = new s2r.Converter(`
+        const c = new Converter(`
             interface lan0 add 192.168.0.1/24
             interface lan1 add dhcp
             interface lan2 add 2001:db8::2/64
@@ -3307,11 +3306,11 @@ describe('ca10', () => {
     });
 
     it('ge[45] does not supports 10/100', () => {
-        const c1 = new s2r.Converter('interface lan1 media 10baseT\n', 'ca10');
+        const c1 = new Converter('interface lan1 media 10baseT\n', 'ca10');
         const e1 = c1.conversions[0].errors[0]
         assert.strictEqual(e1.type, 'notsupported');
 
-        const c2 = new s2r.Converter('interface lan1 media 10baseT\n', 'ca10');
+        const c2 = new Converter('interface lan1 media 10baseT\n', 'ca10');
         const e2 = c2.conversions[0].errors[0]
         assert.strictEqual(e2.type, 'notsupported');
     });
@@ -3321,7 +3320,7 @@ describe('factory-config', () => {
     it('should be converted without script error', () => {
         const buf = fs.readFileSync('index.html');
         const config = buf.toString().match(/(hostname.*\nvendor.*?\n)/s)[1];
-        const c = new s2r.Converter(config, 'x4');
+        const c = new Converter(config, 'x4');
 
         const noterrors = [ 'deprecated', 'notsupported', 'warning' ];
         c.conversions.forEach(conv => {
@@ -3397,7 +3396,7 @@ describe('order issues', () => {
 
 describe('time2sec', () => {
     it('time strings', () => {
-        const time2sec = s2r.Converter.time2sec;
+        const time2sec = Converter.time2sec;
 
         // combinations of d, h, m, and s.
         assert.equal(time2sec('1s'),       1);
@@ -3425,7 +3424,7 @@ describe('time2sec', () => {
 
 describe('time2hms', () => {
     it('converts time into HMS)', () => {
-        const time2hms = s2r.Converter.time2hms;
+        const time2hms = Converter.time2hms;
         assert.equal(time2hms('1d2h3m4s'), '26h3m4s');
         assert.equal(time2hms('1d'), '24h');
         assert.equal(time2hms('12h34m56s'), '12h34m56s');
