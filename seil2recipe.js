@@ -2268,7 +2268,7 @@ Converter.rules['httpd'] = {
 
 function ike_params(conv, tokens) {
     // ike interval 40s
-    pdefs = {};
+    let pdefs = {};
     function add(word, defval) {
         pdefs[word] = {
             key: `ike.${word}`,
@@ -2284,7 +2284,7 @@ function ike_params(conv, tokens) {
                 }
                 // interval だけは受け入れる表記が異なる。
                 if (word == 'interval') {
-                    sec = time2sec(val);
+                    let sec = time2sec(val);
                     if (sec > 300) {
                         conv.warning(`ike interval は上限値の 300s に切り詰められます。`);
                         sec = 300;
@@ -4689,6 +4689,7 @@ Converter.rules['route6'] = {
         // route6 add default router-advertisement interface <lan>
         //     [distance { <distance> | system-default }]
         const k1 = conv.get_index('route.ipv6');
+        var idx = 3;
         if (tokens[3] == 'router-advertisement') {
             const raif = conv.ifmap(tokens[5]);
             if (conv.missing('interface ... add router-advertisement(s)', true)) {
@@ -4700,9 +4701,7 @@ Converter.rules['route6'] = {
             } else {
                 conv.add(`${k1}.router-advertisement-interface`, raif);
             }
-            idx = 5;
-        } else {
-            idx = 3;
+            idx += 2;
         }
         conv.add(`${k1}.destination`, tokens[2]);
         conv.add(`${k1}.gateway`, tokens[3]);
@@ -5125,7 +5124,7 @@ Converter.rules['sshd'] = {
             }
             var str = '';
             for (i = i + 1; i < key.length; i += 2) {
-                hex = parseInt(key.substring(i, i + 2), 16);
+                const hex = parseInt(key.substring(i, i + 2), 16);
                 if (hex != 0x0a) {
                     str += String.fromCharCode(hex);
                 } else {
@@ -5479,6 +5478,4 @@ Converter.rules['wol-target'] = {
     '*': 'notsupported',
 };
 
-if (typeof exports !== 'undefined') {
-    exports.Converter = Converter;
-}
+export { Converter };

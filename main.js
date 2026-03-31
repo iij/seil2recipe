@@ -1,6 +1,6 @@
-const colors = require('@colors/colors');
-const fs = require('fs');
-const seil2recipe = require('./seil2recipe');
+import fs from 'node:fs';
+import { styleText } from 'node:util';
+import { Converter } from './seil2recipe.js';
 
 if (process.argv.length < 3) {
     console.log('usage: node main.js [-v] seil.txt');
@@ -23,27 +23,28 @@ while (args[0][0] == '-') {
 seilconfigfile = args[0];
 
 const txt = fs.readFileSync(seilconfigfile, {encoding: "utf-8"});
-const s2r = new seil2recipe.Converter(txt, model);
+const s2r = new Converter(txt, model);
 
 if (!verbose) {
     console.log(s2r.recipe_config);
 } else {
     s2r.conversions.forEach((conv, idx) => {
-        console.log(`${idx + 1}: `.gray + conv.seil_line.blue);
+        console.log(styleText('gray', `${idx + 1}: `) +
+            styleText('blue', conv.seil_line));
 
         conv.errors.forEach(e => {
             var msg = '';
             if (e.type == 'deprecated') {
-                msg = e.message.grey;
+                msg = styleText('grey', e.message);
             } else if (e.type == 'notsupported') {
-                msg = e.message.yellow;
+                msg = styleText('yellow', e.message);
             } else {
-                msg = e.message.red;
+                msg = styleText('red', e.message);
             }
             console.log(msg);
 
             if (e.error) {
-                console.log(e.error.stack.magenta);
+                console.log(styleText('magenta', e.error.stack));
             }
         });
 

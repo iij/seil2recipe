@@ -35,7 +35,7 @@ PC 版の Safari, Chrome, Edge, Firefox に対応しています。Internet Expl
 
 
 ## テスト
-`% npm test` で実行できます。事前に `% npm install mocha` で [Mocha](https://mochajs.org) をインストールしておいてください。
+`% npm test` で実行できます。`node:test` を使っています。
 
 
 ## 免責
